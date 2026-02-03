@@ -221,16 +221,32 @@ class SlitherBrowser:
     def force_restart(self):
         """
         Resets the game immediately.
+        Re-injects control overrides after restart.
         """
-        # Sometimes we need to click "Play" button if it's the first time
-        # But user requested window.connect() hook.
-        
         restart_js = """
-        // If we are on the main menu, we might need to simulate play button click
-        // But for restart:
-        window.force_connect_game(); 
+        // Call connect directly - don't rely on our injected function
+        if (typeof window.connect === 'function') {
+            window.connect();
+            return 'connected';
+        } else {
+            // Maybe we need to reload the page
+            return 'no_connect';
+        }
         """
-        self.driver.execute_script(restart_js)
+        try:
+            result = self.driver.execute_script(restart_js)
+            if result == 'connected':
+                # Wait a moment for the game to start
+                time.sleep(1)
+                # Re-inject our overrides (they get lost on game restart)
+                self.inject_override_script()
+        except Exception as e:
+            print(f"Error in force_restart: {e}")
+            # Try reloading the page as fallback
+            self.driver.refresh()
+            time.sleep(2)
+            self.inject_override_script()
 
     def close(self):
         self.driver.quit()
+
