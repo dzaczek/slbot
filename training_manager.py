@@ -13,6 +13,15 @@ sys.stdout = sys.stderr
 # Global browser instance to reuse chrome window
 browser = None
 
+import atexit
+def cleanup():
+    global browser
+    if browser:
+        try:
+            browser.close()
+        except:
+            pass
+atexit.register(cleanup)
 def log(msg):
     """Print with flush for immediate output."""
     print(msg, flush=True)
@@ -23,38 +32,78 @@ def eval_genome(genome, config):
     Returns fitness score.
     """
     global browser
-    if browser is None:
-        log("[INIT] Starting browser...")
-        browser = SlitherBrowser(headless=False)
-        log("[INIT] Browser started successfully.")
-        
+    
+    # Ensure browser is running
+    def ensure_browser():
+        global browser
+        if browser is None:
+            log("[INIT] Starting browser...")
+            browser = SlitherBrowser(headless=False)
+            log("[INIT] Browser started successfully.")
+    
+    ensure_browser()
+    
     brain = BotAgent(genome, config)
     spatial = SpatialAwareness()
     
-    # Start game
-    browser.force_restart()
-    # Wait a moment for connection
-    time.sleep(1)
+    # Start game with recovery
+    try:
+         # force_restart now waits for game start internally
+        browser.force_restart()
+    except Exception as e:
+        # Check if error is fatal (window closed)
+        err_msg = str(e).lower()
+        if "no such window" in err_msg or "target window already closed" in err_msg or "invalid session id" in err_msg:
+            log(f"[FATAL ERROR] Browser window lost, restarting: {e}")
+            try:
+                browser.close()
+            except:
+                pass
+            browser = None
+            ensure_browser()
+            browser.force_restart()
+        else:
+            log(f"[RECOVERABLE ERROR] {e}. Continuing...")
+    
+    # Wait a bit longer to ensure game state is fully synchronized
+    time.sleep(2)
     
     start_time = time.time()
     last_eat_time = start_time
     max_len = 0
     
-    # Anti-loop / activity vars
-    last_pos = (0, 0)
-    stuck_time = 0
+    eval_timeout = 180 # 3 minutes max per genome
     
-    while True:
+    while time.time() - start_time < eval_timeout:
         # 1. Get Data
         data = browser.get_game_data()
         
-        if data.get('dead', False):
+        if data is None:
+            log("[ERROR] get_game_data returned None")
             break
+            
+        if data.get('dead', False):
+            # If in menu, try to play
+            if data.get('in_menu', False):
+                log("[STATUS] In menu. Attempting to start game...")
+                browser.force_restart()
+                time.sleep(5) # Wait longer for game to actually start
+                continue
+                
+            # If dead but just started, it's a connection/spawn issue
+            if time.time() - start_time < 3:
+                 log("[WARNING] Dead/Disconnected immediately. Retrying...")
+                 browser.force_restart()
+                 start_time = time.time()
+                 last_eat_time = start_time
+                 continue
+            break
+
             
         my_snake = data.get('self')
         if not my_snake:
             # Maybe still connecting?
-            if time.time() - start_time > 5:
+            if time.time() - start_time > 10:
                 # Timeout connecting
                 break
             continue
@@ -110,13 +159,23 @@ def run_neat(config_path):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
     
+    # Add checkpointer to save progress every 5 generations
+    checkpointer = neat.Checkpointer(generation_interval=5, filename_prefix='neat-checkpoint-')
+    p.add_reporter(checkpointer)
+    
+    log("[TRAINING] Starting evolution for 50 generations...")
+    log("[TRAINING] Checkpoints will be saved every 5 generations")
+    
     # Train
-    # We need a wrapper to match neat's requirement of (genomes, config) if we use run()
-    # Or we can use ParallelEvaluator if needed, but for browser it's single threaded usually.
-    # Standard p.run takes a function `eval_genomes(genomes, config)`
     winner = p.run(eval_genomes_wrapper, 50) # 50 generations
     
-    print('\nBest genome:\n{!s}'.format(winner))
+    # Save winner
+    import pickle
+    with open('best_genome.pkl', 'wb') as f:
+        pickle.dump(winner, f)
+    log("[TRAINING] Best genome saved to best_genome.pkl")
+    
+    print('\\nBest genome:\\n{!s}'.format(winner))
 
 def eval_genomes_wrapper(genomes, config):
     """
@@ -128,10 +187,18 @@ def eval_genomes_wrapper(genomes, config):
         log(f"[RESULT] Genome {genome_id} Fitness: {genome.fitness:.2f}")
 
 if __name__ == "__main__":
-    log("========================================")
-    log("  Slither.io NEAT Bot - Training Start")
-    log("========================================")
-    local_dir = os.path.dirname(__file__)
-    config_path = os.path.join(local_dir, 'config_neat.txt')
-    log(f"[CONFIG] Loading config from: {config_path}")
-    run_neat(config_path)
+    try:
+        log("========================================")
+        log("  Slither.io NEAT Bot - Training Start")
+        log("========================================")
+        local_dir = os.path.dirname(__file__)
+        config_path = os.path.join(local_dir, 'config_neat.txt')
+        log(f"[CONFIG] Loading config from: {config_path}")
+        run_neat(config_path)
+    except Exception as e:
+        import traceback
+        with open("fatal_error.log", "w") as f:
+            f.write(f"Fatal crash: {e}\n")
+            f.write(traceback.format_exc())
+        log(f"FATAL ERROR: {e}")
+        traceback.print_exc()

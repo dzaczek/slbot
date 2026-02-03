@@ -13,15 +13,27 @@ class SpatialAwareness:
 
     def calculate_sectors(self, my_snake, other_snakes, foods):
         """
-        Main function to generate 145 inputs.
-        Returns flattened list of inputs.
+        Generates 99 inputs based on elliott-wen logic.
+        Inputs: 24 sectors * 4 features + 3 global
+        Features per sector:
+        1. Food Value (1 - dist/1000)
+        2. Food Size
+        3. Perimeter/Body Value (1 - dist/1000)
+        4. Enemy Angle
+        Global:
+        5. Self X, Self Y, Self Angle (normalized)
         """
-        # Initialize sectors [food_dist, enemy_dist, is_big, is_boost, is_trap, wall_dist]
-        # Distances are inverted: 1.0 = close, 0.0 = far/none
-        sectors = np.zeros((self.num_sectors, 6))
+        # Constants from elliott-wen
+        MAX_SCOPE = 1000.0
+        
+        # Initialize sector arrays
+        # 24 sectors
+        food_val = [0.0] * self.num_sectors
+        food_sz = [0.0] * self.num_sectors
+        body_val = [0.0] * self.num_sectors
+        enemy_ang = [-1.0] * self.num_sectors # Default -1
         
         mx, my = my_snake['x'], my_snake['y']
-        mang = my_snake['ang']
         
         # 1. Process Foods
         for f in foods:
@@ -29,111 +41,95 @@ class SpatialAwareness:
             fx, fy = f[0], f[1]
             dist = math.hypot(fx - mx, fy - my)
             
-            if dist < self.fov_range:
+            if dist < MAX_SCOPE:
+                # Absolute angle to food
                 angle = math.atan2(fy - my, fx - mx)
-                # Adjust angle relative to snake's heading? 
-                # Usually absolute sectors are easier for general navigation, 
-                # but relative to head is better for "ego-centric" control.
-                # Let's use RELATIVE to head direction for standard bot behavior.
-                rel_angle = self._normalize_angle(angle - mang)
+                # Angle relative to map (0..2PI) for sector indexing?
+                # Elliott-wen uses simple sector index based on angle relative to coordinate system
+                # But typically bots use ego-centric.
+                # Looking at app.py: getAngleIndex uses absolute difference but logic implies absolute sectors?
+                # Actually app.py: np.arctan((pos[1] - snakepos[1])/(pos[0] - snakepos[0]))
+                # It calculates angle from snake to object.
+                # Let's use standard absolute angle sectors for consistency with that logic,
+                # unless we want ego-centric.
+                # Given the 'snakeangle' output is absolute 0-2PI, inputs should likely be absolute sectors.
                 
-                sector_idx = int((rel_angle + math.pi) / (2 * math.pi) * self.num_sectors) % self.num_sectors
+                # Map angle -PI..PI to 0..24
+                angle_idx = int((angle + math.pi) / (2 * math.pi) * self.num_sectors) % self.num_sectors
                 
-                # Input value: 1 - (dist / max_view), so closer = higher
-                # Clamped to 0-1
-                val = 1.0 - (dist / self.fov_range)
+                val = 1.0 - (dist / MAX_SCOPE)
+                sz_val = f[2] / 20.0 # Normalize size
                 
-                # Keep max food value seen in this sector
-                if val > sectors[sector_idx][0]:
-                    sectors[sector_idx][0] = val
+                if val > food_val[angle_idx]:
+                    food_val[angle_idx] = val
+                    food_sz[angle_idx] = sz_val
 
-        # 2. Process Enemies
+        # 2. Process Enemies (Bodies for collision/perimeter)
         for s in other_snakes:
-            # Enemy head
-            ex, ey = s['x'], s['y']
-            dist = math.hypot(ex - mx, ey - my)
+            # Check segments
+             # We iterate existing points. 'pts' in our get_game_data is list of [x, y]
+            points = s.get('pts', [])
+            # Also include head
+            points.append([s['x'], s['y']])
             
-            # Check boost
-            is_boosting = 1.0 if s.get('sp', 5) > 8 else 0.0 # Normal speed ~5.7
-            
-            # Check if big (heuristic: if simple length available, or based on 'pts')
-            # Assuming 'pts' field exists and has length
-            is_big = 1.0 if len(s.get('pts', [])) > 50 else 0.0 
-            
-            # Trap Detection
-            # We pass the WHOLE body of this enemy to check if it surrounds us
-            is_trap = self.detect_encirclement((mx, my), s.get('pts', []))
-
-            # Populate sectors for the Head
-            if dist < self.fov_range:
-                angle = math.atan2(ey - my, ex - mx)
-                rel_angle = self._normalize_angle(angle - mang)
-                sector_idx = int((rel_angle + math.pi) / (2 * math.pi) * self.num_sectors) % self.num_sectors
+            for p in points:
+                px, py = p[0], p[1]
+                dist = math.hypot(px - mx, py - my)
                 
-                val = 1.0 - (dist / self.fov_range)
-                if val > sectors[sector_idx][1]:
-                    sectors[sector_idx][1] = val
-                    sectors[sector_idx][2] = is_big
-                    sectors[sector_idx][3] = is_boosting
+                if dist < MAX_SCOPE:
+                    angle = math.atan2(py - my, px - mx)
+                    angle_idx = int((angle + math.pi) / (2 * math.pi) * self.num_sectors) % self.num_sectors
                     
-            # If trap detected, mark ALL sectors that contain this enemy's body as "TRAP"
-            # Or just mark the general direction. 
-            # Requirement says: "Assign TRAP_WARNING flag for that sector". 
-            # Since a trap surrounds us, it likely affects multiple sectors.
-            # We can iterate body points to fill sectors.
-            if is_trap == 1.0 and dist < self.fov_range:
-                 for p in s.get('pts', []):
-                     px, py = p[0], p[1]
-                     p_dist = math.hypot(px - mx, py - my)
-                     if p_dist < self.fov_range:
-                         p_angle = math.atan2(py - my, px - mx)
-                         p_rel = self._normalize_angle(p_angle - mang)
-                         p_sec = int((p_rel + math.pi) / (2 * math.pi) * self.num_sectors) % self.num_sectors
-                         sectors[p_sec][4] = 1.0
+                    val = 1.0 - (dist / MAX_SCOPE)
+                    
+                    if val > body_val[angle_idx]:
+                        body_val[angle_idx] = val
+                        # Store angle of this enemy's head if this is the head?
+                        # Elliott-wen stores 'sn['ang']' if it's a head, else -1.
+                        # We need to identifying if 'p' is head.
+                        # Simplify: If it's a body part, we just care about collision.
+                        # If we match the head, we store its angle.
+                        if p[0] == s['x'] and p[1] == s['y']:
+                             enemy_ang[angle_idx] = s['ang'] / (2 * math.pi) # Normalize 0-1
+                        else:
+                             enemy_ang[angle_idx] = -1.0
 
-        # 3. Process Walls (Border)
-        # Distance from center (0,0)
-        # Map is circular. Radius ~21600.
+        # 3. Process Walls (Treat as body/obstacle)
+        grd = self.map_radius
         dist_from_center = math.hypot(mx, my)
-        dist_to_wall = self.map_radius - dist_from_center
-        # We need direction to wall. The closest wall point is along the vector from center to us.
-        # Vector Center->Me is (mx, my). Angle = atan2(my, mx).
-        wall_angle = math.atan2(my, mx) # Angle pointing OUT towards nearest wall
+        dist_to_wall = grd - dist_from_center
         
-        # We want "Distance to wall" in relevant sectors.
-        # If we are looking AT the wall, the distance is short.
-        # We can map the wall distance to the sectors that align with `wall_angle`.
-        # However, purely "distance to wall" usually implies "how close am I to death by wall".
-        # A simple approach: Calculating distance to wall for EACH sector ray.
-        # Ray casting approach for walls:
-        for i in range(self.num_sectors):
-            # Angle of this sector (global)
-            # sector_angle_rel = -PI + i * (2PI/24) + (PI/24) center
-            # global = sector_angle_rel + snake_ang
-            
-            # Simple approximation: Just put the global wall distance into the sector pointing at the wall?
-            # Better: Only warn if close.
-             pass
-        
-        # Simplified Wall Logic for inputs:
-        # Just calculate closest wall point and put it in the matching sector?
-        # Or better: Provide distance to wall in the sector that points towards the wall.
-        if dist_to_wall < self.fov_range:
-             wall_rel_angle = self._normalize_angle(wall_angle - mang)
-             wall_sec = int((wall_rel_angle + math.pi) / (2 * math.pi) * self.num_sectors) % self.num_sectors
+        # If we are close to wall
+        if dist_to_wall < MAX_SCOPE:
+            # Wall direction is same as my position vector from center
+            wall_angle = math.atan2(my, mx)
+            angle_idx = int((wall_angle + math.pi) / (2 * math.pi) * self.num_sectors) % self.num_sectors
              
-             # Fill a few sectors around the direction
-             # 1.0 = touching wall, 0.0 = safe
-             w_val = 1.0 - (dist_to_wall / self.fov_range)
-             sectors[wall_sec][5] = w_val
-             # Helper: bleed into adjacent sectors slightly
-             prev_sec = (wall_sec - 1) % self.num_sectors
-             next_sec = (wall_sec + 1) % self.num_sectors
-             sectors[prev_sec][5] = max(sectors[prev_sec][5], w_val * 0.8)
-             sectors[next_sec][5] = max(sectors[next_sec][5], w_val * 0.8)
+            # Wall creates a "wall" of danger. 
+            # Simple approach: Block the forward sector towards wall.
+            # Elliott-wen scans a semicircle for wall distance.
+            # We will block the sector pointing to wall.
+            val = 1.0 - (dist_to_wall / MAX_SCOPE)
+            if val > body_val[angle_idx]:
+                body_val[angle_idx] = val
+                enemy_ang[angle_idx] = -1.0 # Wall has no angle
+            
+            # Spread to adjacent
+            prev_sec = (angle_idx - 1) % self.num_sectors
+            next_sec = (angle_idx + 1) % self.num_sectors
+            body_val[prev_sec] = max(body_val[prev_sec], val * 0.8)
+            body_val[next_sec] = max(body_val[next_sec], val * 0.8)
 
-        # Flatten
-        return sectors.flatten().tolist() + [1.0] # + Bias
+        # Global Inputs
+        norm_x = mx / 45000.0
+        norm_y = my / 45000.0
+        norm_ang = my_snake['ang'] / (2 * math.pi)
+
+        # Flatten inputs
+        # Order: food_val, food_sz, body_val, enemy_ang, globals
+        final_inputs = food_val + food_sz + body_val + enemy_ang + [norm_x, norm_y, norm_ang]
+        
+        return final_inputs
 
     def detect_encirclement(self, my_pos, enemy_pts):
         """

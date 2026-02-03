@@ -2,24 +2,95 @@
   Slither.io NEAT Bot - Training Start
 ========================================
 [CONFIG] Loading config from: /Users/dzaczek/slbot/config_neat.txt
+[TRAINING] Starting evolution for 50 generations...
+[TRAINING] Checkpoints will be saved every 5 generations
 
  ****** Running generation 0 ****** 
 
 [EVAL] Evaluating Genome 1...
 [INIT] Starting browser...
-[LOGIN] Login attempt result: clicked
 [INIT] Browser started successfully.
-[RESULT] Genome 1 Fitness: 0.04
+[RESTART] Not playing. Attempting login/reconnect...
+[LOGIN] Attempting login with nickname: NEATBot
+[LOGIN] Play attempt result: btn_clicked
+[LOGIN] Waiting for snake... (0s)
+[LOGIN] Waiting for snake... (1s)
+[LOGIN] Game started successfully!
+[STATUS] In menu. Attempting to start game...
+[RESTART] Not playing. Attempting login/reconnect...
+[LOGIN] Attempting login with nickname: NEATBot
+[LOGIN] Play attempt result: btn_clicked
+[LOGIN] Waiting for snake... (0s)
+[LOGIN] Waiting for snake... (1s)
+[LOGIN] Waiting for snake... (2s)
+[LOGIN] Game started successfully!
+[TIMEOUT] Starved. Len: 38
+[RESULT] Genome 1 Fitness: 422.91
 [EVAL] Evaluating Genome 2...
-[RESULT] Genome 2 Fitness: 0.01
+[RESTART] Forcing new connection...
+[STATUS] In menu. Attempting to start game...
+[RESTART] Not playing. Attempting login/reconnect...
+[LOGIN] Attempting login with nickname: NEATBot
+[LOGIN] Play attempt result: btn_clicked
+[LOGIN] Waiting for snake... (0s)
+[LOGIN] Waiting for snake... (1s)
+[LOGIN] Waiting for snake... (2s)
+[LOGIN] Game started successfully!
+[TIMEOUT] Starved. Len: 29
+[RESULT] Genome 2 Fitness: 365.28
 [EVAL] Evaluating Genome 3...
-[RESULT] Genome 3 Fitness: 0.00
+[RESTART] Forcing new connection...
+[RESULT] Genome 3 Fitness: 272.78
 [EVAL] Evaluating Genome 4...
-[RESULT] Genome 4 Fitness: 0.07
-[EVAL] Evaluating Genome 5...
-[RESULT] Genome 5 Fitness: 0.04
-[EVAL] Evaluating Genome 6...
-[RESULT] Genome 6 Fitness: 0.01
-[EVAL] Evaluating Genome 7...
-[RESULT] Genome 7 Fitness: 0.01
-[EVAL] Evaluating Genome 8...
+[RESTART] Error: Message: no such window: target window already closed
+from unknown error: web view not found
+  (Session info: chrome=144.0.7559.110)
+Stacktrace:
+0   chromedriver                        0x0000000101066fd4 cxxbridge1$str$ptr + 3095476
+1   chromedriver                        0x000000010105f3ec cxxbridge1$str$ptr + 3063756
+2   chromedriver                        0x0000000100b4283c _RNvCs5DBLTqoOdVp_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 75008
+3   chromedriver                        0x0000000100b1b334 chromedriver + 160564
+4   chromedriver                        0x0000000100bb4c34 _RNvCs5DBLTqoOdVp_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 542968
+5   chromedriver                        0x0000000100bcab24 _RNvCs5DBLTqoOdVp_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 632808
+6   chromedriver                        0x0000000100b8006c _RNvCs5DBLTqoOdVp_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 326960
+7   chromedriver                        0x00000001010255dc cxxbridge1$str$ptr + 2826684
+8   chromedriver                        0x0000000101028d1c cxxbridge1$str$ptr + 2840828
+9   chromedriver                        0x000000010100abec cxxbridge1$str$ptr + 2717644
+10  chromedriver                        0x00000001010295a0 cxxbridge1$str$ptr + 2843008
+11  chromedriver                        0x0000000100ffacc4 cxxbridge1$str$ptr + 2652324
+12  chromedriver                        0x000000010104da9c cxxbridge1$str$ptr + 2991740
+13  chromedriver                        0x000000010104dc18 cxxbridge1$str$ptr + 2992120
+14  chromedriver                        0x000000010105f044 cxxbridge1$str$ptr + 3062820
+15  libsystem_pthread.dylib             0x000000019105bc08 _pthread_start + 136
+16  libsystem_pthread.dylib             0x0000000191056ba8 thread_start + 8
+. Refreshing page...
+[FATAL ERROR] Browser window lost, restarting: Message: no such window: target window already closed
+from unknown error: web view not found
+  (Session info: chrome=144.0.7559.110)
+Stacktrace:
+0   chromedriver                        0x0000000101066fd4 cxxbridge1$str$ptr + 3095476
+1   chromedriver                        0x000000010105f3ec cxxbridge1$str$ptr + 3063756
+2   chromedriver                        0x0000000100b4283c _RNvCs5DBLTqoOdVp_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 75008
+3   chromedriver                        0x0000000100b1b334 chromedriver + 160564
+4   chromedriver                        0x0000000100bb4c34 _RNvCs5DBLTqoOdVp_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 542968
+5   chromedriver                        0x0000000100bcab24 _RNvCs5DBLTqoOdVp_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 632808
+6   chromedriver                        0x0000000100b8006c _RNvCs5DBLTqoOdVp_7___rustc35___rust_no_alloc_shim_is_unstable_v2 + 326960
+7   chromedriver                        0x00000001010255dc cxxbridge1$str$ptr + 2826684
+8   chromedriver                        0x0000000101028d1c cxxbridge1$str$ptr + 2840828
+9   chromedriver                        0x000000010100abec cxxbridge1$str$ptr + 2717644
+10  chromedriver                        0x00000001010295a0 cxxbridge1$str$ptr + 2843008
+11  chromedriver                        0x0000000100ffacc4 cxxbridge1$str$ptr + 2652324
+12  chromedriver                        0x000000010104da9c cxxbridge1$str$ptr + 2991740
+13  chromedriver                        0x000000010104dc18 cxxbridge1$str$ptr + 2992120
+14  chromedriver                        0x000000010105f044 cxxbridge1$str$ptr + 3062820
+15  libsystem_pthread.dylib             0x000000019105bc08 _pthread_start + 136
+16  libsystem_pthread.dylib             0x0000000191056ba8 thread_start + 8
+
+[INIT] Starting browser...
+[INIT] Browser started successfully.
+[RESTART] Not playing. Attempting login/reconnect...
+[LOGIN] Attempting login with nickname: NEATBot
+[LOGIN] Play attempt result: btn_clicked
+[LOGIN] Waiting for snake... (0s)
+[LOGIN] Waiting for snake... (1s)
+[LOGIN] Game started successfully!

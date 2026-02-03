@@ -64,15 +64,17 @@ enabled_rate_to_false_add = 0.0
 enabled_rate_to_true_add  = 0.0
 
 # Network parameters
-# Inputs: 24 sectors * 6 features + 1 bias = 145 inputs
+# Inputs: 24 sectors * 4 features + 3 global = 99 inputs
 # Features per sector:
-# 1. Distance to food
-# 2. Distance to enemy
-# 3. Is enemy big? (0/1)
-# 4. Is enemy boosting? (0/1)
-# 5. Trap detected? (0/1)
-# 6. Distance to wall
-num_inputs               = 145
+# 1. Food Value (1 - dist/1000)
+# 2. Food Size
+# 3. Perimeter/Body Value (1 - dist/1000)
+# 4. Enemy Angle
+# Global:
+# 5. Self X (normalized)
+# 6. Self Y (normalized)
+# 7. Self Angle (normalized)
+num_inputs               = 99
 num_hidden               = 0
 # Outputs: Angle (0-1 mapped to 0 to 2PI) and Boost (0-1)
 num_outputs              = 2
