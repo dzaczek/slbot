@@ -7,6 +7,7 @@ fitness_threshold        = 100000
 pop_size                 = 30
 reset_on_extinction      = True
 no_fitness_termination   = False
+# Note: With 3 parallel workers, 30 genomes will evaluate ~3x faster
 
 [DefaultGenome]
 # Node activation options

@@ -1,3 +1,7 @@
+"""
+NEAT Training Manager for Slither.io Bot
+Supports parallel evaluation with multiple browser instances.
+"""
 
 import time
 import os
@@ -5,73 +9,137 @@ import sys
 import neat
 import math
 import csv
+import multiprocessing
 from datetime import datetime
-from browser_engine import SlitherBrowser
-from spatial_awareness import SpatialAwareness
-from ai_brain import BotAgent
+from queue import Empty
 
 # Force unbuffered output
 sys.stdout = sys.stderr
 
-# Global browser instance to reuse chrome window
-browser = None
-
-import atexit
-def cleanup():
-    global browser
-    if browser:
-        try:
-            browser.close()
-        except:
-            pass
-atexit.register(cleanup)
 def log(msg):
     """Print with flush for immediate output."""
     print(msg, flush=True)
 
-def eval_genome(genome, config):
+
+# ============================================
+# WORKER PROCESS - runs in separate process
+# ============================================
+
+def worker_process(worker_id, task_queue, result_queue, config_path):
     """
-    Evaluates a single genome.
-    Returns fitness score.
+    Worker process that evaluates genomes.
+    Each worker has its own browser instance.
     """
-    global browser
+    from browser_engine import SlitherBrowser
+    from spatial_awareness import SpatialAwareness
+    from ai_brain import BotAgent
     
-    # Ensure browser is running
+    log(f"[WORKER {worker_id}] Starting...")
+    
+    # Each worker creates its own browser
+    browser = None
+    
     def ensure_browser():
-        global browser
+        nonlocal browser
         if browser is None:
-            log("[INIT] Starting browser...")
-            browser = SlitherBrowser(headless=False)
-            log("[INIT] Browser started successfully.")
+            log(f"[WORKER {worker_id}] Starting browser (headless)...")
+            browser = SlitherBrowser(headless=True, nickname=f"NEAT-{worker_id}")
+            log(f"[WORKER {worker_id}] Browser ready.")
     
-    ensure_browser()
+    # Load NEAT config
+    config = neat.Config(
+        neat.DefaultGenome,
+        neat.DefaultReproduction,
+        neat.DefaultSpeciesSet,
+        neat.DefaultStagnation,
+        config_path
+    )
     
-    brain = BotAgent(genome, config)
     spatial = SpatialAwareness()
     
-    # Start game with recovery
     try:
-         # force_restart now waits for game start internally
-        browser.force_restart()
-    except Exception as e:
-        # Check if error is fatal (window closed)
-        err_msg = str(e).lower()
-        if "no such window" in err_msg or "target window already closed" in err_msg or "invalid session id" in err_msg:
-            log(f"[FATAL ERROR] Browser window lost, restarting: {e}")
+        while True:
+            try:
+                # Get task from queue (with timeout to allow graceful shutdown)
+                task = task_queue.get(timeout=5)
+                
+                if task is None:  # Poison pill - shutdown signal
+                    log(f"[WORKER {worker_id}] Received shutdown signal.")
+                    break
+                
+                genome_id, genome_data = task
+                
+                # Recreate genome from data
+                genome = neat.DefaultGenome(genome_id)
+                genome.configure_new(config.genome_config)
+                genome.connections = genome_data['connections']
+                genome.nodes = genome_data['nodes']
+                
+                # Evaluate
+                fitness, stats = eval_genome_worker(
+                    worker_id, genome, config, browser, spatial, ensure_browser
+                )
+                
+                # Send result back
+                result_queue.put((genome_id, fitness, stats))
+                
+            except Empty:
+                # No task available, check if we should continue
+                continue
+            except Exception as e:
+                log(f"[WORKER {worker_id}] Error: {e}")
+                import traceback
+                traceback.print_exc()
+                # Try to recover browser
+                if browser:
+                    try:
+                        browser.close()
+                    except:
+                        pass
+                browser = None
+                
+    finally:
+        if browser:
             try:
                 browser.close()
             except:
                 pass
-            browser = None
-            ensure_browser()
+        log(f"[WORKER {worker_id}] Shutdown complete.")
+
+
+def eval_genome_worker(worker_id, genome, config, browser, spatial, ensure_browser):
+    """
+    Evaluates a single genome in worker process.
+    Returns (fitness, stats_dict).
+    """
+    from ai_brain import BotAgent
+    
+    ensure_browser()
+    brain = BotAgent(genome, config)
+    
+    # Start game with recovery
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
             browser.force_restart()
-        else:
-            log(f"[RECOVERABLE ERROR] {e}. Continuing...")
+            break
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "no such window" in err_msg or "target window" in err_msg or "invalid session" in err_msg:
+                log(f"[WORKER {worker_id}] Browser lost, restarting...")
+                try:
+                    browser.close()
+                except:
+                    pass
+                browser = None
+                ensure_browser()
+            else:
+                log(f"[WORKER {worker_id}] Attempt {attempt+1} failed: {e}")
+                time.sleep(1)
     
-    # Wait a bit longer to ensure game state is fully synchronized
-    time.sleep(2)
+    # Wait for game to stabilize
+    time.sleep(1.5)
     
-    start_time = time.time()
     start_time = time.time()
     last_eat_time = start_time
     max_len = 0
@@ -79,112 +147,214 @@ def eval_genome(genome, config):
     fitness_score = 0.0
     cause_of_death = "Unknown"
     
-    eval_timeout = 180 # 3 minutes max per genome
+    eval_timeout = 120  # 2 minutes max per genome (reduced for faster iteration)
     
-    # 1. Main Game Loop
+    # Main Game Loop
     while time.time() - start_time < eval_timeout:
-        # 1. Get Data
+        # Get game data
         data = browser.get_game_data()
         
         if data is None:
-            log("[ERROR] get_game_data returned None")
             break
             
         if data.get('dead', False):
-            # If in menu, try to play
             if data.get('in_menu', False):
-                log("[STATUS] In menu. Attempting to start game...")
                 browser.force_restart()
-                time.sleep(5) # Wait longer for game to actually start
+                time.sleep(3)
                 continue
                 
-            # If dead but just started, it's a connection/spawn issue
             if time.time() - start_time < 3:
-                 log("[WARNING] Dead/Disconnected immediately. Retrying...")
-                 browser.force_restart()
-                 start_time = time.time()
-                 last_eat_time = start_time
-                 continue
+                browser.force_restart()
+                start_time = time.time()
+                last_eat_time = start_time
+                continue
             
-            # If we get here, we died legitimately (or time ran out)
             cause_of_death = "Collision"
             break
-
             
         my_snake = data.get('self')
         if not my_snake:
-            # Maybe still connecting?
             if time.time() - start_time > 10:
-                # Timeout connecting
                 break
+            time.sleep(0.1)
             continue
             
-        # 2. Process fitness / state (with accumulated rewards for eating)
+        # Process fitness
         current_len = my_snake.get('len', 0)
         
-        # Reward for growing (eating food)
         if current_len > max_len:
             diff = current_len - max_len
-            # Large bonus for every piece of food eaten
-            fitness_score += (diff * 20.0) 
-            food_eaten_count += diff # Approx piece count
+            fitness_score += (diff * 25.0)  # Bonus for eating
+            food_eaten_count += diff
             max_len = current_len
-            last_eat_time = time.time() # Reset starvation timer
+            last_eat_time = time.time()
             
-        # Anti-Loop / Camping Penalty
-        # If length hasn't increased in 20s -> kill (faster culling of bad genomes)
-        if time.time() - last_eat_time > 20: 
-           log(f"[TIMEOUT] Starved. Len: {max_len}")
-           cause_of_death = "Starvation"
-           break
+        # Starvation check
+        if time.time() - last_eat_time > 20:
+            cause_of_death = "Starvation"
+            break
 
-        # 3. Decision
+        # Get neural network decision
         inputs = spatial.calculate_sectors(
-            my_snake, 
-            data.get('enemies', []), 
+            my_snake,
+            data.get('enemies', []),
             data.get('foods', [])
         )
         
-        # Pass current heading for ego-centric steering
         current_heading = my_snake.get('ang', 0)
         angle, boost = brain.decide(inputs, current_heading)
         
-        # 4. Act
+        # Execute action
         browser.send_action(angle, boost)
         
-    # Calculate Fitness
-    # Base: Survival time (increased reward to encourage longevity)
+        # Small delay to avoid overwhelming the browser
+        time.sleep(0.05)  # ~20 FPS
+        
+    # Calculate final fitness
     survival_time = time.time() - start_time
     fitness_score += (survival_time * 5.0)
-    
-    # Final length bonus (redundant but good for baseline)
     fitness_score += (max_len * 5)
     
-    # Store stats in genome for reporter (optional, but good practice)
-    genome.custom_stats = {
+    stats = {
         'survival': survival_time,
         'food': food_eaten_count,
         'cause': cause_of_death,
         'len': max_len
     }
     
-    return fitness_score
+    return fitness_score, stats
 
-def run_neat(config_path):
+
+# ============================================
+# MAIN PROCESS - manages workers
+# ============================================
+
+class ParallelEvaluator:
+    """
+    Manages parallel genome evaluation using multiple browser instances.
+    """
+    def __init__(self, num_workers, config_path):
+        self.num_workers = num_workers
+        self.config_path = config_path
+        self.workers = []
+        self.task_queue = multiprocessing.Queue()
+        self.result_queue = multiprocessing.Queue()
+        
+    def start_workers(self):
+        """Start worker processes."""
+        log(f"[MAIN] Starting {self.num_workers} parallel workers...")
+        
+        for i in range(self.num_workers):
+            p = multiprocessing.Process(
+                target=worker_process,
+                args=(i, self.task_queue, self.result_queue, self.config_path)
+            )
+            p.start()
+            self.workers.append(p)
+            time.sleep(2)  # Stagger startup to avoid resource contention
+            
+        log(f"[MAIN] All {self.num_workers} workers started.")
+        
+    def stop_workers(self):
+        """Stop all worker processes."""
+        log("[MAIN] Stopping workers...")
+        
+        # Send poison pills
+        for _ in self.workers:
+            self.task_queue.put(None)
+            
+        # Wait for workers to finish
+        for p in self.workers:
+            p.join(timeout=10)
+            if p.is_alive():
+                p.terminate()
+                
+        self.workers = []
+        log("[MAIN] All workers stopped.")
+        
+    def evaluate_genomes(self, genomes, config):
+        """
+        Evaluate all genomes in parallel.
+        This is called by NEAT for each generation.
+        """
+        # Submit all tasks
+        pending = {}
+        for genome_id, genome in genomes:
+            # Serialize genome data for transfer to worker
+            genome_data = {
+                'connections': genome.connections,
+                'nodes': genome.nodes
+            }
+            self.task_queue.put((genome_id, genome_data))
+            pending[genome_id] = genome
+            
+        log(f"[MAIN] Submitted {len(pending)} genomes for evaluation...")
+        
+        # Collect results
+        results_count = 0
+        while results_count < len(pending):
+            try:
+                genome_id, fitness, stats = self.result_queue.get(timeout=300)  # 5 min timeout per result
+                
+                genome = pending[genome_id]
+                genome.fitness = fitness
+                
+                # Log result
+                log(f"[RESULT] Genome {genome_id} | Fit: {fitness:.2f} | "
+                    f"Time: {stats['survival']:.1f}s | Food: {stats['food']} | "
+                    f"Len: {stats['len']} | Cause: {stats['cause']}")
+                
+                # CSV logging
+                self._log_to_csv(genome_id, fitness, stats)
+                
+                results_count += 1
+                
+            except Empty:
+                log("[MAIN] Timeout waiting for results!")
+                break
+                
+        log(f"[MAIN] Generation complete. {results_count}/{len(pending)} genomes evaluated.")
+        
+    def _log_to_csv(self, genome_id, fitness, stats):
+        """Log result to CSV file."""
+        try:
+            file_exists = os.path.isfile('training_stats.csv')
+            with open('training_stats.csv', 'a', newline='') as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(['Timestamp', 'Generation', 'GenomeID', 'Fitness', 
+                                   'SurvivalTime', 'FoodEaten', 'MaxLen', 'CauseOfDeath'])
+                writer.writerow([
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "N/A",
+                    genome_id,
+                    f"{fitness:.2f}",
+                    f"{stats['survival']:.2f}",
+                    stats['food'],
+                    stats['len'],
+                    stats['cause']
+                ])
+        except Exception as e:
+            log(f"[ERROR] CSV write failed: {e}")
+
+
+def run_neat(config_path, num_workers=3):
+    """
+    Run NEAT evolution with parallel evaluation.
+    """
     config = neat.Config(
-        neat.DefaultGenome, 
+        neat.DefaultGenome,
         neat.DefaultReproduction,
-        neat.DefaultSpeciesSet, 
+        neat.DefaultSpeciesSet,
         neat.DefaultStagnation,
         config_path
     )
     
     p = None
     
-    # Check for latest checkpoint
+    # Check for checkpoint
     checkpoint_files = [f for f in os.listdir('.') if f.startswith('neat-checkpoint-')]
     if checkpoint_files:
-        # Sort by generation number (neat-checkpoint-X)
         try:
             latest_checkpoint = max(checkpoint_files, key=lambda x: int(x.split('-')[-1]))
             log(f"[RESUME] Found checkpoint: {latest_checkpoint}. Restoring...")
@@ -201,67 +371,52 @@ def run_neat(config_path):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
     
-    # Add checkpointer to save progress every 5 generations
+    # Add checkpointer
     checkpointer = neat.Checkpointer(generation_interval=5, filename_prefix='neat-checkpoint-')
     p.add_reporter(checkpointer)
     
-    log("[TRAINING] Starting evolution for 50 generations...")
-    log("[TRAINING] Checkpoints will be saved every 5 generations")
+    # Create parallel evaluator
+    evaluator = ParallelEvaluator(num_workers, config_path)
     
-    # Train
-    winner = p.run(eval_genomes_wrapper, 50) # 50 generations
-    
-    # Save winner
-    import pickle
-    with open('best_genome.pkl', 'wb') as f:
-        pickle.dump(winner, f)
-    log("[TRAINING] Best genome saved to best_genome.pkl")
-    
-    print('\\nBest genome:\\n{!s}'.format(winner))
+    try:
+        evaluator.start_workers()
+        
+        log(f"[TRAINING] Starting evolution with {num_workers} parallel workers...")
+        log("[TRAINING] Checkpoints saved every 5 generations")
+        
+        # Run evolution
+        winner = p.run(evaluator.evaluate_genomes, 100)  # 100 generations
+        
+        # Save winner
+        import pickle
+        with open('best_genome.pkl', 'wb') as f:
+            pickle.dump(winner, f)
+        log("[TRAINING] Best genome saved to best_genome.pkl")
+        
+        print(f'\nBest genome:\n{winner}')
+        
+    finally:
+        evaluator.stop_workers()
 
-def eval_genomes_wrapper(genomes, config):
-    """
-    Wrapper for batch evaluation.
-    """
-    for genome_id, genome in genomes:
-        log(f"[EVAL] Evaluating Genome {genome_id}...")
-        genome.fitness = eval_genome(genome, config)
-        
-        # Enhanced Logging
-        stats = getattr(genome, 'custom_stats', {})
-        s_time = stats.get('survival', 0.0)
-        food = stats.get('food', 0)
-        cause = stats.get('cause', 'Unknown')
-        length = stats.get('len', 0)
-        
-        log(f"[RESULT] Genome {genome_id} | Fit: {genome.fitness:.2f} | Time: {s_time:.1f}s | Food: {food} | Len: {length} | Cause: {cause}")
-        
-        # CSV Logging
-        try:
-             # Check if file exists to write header
-            file_exists = os.path.isfile('training_stats.csv')
-            with open('training_stats.csv', 'a', newline='') as f:
-                writer = csv.writer(f)
-                if not file_exists:
-                    writer.writerow(['Timestamp', 'Generation', 'GenomeID', 'Fitness', 'SurvivalTime', 'FoodEaten', 'MaxLen', 'CauseOfDeath'])
-                
-                # We need generation number. It's stored in population usually, but here we execute per genome.
-                # We can assume the reporter tracks generation, but in this wrapper we might just log timestamp.
-                # A hack to get generation is reading stdout reporter or passing it? 
-                # Simplest is just logging timestamp.
-                writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "N/A", genome_id, f"{genome.fitness:.2f}", f"{s_time:.2f}", food, length, cause])
-        except Exception as e:
-            log(f"[ERROR] CSV Write failed: {e}")
 
 if __name__ == "__main__":
+    # Configuration
+    NUM_WORKERS = 3  # Number of parallel browser instances
+    
     try:
-        log("========================================")
-        log("  Slither.io NEAT Bot - Training Start")
-        log("========================================")
+        log("=" * 50)
+        log("  Slither.io NEAT Bot - Parallel Training")
+        log(f"  Workers: {NUM_WORKERS}")
+        log("=" * 50)
+        
         local_dir = os.path.dirname(__file__)
         config_path = os.path.join(local_dir, 'config_neat.txt')
         log(f"[CONFIG] Loading config from: {config_path}")
-        run_neat(config_path)
+        
+        run_neat(config_path, num_workers=NUM_WORKERS)
+        
+    except KeyboardInterrupt:
+        log("\n[MAIN] Training interrupted by user.")
     except Exception as e:
         import traceback
         with open("fatal_error.log", "w") as f:

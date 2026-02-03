@@ -1,50 +1,74 @@
+"""
+Browser Engine for Slither.io Bot
+Manages Chrome/Chromium instances and game communication.
+"""
+
 import time
-import json
 import math
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-# Assuming webdriver_manager is available, otherwise user might need to install it.
-# from webdriver_manager.chrome import ChromeDriverManager 
 
 def log(msg):
     print(msg, flush=True)
+
+
 class SlitherBrowser:
     """
-    Manages the browser instance using Selenium.
-    Handles 'JS Bridge' to communicate with Slither.io client.
+    Manages browser instance using Selenium.
+    Handles JS bridge to communicate with Slither.io client.
     """
-    def __init__(self, headless=False, nickname="NEATBot"):
+    
+    # Limits for performance
+    MAX_FOODS = 100      # Max food items to process
+    MAX_ENEMIES = 15     # Max enemy snakes to process
+    MAX_BODY_PTS = 50    # Max body points per enemy
+    
+    def __init__(self, headless=True, nickname="NEATBot"):
         self.nickname = nickname
         self.options = Options()
-        # self.options.add_argument("--headless") # Headless might trigger anti-bot or harder to debug
+        
+        if headless:
+            self.options.add_argument("--headless=new")
+            
         self.options.add_argument("--mute-audio")
         self.options.add_argument("--disable-gpu")
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
         self.options.add_argument("--window-size=800,600")
+        self.options.add_argument("--disable-extensions")
+        self.options.add_argument("--disable-infobars")
+        self.options.add_argument("--disable-notifications")
+        
+        # Performance optimizations
+        self.options.add_argument("--disable-software-rasterizer")
+        self.options.add_argument("--disable-background-networking")
+        self.options.add_argument("--disable-sync")
+        self.options.add_argument("--disable-translate")
+        self.options.add_argument("--metrics-recording-only")
+        self.options.add_argument("--no-first-run")
+        
+        # Disable images for faster loading (optional - might affect gameplay detection)
+        prefs = {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        }
+        self.options.add_experimental_option("prefs", prefs)
         
         # Initialize driver
-        # simple init, assuming chromedriver is in path
         self.driver = webdriver.Chrome(options=self.options)
+        self.driver.set_page_load_timeout(30)
         self.driver.get("http://slither.io")
-        time.sleep(2)
+        time.sleep(3)
 
     def _handle_login(self):
         """
-        Handles the initial login screen:
-        1. Enter nickname in the text field
-        2. Click the Play button
-        3. Close any popups/ads
+        Handles the initial login screen.
         """
         try:
-            # 0. Close extra windows (ads/popups)
-            time.sleep(2) # Give ads a moment to pop up
+            # Close extra windows (ads/popups)
+            time.sleep(1)
             if len(self.driver.window_handles) > 1:
-                log(f"[BROWSER] Closing {len(self.driver.window_handles)-1} extra tabs/ads.")
+                log(f"[BROWSER] Closing {len(self.driver.window_handles)-1} extra tabs.")
                 main_handle = self.driver.current_window_handle
                 for handle in self.driver.window_handles:
                     if handle != main_handle:
@@ -55,12 +79,11 @@ class SlitherBrowser:
                             pass
                 self.driver.switch_to.window(main_handle)
 
-            log(f"[LOGIN] Attempting login with nickname: {self.nickname}")
+            log(f"[LOGIN] Attempting login: {self.nickname}")
             
-            # 1. Fill Nickname via JS for speed and reliability
+            # Fill nickname and click play
             self.driver.execute_script(f"document.getElementById('nick').value = '{self.nickname}';")
             
-            # 2. Click Play Button (Verified selector: #playh .btnt)
             login_js = """
             var playBtn = document.querySelector('#playh .btnt') || 
                          document.querySelector('.btnt.btntg') ||
@@ -71,7 +94,6 @@ class SlitherBrowser:
                 return 'btn_clicked';
             }
             
-            // Search by text fallback
             var divs = document.querySelectorAll('div, button, a');
             for (var i = 0; i < divs.length; i++) {
                 if (divs[i].innerText && divs[i].innerText.trim() === 'Play') {
@@ -87,136 +109,169 @@ class SlitherBrowser:
             return 'not_found';
             """
             result = self.driver.execute_script(login_js)
-            log(f"[LOGIN] Play attempt result: {result}")
+            log(f"[LOGIN] Play attempt: {result}")
             
-            # 3. Wait for game start
+            # Wait for game start
             start_wait = time.time()
             while time.time() - start_wait < 15:
                 try:
-                    # Check for alerts and close them
                     self.driver.switch_to.alert.accept()
-                    log("[LOGIN] Alert accepted and closed.")
                 except:
                     pass
 
-                log(f"[LOGIN] Waiting for snake... ({int(time.time() - start_wait)}s)")
                 is_playing = self.driver.execute_script("""
                     return (window.slither !== undefined && window.slither !== null) && 
                            (typeof window.dead_mtm === 'undefined' || window.dead_mtm === -1 || window.dead_mtm === null);
                 """)
                 if is_playing:
-                    log("[LOGIN] Game started successfully!")
+                    log("[LOGIN] Game started!")
                     self.inject_override_script()
                     return True
-                time.sleep(1)
+                time.sleep(0.5)
             
-            log("[LOGIN] Warning: Game didn't start. Saving diagnostic screenshot...")
-            self.driver.save_screenshot("login_failure.png")
+            log("[LOGIN] Warning: Game didn't start in time.")
             return False
             
         except Exception as e:
             log(f"[LOGIN] Error: {e}")
             return False
 
-
     def inject_override_script(self):
         """
-        Injects JS to:
-        1. Disable high-end graphics
-        2. Hook mouse controls to allow virtual control via window.xm / window.ym
+        Injects JS overrides for bot control.
         """
         js_code = """
-        // 1. Graphics Optimization
+        // Graphics optimization
         if (typeof window.want_quality !== 'undefined') window.want_quality = 0;
         if (typeof window.high_quality !== 'undefined') window.high_quality = false;
+        if (typeof window.render_mode !== 'undefined') window.render_mode = 1;
         
-        // 2. Control Hack
-        // Override onmousemove to prevent the game from updating xm/ym from real mouse
+        // Disable visual effects
+        window.redraw = window.redraw || function(){};
+        
+        // Override mouse controls
         window.onmousemove = function(e) {
             if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
             return false;
         };
         
-        // 3. Initialize control variables
+        // Initialize control variables
         if (typeof window.xm === 'undefined') window.xm = 0;
         if (typeof window.ym === 'undefined') window.ym = 0;
         
-        console.log("SlitherBot: Overrides injected.");
+        console.log("SlitherBot: Controls injected.");
         """
         try:
             self.driver.execute_script(js_code)
         except Exception as e:
-            log(f"[OVERRIDE] Failed to inject: {e}")
+            log(f"[OVERRIDE] Failed: {e}")
 
     def get_game_data(self):
         """
-        Retrieves all necessary game state in a SINGLE JS call.
-        Uses updated variable names: slither, slithers, foods.
+        Retrieves game state in a SINGLE JS call.
+        Includes limits on returned objects for performance.
         """
-        fetch_js = """
-        function getGameState() {
-            // State detection
-            var playing = (window.slither !== undefined && window.slither !== null) && (typeof window.dead_mtm === 'undefined' || window.dead_mtm === -1 || window.dead_mtm === null);
+        fetch_js = f"""
+        function getGameState() {{
+            var MAX_FOODS = {self.MAX_FOODS};
+            var MAX_ENEMIES = {self.MAX_ENEMIES};
+            var MAX_BODY_PTS = {self.MAX_BODY_PTS};
+            
+            var playing = (window.slither !== undefined && window.slither !== null) && 
+                         (typeof window.dead_mtm === 'undefined' || window.dead_mtm === -1 || window.dead_mtm === null);
             var in_menu = document.querySelector('#nick, #playh .btnt') !== null;
             
-            if (!playing) {
-                return { dead: true, in_menu: in_menu };
-            }
+            if (!playing) {{
+                return {{ dead: true, in_menu: in_menu }};
+            }}
 
-            // 1. My Snake Data
-            var my_snake = {
+            // My snake data
+            var my_snake = {{
                 x: window.slither.xx,
                 y: window.slither.yy,
                 ang: window.slither.ang,
                 sp: window.slither.sp,
                 len: window.slither.pts ? window.slither.pts.length : 0
-            };
+            }};
 
-            // 2. Foods
+            // Foods (limited for performance)
             var visible_foods = [];
-            if (window.foods && window.foods.length) {
-                for (var i = 0; i < window.foods.length; i++) {
+            if (window.foods && window.foods.length) {{
+                var myX = my_snake.x;
+                var myY = my_snake.y;
+                
+                // Get closest foods first
+                var foodList = [];
+                for (var i = 0; i < window.foods.length && foodList.length < MAX_FOODS * 2; i++) {{
                     var f = window.foods[i];
-                    if (f && f.rx) { 
-                         visible_foods.push([f.rx, f.ry, f.sz || 1]);
-                    }
-                }
-            }
+                    if (f && f.rx) {{
+                        var dx = f.rx - myX;
+                        var dy = f.ry - myY;
+                        var dist = dx*dx + dy*dy;
+                        foodList.push([f.rx, f.ry, f.sz || 1, dist]);
+                    }}
+                }}
+                
+                // Sort by distance and take closest
+                foodList.sort(function(a, b) {{ return a[3] - b[3]; }});
+                for (var i = 0; i < Math.min(foodList.length, MAX_FOODS); i++) {{
+                    visible_foods.push([foodList[i][0], foodList[i][1], foodList[i][2]]);
+                }}
+            }}
 
-            // 3. Enemies
+            // Enemies (limited for performance)
             var visible_enemies = [];
-            if (window.slithers && window.slithers.length) {
-                for (var i = 0; i < window.slithers.length; i++) {
+            if (window.slithers && window.slithers.length) {{
+                var enemyList = [];
+                var myX = my_snake.x;
+                var myY = my_snake.y;
+                
+                for (var i = 0; i < window.slithers.length; i++) {{
                     var s = window.slithers[i];
-                    if (s === window.slither) continue; 
+                    if (s === window.slither) continue;
                     
+                    var dx = s.xx - myX;
+                    var dy = s.yy - myY;
+                    var dist = dx*dx + dy*dy;
+                    enemyList.push([s, dist]);
+                }}
+                
+                // Sort by distance
+                enemyList.sort(function(a, b) {{ return a[1] - b[1]; }});
+                
+                // Take closest enemies
+                for (var i = 0; i < Math.min(enemyList.length, MAX_ENEMIES); i++) {{
+                    var s = enemyList[i][0];
+                    
+                    // Get limited body points
                     var pts = [];
-                    if (s.pts) {
-                        for (var j = 0; j < s.pts.length; j++) {
+                    if (s.pts) {{
+                        var step = Math.max(1, Math.floor(s.pts.length / MAX_BODY_PTS));
+                        for (var j = 0; j < s.pts.length && pts.length < MAX_BODY_PTS; j += step) {{
                             var p = s.pts[j];
                             if (p.xx !== undefined) pts.push([p.xx, p.yy]);
                             else if (p.x !== undefined) pts.push([p.x, p.y]);
-                        }
-                    }
+                        }}
+                    }}
 
-                    visible_enemies.push({
+                    visible_enemies.push({{
                         id: s.id,
                         x: s.xx,
                         y: s.yy,
                         ang: s.ang,
                         sp: s.sp,
                         pts: pts
-                    });
-                }
-            }
+                    }});
+                }}
+            }}
 
-            return {
+            return {{
                 dead: false,
                 self: my_snake,
                 foods: visible_foods,
                 enemies: visible_enemies
-            };
-        }
+            }};
+        }}
         return getGameState();
         """
         try:
@@ -229,39 +284,35 @@ class SlitherBrowser:
 
     def send_action(self, angle, boost):
         """
-        Converts neural net output (angle, boost) to game controls.
-        angle: -PI to PI (radians) - direction to move
-        boost: float/boolean (threshold > 0.5)
+        Sends steering commands to the game.
+        angle: target direction in radians (-PI to PI)
+        boost: 0 or 1
         """
         is_boost = 1 if boost > 0.5 else 0
+        
         control_js = f"""
         var ang = {angle};
         var is_boost = {is_boost};
         
         if (window.slither) {{
-            // Slither.io uses screen coordinates where center is (w/2, h/2)
-            // The game calculates target angle as: Math.atan2(ym - h/2, xm - w/2)
-            // So we need to set xm/ym relative to screen center
-            
             var canvas = document.getElementById('mc') || document.querySelector('canvas');
             var w = canvas ? canvas.width : 800;
             var h = canvas ? canvas.height : 600;
             var centerX = w / 2;
             var centerY = h / 2;
             
-            // Calculate target position relative to center
-            var radius = 300; // Distance from center
+            var radius = 300;
             var target_x = centerX + Math.cos(ang) * radius;
             var target_y = centerY + Math.sin(ang) * radius;
             
             window.xm = target_x;
             window.ym = target_y;
             
-            // Boost control - simulate mouse button
+            // Boost control
             if (is_boost) {{
                 window.accelerating = true;
                 if (window.bso2) {{
-                    window.bso2.send(new Uint8Array([253])); // boost packet
+                    try {{ window.bso2.send(new Uint8Array([253])); }} catch(e) {{}}
                 }}
             }} else {{
                 window.accelerating = false;
@@ -275,26 +326,22 @@ class SlitherBrowser:
 
     def force_restart(self):
         """
-        Resets the game immediately.
-        Ensures we are back in playing state.
+        Resets the game state.
         """
         try:
-            # Check if we are still alive
-            is_playing = self.driver.execute_script("return (window.slither !== undefined && window.slither !== null) && (!window.dead_mtm || window.dead_mtm === -1)")
+            is_playing = self.driver.execute_script("""
+                return (window.slither !== undefined && window.slither !== null) && 
+                       (!window.dead_mtm || window.dead_mtm === -1)
+            """)
             
             if not is_playing:
-                # If on main menu or dead, try standard login/connect
-                log("[RESTART] Not playing. Attempting login/reconnect...")
+                log("[RESTART] Not playing. Reconnecting...")
                 self._handle_login()
             else:
-                # If alive, we force a connect to get a fresh start
                 log("[RESTART] Forcing new connection...")
                 self.driver.execute_script("if (window.connect) window.connect();")
             
-            # Wait for game transition
-            time.sleep(1)
-            
-            # RE-INJECT OVERRIDES (Crucial! Lost on many transitions)
+            time.sleep(0.5)
             self.inject_override_script()
             
         except Exception as e:
@@ -305,5 +352,8 @@ class SlitherBrowser:
             self.inject_override_script()
 
     def close(self):
-        self.driver.quit()
-
+        """Close browser instance."""
+        try:
+            self.driver.quit()
+        except:
+            pass
