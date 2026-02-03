@@ -1,3 +1,4 @@
+
 import time
 import os
 import sys
@@ -71,9 +72,11 @@ def eval_genome(genome, config):
     start_time = time.time()
     last_eat_time = start_time
     max_len = 0
+    fitness_score = 0.0
     
     eval_timeout = 180 # 3 minutes max per genome
     
+    # 1. Main Game Loop
     while time.time() - start_time < eval_timeout:
         # 1. Get Data
         data = browser.get_game_data()
@@ -108,15 +111,20 @@ def eval_genome(genome, config):
                 break
             continue
             
-        # 2. Process fitness / state
+        # 2. Process fitness / state (with accumulated rewards for eating)
         current_len = my_snake.get('len', 0)
+        
+        # Reward for growing (eating food)
         if current_len > max_len:
+            diff = current_len - max_len
+            # Large bonus for every piece of food eaten
+            fitness_score += (diff * 20.0) 
             max_len = current_len
             last_eat_time = time.time() # Reset starvation timer
             
         # Anti-Loop / Camping Penalty
-        # If length hasn't increased in 10s -> kill (to prevent safe circling forever)
-        if time.time() - last_eat_time > 20: # 20s strictly for starvation
+        # If length hasn't increased in 25s -> kill
+        if time.time() - last_eat_time > 25: 
            log(f"[TIMEOUT] Starved. Len: {max_len}")
            break
 
@@ -132,16 +140,15 @@ def eval_genome(genome, config):
         # 4. Act
         browser.send_action(angle, boost)
         
-        # Throttle loop slightly ideally, but Selenium overhead is already high
-        # time.sleep(0.01)
-
     # Calculate Fitness
-    # Combines survival time and length
+    # Base: Survival time (increased reward to encourage longevity)
     survival_time = time.time() - start_time
-    fitness = survival_time + (max_len * 10) 
-    # High reward for length, low for just camping
+    fitness_score += (survival_time * 5.0)
     
-    return fitness
+    # Final length bonus (redundant but good for baseline)
+    fitness_score += (max_len * 5)
+    
+    return fitness_score
 
 def run_neat(config_path):
     config = neat.Config(

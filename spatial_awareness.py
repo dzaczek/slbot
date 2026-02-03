@@ -95,14 +95,16 @@ class SpatialAwareness:
                              enemy_ang[angle_idx] = -1.0
 
         # 3. Process Walls (Treat as body/obstacle)
-        grd = self.map_radius
-        dist_from_center = math.hypot(mx, my)
+        grd = self.map_radius # Radius and Center coordinate (assuming map is 0..2*grd)
+        
+        # Calculate distance from CENTER of map (grd, grd)
+        dist_from_center = math.hypot(mx - grd, my - grd)
         dist_to_wall = grd - dist_from_center
         
         # If we are close to wall
         if dist_to_wall < MAX_SCOPE:
             # Wall direction is same as my position vector from center
-            wall_angle = math.atan2(my, mx)
+            wall_angle = math.atan2(my - grd, mx - grd)
             angle_idx = int((wall_angle + math.pi) / (2 * math.pi) * self.num_sectors) % self.num_sectors
              
             # Wall creates a "wall" of danger. 
