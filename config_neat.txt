@@ -4,8 +4,8 @@
 [NEAT]
 fitness_criterion        = max
 fitness_threshold        = 100000
-pop_size                 = 150
-reset_on_extinction      = False
+pop_size                 = 30
+reset_on_extinction      = True
 no_fitness_termination   = False
 
 [DefaultGenome]
@@ -64,18 +64,28 @@ enabled_rate_to_false_add = 0.0
 enabled_rate_to_true_add  = 0.0
 
 # Network parameters
-# Inputs: 24 sectors * 4 features + 3 global = 99 inputs
-# Features per sector:
-# 1. Food Value (1 - dist/1000)
-# 2. Food Size
-# 3. Food Density (Sum of val * sz)
-# 4. Perimeter/Body Value (1 - dist/1000)
-# 5. Enemy Angle (Relative)
-# Global:
-# 6. Self X (normalized)
-# 7. Self Y (normalized)
-# 8. Self Angle (normalized)
-num_inputs               = 123
+# Inputs: 195 total (ego-centric, sector 0 = AHEAD)
+#
+# FOOD (72 inputs):
+#   - food_proximity[24]: closest food per sector
+#   - food_size[24]: size of closest food
+#   - food_density[24]: total food score in sector
+#
+# ENEMY BODIES (48 inputs):
+#   - body_proximity[24]: closest body segment (DANGER)
+#   - body_density[24]: segment count (trap detection)
+#
+# ENEMY HEADS (72 inputs):
+#   - head_proximity[24]: closest enemy head (HIGH DANGER)
+#   - head_direction[24]: is head coming at us? (0=away, 1=towards)
+#   - head_speed[24]: enemy speed
+#
+# GLOBAL (3 inputs):
+#   - edge_proximity: distance to map edge
+#   - angle_to_center: direction to safe center
+#   - wall_ahead: immediate wall danger
+#
+num_inputs               = 195
 num_hidden               = 0
 # Outputs: Angle (0-1 mapped to 0 to 2PI) and Boost (0-1)
 num_outputs              = 2

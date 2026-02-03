@@ -230,7 +230,7 @@ class SlitherBrowser:
     def send_action(self, angle, boost):
         """
         Converts neural net output (angle, boost) to game controls.
-        angle: 0 to 2PI (radians)
+        angle: -PI to PI (radians) - direction to move
         boost: float/boolean (threshold > 0.5)
         """
         is_boost = 1 if boost > 0.5 else 0
@@ -239,28 +239,32 @@ class SlitherBrowser:
         var is_boost = {is_boost};
         
         if (window.slither) {{
-            // Relative logic from elliott-wen
-            // Center of screen is 0,0 for XM/YM when we override? 
-            // Actually, game logic uses: var ang = Math.atan2(ym - h/2, xm - w/2);
-            // So xm/ym are screen coordinates.
-            // But elliott-wen uses: window.xm = cos(ang) * 300; window.ym = sin(ang) * 300;
-            // This implies 0,0 is the center for the logic taking these inputs?
-            // Wait, standard game loop calculates angle from center of screen (w/2, h/2).
-            // If we override onmousemove, we might need to be careful.
-            // But let's trust the reference implementation first.
-            // Reference: window.xm = goalPos[0]; window.ym = goalPos[1];
-            // goalPos = (cos(ang)*300, sin(ang)*300)
+            // Slither.io uses screen coordinates where center is (w/2, h/2)
+            // The game calculates target angle as: Math.atan2(ym - h/2, xm - w/2)
+            // So we need to set xm/ym relative to screen center
             
-            var target_x = Math.cos(ang) * 300;
-            var target_y = Math.sin(ang) * 300;
+            var canvas = document.getElementById('mc') || document.querySelector('canvas');
+            var w = canvas ? canvas.width : 800;
+            var h = canvas ? canvas.height : 600;
+            var centerX = w / 2;
+            var centerY = h / 2;
+            
+            // Calculate target position relative to center
+            var radius = 300; // Distance from center
+            var target_x = centerX + Math.cos(ang) * radius;
+            var target_y = centerY + Math.sin(ang) * radius;
             
             window.xm = target_x;
             window.ym = target_y;
             
-            if (typeof window.setAcceleration === 'function') {{
-                window.setAcceleration(is_boost);
-            }} else if (typeof window.setaccel === 'function') {{
-                window.setaccel(is_boost);
+            // Boost control - simulate mouse button
+            if (is_boost) {{
+                window.accelerating = true;
+                if (window.bso2) {{
+                    window.bso2.send(new Uint8Array([253])); // boost packet
+                }}
+            }} else {{
+                window.accelerating = false;
             }}
         }}
         """

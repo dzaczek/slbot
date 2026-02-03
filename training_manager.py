@@ -132,8 +132,8 @@ def eval_genome(genome, config):
             last_eat_time = time.time() # Reset starvation timer
             
         # Anti-Loop / Camping Penalty
-        # If length hasn't increased in 25s -> kill
-        if time.time() - last_eat_time > 25: 
+        # If length hasn't increased in 20s -> kill (faster culling of bad genomes)
+        if time.time() - last_eat_time > 20: 
            log(f"[TIMEOUT] Starved. Len: {max_len}")
            cause_of_death = "Starvation"
            break
@@ -145,7 +145,9 @@ def eval_genome(genome, config):
             data.get('foods', [])
         )
         
-        angle, boost = brain.decide(inputs)
+        # Pass current heading for ego-centric steering
+        current_heading = my_snake.get('ang', 0)
+        angle, boost = brain.decide(inputs, current_heading)
         
         # 4. Act
         browser.send_action(angle, boost)
