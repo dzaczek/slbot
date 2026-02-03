@@ -4,6 +4,9 @@ import math
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 # Assuming webdriver_manager is available, otherwise user might need to install it.
 # from webdriver_manager.chrome import ChromeDriverManager 
 
@@ -12,7 +15,8 @@ class SlitherBrowser:
     Manages the browser instance using Selenium.
     Handles 'JS Bridge' to communicate with Slither.io client.
     """
-    def __init__(self, headless=False):
+    def __init__(self, headless=False, nickname="NEATBot"):
+        self.nickname = nickname
         self.options = Options()
         # self.options.add_argument("--headless") # Headless might trigger anti-bot or harder to debug
         self.options.add_argument("--mute-audio")
@@ -26,9 +30,65 @@ class SlitherBrowser:
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.get("http://slither.io")
         
-        # Wait for game to load
-        time.sleep(2) 
+        # Wait for game to load and handle login
+        time.sleep(3)
+        self._handle_login()
         self.inject_override_script()
+
+    def _handle_login(self):
+        """
+        Handles the initial login screen:
+        1. Enter nickname in the text field
+        2. Click the Play button
+        """
+        try:
+            # Use JavaScript to enter nickname and start game
+            # This is more reliable than Selenium element clicks for canvas-based games
+            login_js = f"""
+            // Try to find and fill the nickname field
+            var nickField = document.querySelector('input[id="nick"]') || 
+                           document.querySelector('input.nsi') ||
+                           document.querySelector('input[placeholder*="nick"]');
+            
+            if (nickField) {{
+                nickField.value = '{self.nickname}';
+                nickField.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            }}
+            
+            // Try to click play button
+            var playBtn = document.querySelector('.play-button') ||
+                         document.querySelector('div.btnt') ||
+                         document.querySelector('[onclick*="play"]');
+                         
+            if (playBtn) {{
+                playBtn.click();
+                return 'clicked';
+            }}
+            
+            // Alternative: directly call play function if available
+            if (typeof window.play === 'function') {{
+                window.play();
+                return 'played';
+            }}
+            
+            // Another alternative: call connect
+            if (typeof window.connect === 'function') {{
+                window.connect();
+                return 'connected';
+            }}
+            
+            return 'no_button_found';
+            """
+            result = self.driver.execute_script(login_js)
+            print(f"[LOGIN] Login attempt result: {result}")
+            
+            # Wait for game to actually start
+            time.sleep(2)
+            
+        except Exception as e:
+            print(f"[LOGIN] Error during login: {e}")
+            # Try a simple approach - just wait and try connect()
+            time.sleep(2)
 
     def inject_override_script(self):
         """
