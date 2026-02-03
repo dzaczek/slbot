@@ -4,6 +4,8 @@ import os
 import sys
 import neat
 import math
+import csv
+from datetime import datetime
 from browser_engine import SlitherBrowser
 from spatial_awareness import SpatialAwareness
 from ai_brain import BotAgent
@@ -70,9 +72,12 @@ def eval_genome(genome, config):
     time.sleep(2)
     
     start_time = time.time()
+    start_time = time.time()
     last_eat_time = start_time
     max_len = 0
+    food_eaten_count = 0
     fitness_score = 0.0
+    cause_of_death = "Unknown"
     
     eval_timeout = 180 # 3 minutes max per genome
     
@@ -100,6 +105,9 @@ def eval_genome(genome, config):
                  start_time = time.time()
                  last_eat_time = start_time
                  continue
+            
+            # If we get here, we died legitimately (or time ran out)
+            cause_of_death = "Collision"
             break
 
             
@@ -119,6 +127,7 @@ def eval_genome(genome, config):
             diff = current_len - max_len
             # Large bonus for every piece of food eaten
             fitness_score += (diff * 20.0) 
+            food_eaten_count += diff # Approx piece count
             max_len = current_len
             last_eat_time = time.time() # Reset starvation timer
             
@@ -126,6 +135,7 @@ def eval_genome(genome, config):
         # If length hasn't increased in 25s -> kill
         if time.time() - last_eat_time > 25: 
            log(f"[TIMEOUT] Starved. Len: {max_len}")
+           cause_of_death = "Starvation"
            break
 
         # 3. Decision
@@ -147,6 +157,14 @@ def eval_genome(genome, config):
     
     # Final length bonus (redundant but good for baseline)
     fitness_score += (max_len * 5)
+    
+    # Store stats in genome for reporter (optional, but good practice)
+    genome.custom_stats = {
+        'survival': survival_time,
+        'food': food_eaten_count,
+        'cause': cause_of_death,
+        'len': max_len
+    }
     
     return fitness_score
 
@@ -206,7 +224,32 @@ def eval_genomes_wrapper(genomes, config):
     for genome_id, genome in genomes:
         log(f"[EVAL] Evaluating Genome {genome_id}...")
         genome.fitness = eval_genome(genome, config)
-        log(f"[RESULT] Genome {genome_id} Fitness: {genome.fitness:.2f}")
+        
+        # Enhanced Logging
+        stats = getattr(genome, 'custom_stats', {})
+        s_time = stats.get('survival', 0.0)
+        food = stats.get('food', 0)
+        cause = stats.get('cause', 'Unknown')
+        length = stats.get('len', 0)
+        
+        log(f"[RESULT] Genome {genome_id} | Fit: {genome.fitness:.2f} | Time: {s_time:.1f}s | Food: {food} | Len: {length} | Cause: {cause}")
+        
+        # CSV Logging
+        try:
+             # Check if file exists to write header
+            file_exists = os.path.isfile('training_stats.csv')
+            with open('training_stats.csv', 'a', newline='') as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(['Timestamp', 'Generation', 'GenomeID', 'Fitness', 'SurvivalTime', 'FoodEaten', 'MaxLen', 'CauseOfDeath'])
+                
+                # We need generation number. It's stored in population usually, but here we execute per genome.
+                # We can assume the reporter tracks generation, but in this wrapper we might just log timestamp.
+                # A hack to get generation is reading stdout reporter or passing it? 
+                # Simplest is just logging timestamp.
+                writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "N/A", genome_id, f"{genome.fitness:.2f}", f"{s_time:.2f}", food, length, cause])
+        except Exception as e:
+            log(f"[ERROR] CSV Write failed: {e}")
 
 if __name__ == "__main__":
     try:
