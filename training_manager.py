@@ -1,13 +1,21 @@
 import time
 import os
+import sys
 import neat
 import math
 from browser_engine import SlitherBrowser
 from spatial_awareness import SpatialAwareness
 from ai_brain import BotAgent
 
+# Force unbuffered output
+sys.stdout = sys.stderr
+
 # Global browser instance to reuse chrome window
 browser = None
+
+def log(msg):
+    """Print with flush for immediate output."""
+    print(msg, flush=True)
 
 def eval_genome(genome, config):
     """
@@ -16,7 +24,9 @@ def eval_genome(genome, config):
     """
     global browser
     if browser is None:
+        log("[INIT] Starting browser...")
         browser = SlitherBrowser(headless=False)
+        log("[INIT] Browser started successfully.")
         
     brain = BotAgent(genome, config)
     spatial = SpatialAwareness()
@@ -58,7 +68,7 @@ def eval_genome(genome, config):
         # Anti-Loop / Camping Penalty
         # If length hasn't increased in 10s -> kill (to prevent safe circling forever)
         if time.time() - last_eat_time > 20: # 20s strictly for starvation
-           print(f"Starved. Len: {max_len}")
+           log(f"[TIMEOUT] Starved. Len: {max_len}")
            break
 
         # 3. Decision
@@ -113,10 +123,15 @@ def eval_genomes_wrapper(genomes, config):
     Wrapper for batch evaluation.
     """
     for genome_id, genome in genomes:
+        log(f"[EVAL] Evaluating Genome {genome_id}...")
         genome.fitness = eval_genome(genome, config)
-        print(f"Genome {genome_id} Fitness: {genome.fitness}")
+        log(f"[RESULT] Genome {genome_id} Fitness: {genome.fitness:.2f}")
 
 if __name__ == "__main__":
+    log("========================================")
+    log("  Slither.io NEAT Bot - Training Start")
+    log("========================================")
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'config_neat.txt')
+    log(f"[CONFIG] Loading config from: {config_path}")
     run_neat(config_path)
