@@ -30,6 +30,7 @@ class SpatialAwareness:
         # 24 sectors
         food_val = [0.0] * self.num_sectors
         food_sz = [0.0] * self.num_sectors
+        food_density = [0.0] * self.num_sectors # Sum of values in sector
         body_val = [0.0] * self.num_sectors
         enemy_ang = [-1.0] * self.num_sectors # Default -1
         
@@ -63,6 +64,9 @@ class SpatialAwareness:
                 if val > food_val[angle_idx]:
                     food_val[angle_idx] = val
                     food_sz[angle_idx] = sz_val
+                
+                # Accumulate density
+                food_density[angle_idx] += (val * sz_val)
 
         # 2. Process Enemies (Bodies for collision/perimeter)
         for s in other_snakes:
@@ -89,9 +93,17 @@ class SpatialAwareness:
                         # We need to identifying if 'p' is head.
                         # Simplify: If it's a body part, we just care about collision.
                         # If we match the head, we store its angle.
-                        if p[0] == s['x'] and p[1] == s['y']:
-                             enemy_ang[angle_idx] = s['ang'] / (2 * math.pi) # Normalize 0-1
-                        else:
+                    if p[0] == s['x'] and p[1] == s['y']:
+                             # Calculate relative angle: EnemyHeadAng - MyAng
+                             # Normalized to 0-1 range. 
+                             # If diff is 0, they face same way. If diff is PI, they face us (head on collision risk).
+                             rel_ang = s['ang'] - my_snake['ang']
+                             # Normalize to -PI..PI
+                             while rel_ang > math.pi: rel_ang -= 2 * math.pi
+                             while rel_ang < -math.pi: rel_ang += 2 * math.pi
+                             # Map to 0..1
+                             enemy_ang[angle_idx] = (rel_ang + math.pi) / (2 * math.pi)
+                    else:
                              enemy_ang[angle_idx] = -1.0
 
         # 3. Process Walls (Treat as body/obstacle)
@@ -128,8 +140,8 @@ class SpatialAwareness:
         norm_ang = my_snake['ang'] / (2 * math.pi)
 
         # Flatten inputs
-        # Order: food_val, food_sz, body_val, enemy_ang, globals
-        final_inputs = food_val + food_sz + body_val + enemy_ang + [norm_x, norm_y, norm_ang]
+        # Order: food_val, food_sz, food_density, body_val, enemy_ang, globals
+        final_inputs = food_val + food_sz + food_density + body_val + enemy_ang + [norm_x, norm_y, norm_ang]
         
         return final_inputs
 

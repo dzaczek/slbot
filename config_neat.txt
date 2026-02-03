@@ -68,13 +68,14 @@ enabled_rate_to_true_add  = 0.0
 # Features per sector:
 # 1. Food Value (1 - dist/1000)
 # 2. Food Size
-# 3. Perimeter/Body Value (1 - dist/1000)
-# 4. Enemy Angle
+# 3. Food Density (Sum of val * sz)
+# 4. Perimeter/Body Value (1 - dist/1000)
+# 5. Enemy Angle (Relative)
 # Global:
-# 5. Self X (normalized)
-# 6. Self Y (normalized)
-# 7. Self Angle (normalized)
-num_inputs               = 99
+# 6. Self X (normalized)
+# 7. Self Y (normalized)
+# 8. Self Angle (normalized)
+num_inputs               = 123
 num_hidden               = 0
 # Outputs: Angle (0-1 mapped to 0 to 2PI) and Boost (0-1)
 num_outputs              = 2
