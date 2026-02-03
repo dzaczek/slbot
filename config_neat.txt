@@ -50,11 +50,11 @@ response_mutate_rate     = 0.0
 response_replace_rate    = 0.0
 
 # Connection add/remove rates
-conn_add_prob            = 0.5
+conn_add_prob            = 0.6
 conn_delete_prob         = 0.5
 
 # Node add/remove rates
-node_add_prob            = 0.2
+node_add_prob            = 0.3
 node_delete_prob         = 0.2
 
 # Enabled gene parameters
@@ -84,7 +84,7 @@ compatibility_disjoint_coefficient = 1.0
 compatibility_weight_coefficient   = 0.5
 
 # Feed-forward network (no recurrent connections)
-feed_forward             = True
+feed_forward             = False
 initial_connection       = full_nodirect
 
 # Structural mutation options
