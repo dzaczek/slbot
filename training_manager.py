@@ -9,6 +9,7 @@ import sys
 import neat
 import math
 import csv
+import pickle
 import multiprocessing
 from datetime import datetime
 from queue import Empty
@@ -25,26 +26,52 @@ def log(msg):
 # WORKER PROCESS - runs in separate process
 # ============================================
 
-def worker_process(worker_id, task_queue, result_queue, config_path):
+class BrowserManager:
+    """Manages browser instance for a worker."""
+    def __init__(self, worker_id, headless=False):
+        self.worker_id = worker_id
+        self.headless = headless
+        self.browser = None
+    
+    def ensure_browser(self):
+        """Ensure browser is running, create if needed."""
+        if self.browser is None:
+            from browser_engine import SlitherBrowser
+            mode = "headless" if self.headless else "visible"
+            log(f"[WORKER {self.worker_id}] Starting browser ({mode})...")
+            self.browser = SlitherBrowser(headless=self.headless, nickname=f"NEAT-{self.worker_id}")
+            log(f"[WORKER {self.worker_id}] Browser ready.")
+        return self.browser
+    
+    def restart_browser(self):
+        """Close and recreate browser."""
+        if self.browser:
+            try:
+                self.browser.close()
+            except:
+                pass
+        self.browser = None
+        return self.ensure_browser()
+    
+    def close(self):
+        """Close browser."""
+        if self.browser:
+            try:
+                self.browser.close()
+            except:
+                pass
+            self.browser = None
+
+
+def worker_process(worker_id, task_queue, result_queue, config_path, headless=False):
     """
     Worker process that evaluates genomes.
     Each worker has its own browser instance.
     """
-    from browser_engine import SlitherBrowser
     from spatial_awareness import SpatialAwareness
     from ai_brain import BotAgent
     
     log(f"[WORKER {worker_id}] Starting...")
-    
-    # Each worker creates its own browser
-    browser = None
-    
-    def ensure_browser():
-        nonlocal browser
-        if browser is None:
-            log(f"[WORKER {worker_id}] Starting browser (headless)...")
-            browser = SlitherBrowser(headless=True, nickname=f"NEAT-{worker_id}")
-            log(f"[WORKER {worker_id}] Browser ready.")
     
     # Load NEAT config
     config = neat.Config(
@@ -55,6 +82,8 @@ def worker_process(worker_id, task_queue, result_queue, config_path):
         config_path
     )
     
+    # Browser manager
+    browser_mgr = BrowserManager(worker_id, headless=headless)
     spatial = SpatialAwareness()
     
     try:
@@ -67,17 +96,14 @@ def worker_process(worker_id, task_queue, result_queue, config_path):
                     log(f"[WORKER {worker_id}] Received shutdown signal.")
                     break
                 
-                genome_id, genome_data = task
+                genome_id, genome_pickle = task
                 
-                # Recreate genome from data
-                genome = neat.DefaultGenome(genome_id)
-                genome.configure_new(config.genome_config)
-                genome.connections = genome_data['connections']
-                genome.nodes = genome_data['nodes']
+                # Deserialize genome
+                genome = pickle.loads(genome_pickle)
                 
                 # Evaluate
                 fitness, stats = eval_genome_worker(
-                    worker_id, genome, config, browser, spatial, ensure_browser
+                    worker_id, genome, config, browser_mgr, spatial
                 )
                 
                 # Send result back
@@ -91,31 +117,24 @@ def worker_process(worker_id, task_queue, result_queue, config_path):
                 import traceback
                 traceback.print_exc()
                 # Try to recover browser
-                if browser:
-                    try:
-                        browser.close()
-                    except:
-                        pass
-                browser = None
+                browser_mgr.restart_browser()
                 
     finally:
-        if browser:
-            try:
-                browser.close()
-            except:
-                pass
+        browser_mgr.close()
         log(f"[WORKER {worker_id}] Shutdown complete.")
 
 
-def eval_genome_worker(worker_id, genome, config, browser, spatial, ensure_browser):
+def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
     """
     Evaluates a single genome in worker process.
     Returns (fitness, stats_dict).
     """
     from ai_brain import BotAgent
     
-    ensure_browser()
     brain = BotAgent(genome, config)
+    
+    # Ensure browser is running
+    browser = browser_mgr.ensure_browser()
     
     # Start game with recovery
     max_retries = 3
@@ -127,15 +146,12 @@ def eval_genome_worker(worker_id, genome, config, browser, spatial, ensure_brows
             err_msg = str(e).lower()
             if "no such window" in err_msg or "target window" in err_msg or "invalid session" in err_msg:
                 log(f"[WORKER {worker_id}] Browser lost, restarting...")
-                try:
-                    browser.close()
-                except:
-                    pass
-                browser = None
-                ensure_browser()
+                browser = browser_mgr.restart_browser()
             else:
                 log(f"[WORKER {worker_id}] Attempt {attempt+1} failed: {e}")
                 time.sleep(1)
+                if attempt == max_retries - 1:
+                    browser = browser_mgr.restart_browser()
     
     # Wait for game to stabilize
     time.sleep(1.5)
@@ -147,24 +163,35 @@ def eval_genome_worker(worker_id, genome, config, browser, spatial, ensure_brows
     fitness_score = 0.0
     cause_of_death = "Unknown"
     
-    eval_timeout = 120  # 2 minutes max per genome (reduced for faster iteration)
+    eval_timeout = 120  # 2 minutes max per genome
     
     # Main Game Loop
     while time.time() - start_time < eval_timeout:
         # Get game data
-        data = browser.get_game_data()
+        try:
+            data = browser.get_game_data()
+        except Exception as e:
+            log(f"[WORKER {worker_id}] get_game_data error: {e}")
+            browser = browser_mgr.restart_browser()
+            break
         
         if data is None:
             break
             
         if data.get('dead', False):
             if data.get('in_menu', False):
-                browser.force_restart()
+                try:
+                    browser.force_restart()
+                except:
+                    browser = browser_mgr.restart_browser()
                 time.sleep(3)
                 continue
                 
             if time.time() - start_time < 3:
-                browser.force_restart()
+                try:
+                    browser.force_restart()
+                except:
+                    browser = browser_mgr.restart_browser()
                 start_time = time.time()
                 last_eat_time = start_time
                 continue
@@ -205,7 +232,10 @@ def eval_genome_worker(worker_id, genome, config, browser, spatial, ensure_brows
         angle, boost = brain.decide(inputs, current_heading)
         
         # Execute action
-        browser.send_action(angle, boost)
+        try:
+            browser.send_action(angle, boost)
+        except:
+            pass
         
         # Small delay to avoid overwhelming the browser
         time.sleep(0.05)  # ~20 FPS
@@ -233,9 +263,10 @@ class ParallelEvaluator:
     """
     Manages parallel genome evaluation using multiple browser instances.
     """
-    def __init__(self, num_workers, config_path):
+    def __init__(self, num_workers, config_path, headless=False):
         self.num_workers = num_workers
         self.config_path = config_path
+        self.headless = headless
         self.workers = []
         self.task_queue = multiprocessing.Queue()
         self.result_queue = multiprocessing.Queue()
@@ -247,7 +278,7 @@ class ParallelEvaluator:
         for i in range(self.num_workers):
             p = multiprocessing.Process(
                 target=worker_process,
-                args=(i, self.task_queue, self.result_queue, self.config_path)
+                args=(i, self.task_queue, self.result_queue, self.config_path, self.headless)
             )
             p.start()
             self.workers.append(p)
@@ -277,15 +308,11 @@ class ParallelEvaluator:
         Evaluate all genomes in parallel.
         This is called by NEAT for each generation.
         """
-        # Submit all tasks
+        # Submit all tasks - serialize genomes with pickle
         pending = {}
         for genome_id, genome in genomes:
-            # Serialize genome data for transfer to worker
-            genome_data = {
-                'connections': genome.connections,
-                'nodes': genome.nodes
-            }
-            self.task_queue.put((genome_id, genome_data))
+            genome_pickle = pickle.dumps(genome)
+            self.task_queue.put((genome_id, genome_pickle))
             pending[genome_id] = genome
             
         log(f"[MAIN] Submitted {len(pending)} genomes for evaluation...")
@@ -338,7 +365,7 @@ class ParallelEvaluator:
             log(f"[ERROR] CSV write failed: {e}")
 
 
-def run_neat(config_path, num_workers=3):
+def run_neat(config_path, num_workers=3, headless=False):
     """
     Run NEAT evolution with parallel evaluation.
     """
@@ -376,7 +403,7 @@ def run_neat(config_path, num_workers=3):
     p.add_reporter(checkpointer)
     
     # Create parallel evaluator
-    evaluator = ParallelEvaluator(num_workers, config_path)
+    evaluator = ParallelEvaluator(num_workers, config_path, headless=headless)
     
     try:
         evaluator.start_workers()
@@ -388,7 +415,6 @@ def run_neat(config_path, num_workers=3):
         winner = p.run(evaluator.evaluate_genomes, 100)  # 100 generations
         
         # Save winner
-        import pickle
         with open('best_genome.pkl', 'wb') as f:
             pickle.dump(winner, f)
         log("[TRAINING] Best genome saved to best_genome.pkl")
@@ -402,6 +428,7 @@ def run_neat(config_path, num_workers=3):
 if __name__ == "__main__":
     # Configuration
     NUM_WORKERS = 3  # Number of parallel browser instances
+    HEADLESS = False  # Set to True for headless mode (faster, no windows)
     
     try:
         log("=" * 50)
@@ -413,7 +440,7 @@ if __name__ == "__main__":
         config_path = os.path.join(local_dir, 'config_neat.txt')
         log(f"[CONFIG] Loading config from: {config_path}")
         
-        run_neat(config_path, num_workers=NUM_WORKERS)
+        run_neat(config_path, num_workers=NUM_WORKERS, headless=HEADLESS)
         
     except KeyboardInterrupt:
         log("\n[MAIN] Training interrupted by user.")
