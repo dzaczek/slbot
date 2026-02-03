@@ -6,7 +6,9 @@ A robust AI bot for Slither.io using NeuroEvolution of Augmenting Topologies (NE
 
 *   **Selenium Integration**: uses a "JS Bridge" to communicate with the game client efficiently.
 *   **Optimized Performance**: Fetches all game data (player, enemies, food) in a single JavaScript execution per frame.
-*   **Spatial Awareness**: Input system divides vision into 24 sectors and detects complex states like "encirclement/traps".
+*   **Spatial Awareness**: 24-sector vision system (123 inputs total) sensing food density, wall distance, and enemy relative heading.
+*   **Recurrent Neural Network**: Uses memory to perform complex maneuvers and plan paths.
+*   **Dynamic Rewards**: Incentivizes survival (5x) and eating (20x) to balance growth and safety.
 *   **NEAT Algorithm**: Evolves the neural network topology and weights to improve survival and length over generations.
 
 ## Installation
@@ -35,11 +37,17 @@ To start the training loop:
 python training_manager.py
 ```
 
-The bot will:
-1.  Open a Chrome window navigating to Slither.io.
-2.  Inject custom JavaScript to disable high-quality graphics and override mouse controls.
 3.  Start the evolution process.
 4.  Automatically restart the game upon death.
+
+**Resuming Training**:
+The bot automatically saves checkpoints (`neat-checkpoint-X`) every 5 generations.
+To resume, simply run `python training_manager.py` again. The script will detect the latest checkpoint and continue from where it left off.
+
+## Deployment (VPS / Headless)
+
+For long-term training, we recommend running on a VPS.
+See the **[VPS Deployment Guide](VPS_GUIDE.md)** for detailed instructions on setting up Xvfb and headless Chrome.
 
 ## Configuration
 

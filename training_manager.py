@@ -159,7 +159,22 @@ def run_neat(config_path):
         config_path
     )
     
-    p = neat.Population(config)
+    p = None
+    
+    # Check for latest checkpoint
+    checkpoint_files = [f for f in os.listdir('.') if f.startswith('neat-checkpoint-')]
+    if checkpoint_files:
+        # Sort by generation number (neat-checkpoint-X)
+        try:
+            latest_checkpoint = max(checkpoint_files, key=lambda x: int(x.split('-')[-1]))
+            log(f"[RESUME] Found checkpoint: {latest_checkpoint}. Restoring...")
+            p = neat.Checkpointer.restore_checkpoint(latest_checkpoint)
+        except Exception as e:
+            log(f"[ERROR] Failed to restore checkpoint: {e}. Starting fresh.")
+    
+    if p is None:
+        log("[START] No valid checkpoint found. Starting fresh population.")
+        p = neat.Population(config)
     
     # Add reporters
     p.add_reporter(neat.StdOutReporter(True))
