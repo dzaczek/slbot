@@ -1,45 +1,67 @@
+# NEAT Configuration file for Slither.io Bot
+# Compatible with neat-python 1.1.0+
+
 [NEAT]
-fitness_criterion     = max
-fitness_threshold     = 100000
-pop_size              = 150
-reset_on_extinction   = False
+fitness_criterion        = max
+fitness_threshold        = 100000
+pop_size                 = 150
+reset_on_extinction      = False
+no_fitness_termination   = False
 
 [DefaultGenome]
 # Node activation options
-activation_default      = sigmoid
-activation_mutate_rate  = 0.0
-activation_options      = sigmoid
+activation_default       = sigmoid
+activation_mutate_rate   = 0.0
+activation_options       = sigmoid
 
 # Node aggregation options
-aggregation_default     = sum
-aggregation_mutate_rate = 0.0
-aggregation_options     = sum
+aggregation_default      = sum
+aggregation_mutate_rate  = 0.0
+aggregation_options      = sum
 
-# Structural mutation rates
-bias_init_mean          = 0.0
-bias_init_stdev         = 1.0
-bias_max_value          = 30.0
-bias_min_value          = -30.0
-bias_mutate_power       = 0.5
-bias_mutate_rate        = 0.7
-bias_replace_rate       = 0.1
+# Bias parameters
+bias_init_mean           = 0.0
+bias_init_stdev          = 1.0
+bias_init_type           = gaussian
+bias_max_value           = 30.0
+bias_min_value           = -30.0
+bias_mutate_power        = 0.5
+bias_mutate_rate         = 0.7
+bias_replace_rate        = 0.1
 
-# Connection weight options
-weight_init_mean        = 0.0
-weight_init_stdev       = 1.0
-weight_max_value        = 30
-weight_min_value        = -30
-weight_mutate_power     = 0.5
-weight_mutate_rate      = 0.8
-weight_replace_rate     = 0.1
+# Connection weight parameters
+weight_init_mean         = 0.0
+weight_init_stdev        = 1.0
+weight_init_type         = gaussian
+weight_max_value         = 30.0
+weight_min_value         = -30.0
+weight_mutate_power      = 0.5
+weight_mutate_rate       = 0.8
+weight_replace_rate      = 0.1
+
+# Response parameters (for hidden/output nodes)
+response_init_mean       = 1.0
+response_init_stdev      = 0.0
+response_init_type       = gaussian
+response_max_value       = 30.0
+response_min_value       = -30.0
+response_mutate_power    = 0.0
+response_mutate_rate     = 0.0
+response_replace_rate    = 0.0
 
 # Connection add/remove rates
-conn_add_prob           = 0.5
-conn_delete_prob        = 0.5
+conn_add_prob            = 0.5
+conn_delete_prob         = 0.5
 
 # Node add/remove rates
-node_add_prob           = 0.2
-node_delete_prob        = 0.2
+node_add_prob            = 0.2
+node_delete_prob         = 0.2
+
+# Enabled gene parameters
+enabled_default          = True
+enabled_mutate_rate      = 0.01
+enabled_rate_to_false_add = 0.0
+enabled_rate_to_true_add  = 0.0
 
 # Network parameters
 # Inputs: 24 sectors * 6 features + 1 bias = 145 inputs
@@ -50,22 +72,35 @@ node_delete_prob        = 0.2
 # 4. Is enemy boosting? (0/1)
 # 5. Trap detected? (0/1)
 # 6. Distance to wall
-num_inputs              = 145
-num_hidden              = 0
-# Outputs: Angle change (0-1 mapped to -PI to PI) and Boost (0-1)
-num_outputs             = 2
+num_inputs               = 145
+num_hidden               = 0
+# Outputs: Angle (0-1 mapped to 0 to 2PI) and Boost (0-1)
+num_outputs              = 2
 
 # Genotype compatibility options
 compatibility_disjoint_coefficient = 1.0
 compatibility_weight_coefficient   = 0.5
 
+# Feed-forward network (no recurrent connections)
+feed_forward             = True
+initial_connection       = full_nodirect
+
+# Structural mutation options
+single_structural_mutation = False
+structural_mutation_surer  = default
+
 [DefaultSpeciesSet]
-compatibility_threshold = 3.0
+compatibility_threshold  = 3.0
 
 [DefaultStagnation]
-species_fitness_func = max
-max_stagnation       = 20
-species_elitism      = 2
+species_fitness_func     = max
+max_stagnation           = 20
+species_elitism          = 2
+
+[DefaultReproduction]
+elitism                  = 2
+survival_threshold       = 0.2
+min_species_size         = 2
 
 # Comment regarding Population Size:
 # We use a population of 150 because the input space is very large (145 inputs).
