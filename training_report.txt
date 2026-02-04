@@ -2,35 +2,35 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 457
+Total evaluations: 461
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min  
 -----------------------------------------
-Fitness            3234.4   8760.3  283.9
-Survival Time (s)  93.6     127.0   60.0 
-Food Eaten         27.2     46      2    
-Max Length         27.2     46      2    
+Fitness            3254.2   8760.3  283.9
+Survival Time (s)  93.8     127.2   60.0 
+Food Eaten         27.3     46      2    
+Max Length         27.3     46      2    
 
 ──────────────────────────────────────────────────────────────────────
   CAUSE OF DEATH
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation         353 ( 77.2%) ████████████████████████████████████████
-  Unknown            104 ( 22.8%) ███████████
+  Starvation         354 ( 76.8%) ████████████████████████████████████████
+  Unknown            107 ( 23.2%) ████████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change 
 ------------------------------------------
-Avg Fitness   3291.3     3219.9    ↓ -71.5
-Avg Food      27.8       27.1      ↓ -0.8 
-Avg Length    27.8       27.1      ↓ -0.8 
-Avg Survival  93.9       95.3      ↑ +1.3 
+Avg Fitness   3291.3     3310.4    ↑ +19.0
+Avg Food      27.8       27.1      ↓ -0.7 
+Avg Length    27.8       27.1      ↓ -0.7 
+Avg Survival  93.9       95.9      ↑ +2.0 
 Bots that ate food: 100% → 100%
 
 ──────────────────────────────────────────────────────────────────────
@@ -40,23 +40,23 @@ Bots that ate food: 100% → 100%
 -------------------------------------------------
 1   4         8760.3   120.1s  42    42   Unknown
 2   136       8065.8   121.0s  39    39   Unknown
-3   52        7487.8   122.2s  36    36   Unknown
-4   220       6977.2   120.0s  33    33   Unknown
-5   19        6819.1   126.2s  32    32   Unknown
-6   17        6818.5   124.8s  32    32   Unknown
-7   282       6752.5   120.0s  32    32   Unknown
-8   398       6693.3   120.0s  32    32   Unknown
-9   95        6658.3   126.8s  31    31   Unknown
-10  96        6616.9   125.7s  31    31   Unknown
+3   432       7606.6   122.0s  36    36   Unknown
+4   52        7487.8   122.2s  36    36   Unknown
+5   220       6977.2   120.0s  33    33   Unknown
+6   19        6819.1   126.2s  32    32   Unknown
+7   17        6818.5   124.8s  32    32   Unknown
+8   282       6752.5   120.0s  32    32   Unknown
+9   398       6693.3   120.0s  32    32   Unknown
+10  95        6658.3   126.8s  31    31   Unknown
 
 ──────────────────────────────────────────────────────────────────────
   LEARNING ASSESSMENT
 ──────────────────────────────────────────────────────────────────────
 Improvement (2nd half vs 1st half):
-✗ Fitness:  -169.7 (NO IMPROVEMENT)
-✗ Food:     -0.7 (NOT LEARNING TO EAT!)
+✗ Fitness:  -120.8 (NO IMPROVEMENT)
+✗ Food:     -0.8 (NOT LEARNING TO EAT!)
 
 Recommendations:
 ⚠ No fitness improvement - Consider restarting with fresh population
 
-Analysis completed at 2026-02-04 08:46:02
+Analysis completed at 2026-02-04 08:47:04
