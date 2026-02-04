@@ -1,72 +1,72 @@
-# Ulepszenia Bota - Co Zostało Zmienione
+# Bot Improvements - What Was Changed
 
 ## Problem
-Bot był głupi - umierał po 20 sekundach przez starvation (głodowanie), nie jadł jedzenia, tylko przeżywał początkowy czas.
+Bot was dumb - died after 20 seconds from starvation, didn't eat food, just survived the initial time.
 
-## Wprowadzone Zmiany
+## Changes Made
 
-### 1. **MASYWNIE Zwiększone Nagrody za Jedzenie**
-- **Poprzednio**: 25 punktów za zjedzenie
-- **Teraz**: **150 punktów za zjedzenie** (6x więcej!)
-- **Dlaczego**: Bot musi wiedzieć, że jedzenie jest NAJWAŻNIEJSZE
+### 1. **MASSIVELY Increased Food Rewards**
+- **Before**: 25 points per food eaten
+- **Now**: **150 points per food eaten** (6x more!)
+- **Why**: Bot must know that eating is THE MOST IMPORTANT thing
 
-### 2. **Zwiększony Timeout Starvation**
-- **Poprzednio**: 20 sekund bez jedzenia = śmierć
-- **Teraz**: **60 sekund** (3x więcej czasu)
-- **Dlaczego**: Bot potrzebuje czasu żeby nauczyć się łapać jedzenie
+### 2. **Increased Starvation Timeout**
+- **Before**: 20 seconds without eating = death
+- **Now**: **60 seconds** (3x more time)
+- **Why**: Bot needs time to learn how to catch food
 
-### 3. **Zmniejszona Waga Survival Time**
-- **Poprzednio**: 5 punktów za sekundę
-- **Teraz**: **2 punkty za sekundę**
-- **Dlaczego**: Nie chcemy żeby bot tylko przeżywał - chcemy żeby jadł!
+### 3. **Reduced Survival Time Weight**
+- **Before**: 5 points per second
+- **Now**: **2 points per second**
+- **Why**: We don't want the bot to just survive - we want it to eat!
 
-### 4. **Zwiększona Nagroda za Długość**
-- **Poprzednio**: 5 punktów za segment
-- **Teraz**: **20 punktów za segment** (4x więcej!)
-- **Dlaczego**: Długość = sukces = główny cel
+### 4. **Increased Length Reward**
+- **Before**: 5 points per segment
+- **Now**: **20 points per segment** (4x more!)
+- **Why**: Length = success = main goal
 
-### 5. **Penalty za Collision**
-- **Nowe**: Jeśli bot umrze przez collision w <15s, fitness × 0.3
-- **Dlaczego**: Odstraszanie od samobójczego zachowania
+### 5. **Collision Penalty**
+- **New**: If bot dies from collision in <15s, fitness × 0.3
+- **Why**: Discourage suicidal behavior
 
-### 6. **Penalty za Starvation**
-- **Nowe**: Fitness × 0.5 jeśli umrze przez starvation
-- **Dlaczego**: Motywacja do jedzenia
+### 6. **Starvation Penalty**
+- **New**: Fitness × 0.5 if dies from starvation
+- **Why**: Motivation to eat
 
 ### 7. **Incremental Food Reward**
-- **Nowe**: +0.1 punktu za zbliżanie się do jedzenia
-- **Dlaczego**: Pomaga botowi nauczyć się że powinien iść w stronę jedzenia
+- **New**: +0.1 points for getting closer to food
+- **Why**: Helps bot learn that it should move towards food
 
-### 8. **Lepsza Detekcja Ścian**
-- **Poprzednio**: Ściany wykrywane tylko w kierunku od centrum
-- **Teraz**: Każdy sektor sprawdzany osobno
-- **Boost**: Danger × 1.5 dla ścian
-- **Dlaczego**: Bot musi wiedzieć gdzie są ściany w KAŻDYM kierunku
+### 8. **Better Wall Detection**
+- **Before**: Walls detected only in direction from center
+- **Now**: Each sector checked independently
+- **Boost**: Danger × 1.5 for walls
+- **Why**: Bot must know where walls are in EVERY direction
 
-### 9. **Większa Populacja**
-- **Poprzednio**: 30 genomów
-- **Teraz**: **50 genomów**
-- **Dlaczego**: Więcej różnorodności = szybsze uczenie
+### 9. **Larger Population**
+- **Before**: 30 genomes
+- **Now**: **50 genomes**
+- **Why**: More diversity = faster learning
 
-### 10. **Agresywniejsza Ewolucja**
-- Zwiększone conn_add_prob: 0.6 → 0.7
-- Zmniejszone node_add_prob: 0.3 → 0.2 (wolniejszy wzrost complexity)
-- Zwiększone elitism: 2 → 3 (więcej najlepszych przeżywa)
-- **Dlaczego**: Szybsze eksplorowanie, ale z kontrolą nad complexity
+### 10. **More Aggressive Evolution**
+- Increased conn_add_prob: 0.6 → 0.7
+- Decreased node_add_prob: 0.3 → 0.2 (slower complexity growth)
+- Increased elitism: 2 → 3 (more best ones survive)
+- **Why**: Faster exploration, but with controlled complexity
 
-## Jak Wznowić Trening
+## How to Resume Training
 
-### Opcja 1: Kontynuuj ze Starym Genomem (Powolne Uczenie)
+### Option 1: Continue from Old Genome (Slow Learning)
 ```bash
 python training_manager.py
-# Automatycznie załaduje neat-checkpoint-100
+# Will automatically load neat-checkpoint-100
 ```
 
-**Problem**: Stare genomy są już "utrwalone" w złych nawykach
+**Problem**: Old genomes are already "stuck" in bad habits
 
-### Opcja 2: START OD NOWA (ZALECANE!)
+### Option 2: START FRESH (RECOMMENDED!)
 ```bash
-# Backup starych checkpointów
+# Backup old checkpoints
 mkdir old_training
 mv neat-checkpoint-* old_training/
 mv best_genome.pkl old_training/
@@ -76,72 +76,72 @@ mv training_stats.csv old_training/training_stats_old.csv
 python training_manager.py
 ```
 
-**Zaleta**: Nowe genomy od razu uczą się z nowymi nagrodami!
+**Advantage**: New genomes immediately learn with new rewards!
 
-### Opcja 3: Hybrydowa - Stwórz Nową Populację ale z Inspiracją
+### Option 3: Hybrid - Create New Population with Inspiration
 ```bash
-# Usuń checkpointy ale zostaw training_stats
+# Delete checkpoints but keep training_stats
 rm neat-checkpoint-*
 python training_manager.py
 ```
 
-## Czego Się Spodziewać
+## What to Expect
 
-### Pierwsze 10 Generacji:
-- Bot nadal będzie umierał szybko (starvation/collision)
-- Ale niektóre genomy zaczną zjadać 1-3 jedzenia
-- Fitness powinna wzrosnąć z ~160 do ~400-600
+### First 10 Generations:
+- Bot will still die quickly (starvation/collision)
+- But some genomes will start eating 1-3 food
+- Fitness should rise from ~160 to ~400-600
 
-### Generacje 20-50:
-- Bot powinien regularnie zjadać 5-15 jedzenia
-- Przeżycie 30-60 sekund
+### Generations 20-50:
+- Bot should regularly eat 5-15 food
+- Survival 30-60 seconds
 - Fitness 800-1500
 
-### Generacje 50+:
-- Bot powinien zjadać 20+ jedzenia
-- Przeżycie >1 minuty
+### Generations 50+:
+- Bot should eat 20+ food
+- Survival >1 minute
 - Fitness >2000
-- Unikanie ścian i innych węży
+- Avoiding walls and other snakes
 
-## Jak Sprawdzić Postęp
+## How to Check Progress
 
 ```bash
-# Analiza statystyk
+# Analyze statistics
 python analyze_training.py
 
-# Oglądaj najlepszego bota
+# Watch the best bot
 python play_best.py
 
-# Check logi
+# Check logs
 tail -f training_log.txt
 ```
 
-## Parametry do Dalszego Tuningu
+## Parameters for Further Tuning
 
-Jeśli bot nadal nie je:
-1. Zwiększ nagrodę za jedzenie do 200+
-2. Zwiększ penalty za starvation (fitness × 0.2)
-3. Dodaj bonus za zbliżanie się do jedzenia (+0.5)
+If bot still doesn't eat:
+1. Increase food reward to 200+
+2. Increase starvation penalty (fitness × 0.2)
+3. Add bonus for approaching food (+0.5)
 
-Jeśli bot uderza w ściany:
-1. Zwiększ wall danger boost: 1.5 → 2.0
-2. Dodaj penalty za collision: fitness × 0.1
+If bot hits walls:
+1. Increase wall danger boost: 1.5 → 2.0
+2. Add collision penalty: fitness × 0.1
 
-Jeśli bot je ale jest zbyt defensywny:
-1. Zmniejsz body_proximity danger
-2. Zwiększ food rewards jeszcze bardziej
+If bot eats but is too defensive:
+1. Decrease body_proximity danger
+2. Increase food rewards even more
 
 ## Debug Tips
 
 ```bash
-# Zobacz ostatnie 50 wyników
+# View last 50 results
 tail -50 training_stats.csv
 
-# Zlicz przyczyny śmierci
+# Count death causes
 awk -F',' '{print $8}' training_stats.csv | sort | uniq -c
 
-# Sprawdź średnią długość
+# Check average length
 awk -F',' 'NR>1 {sum+=$7; count++} END {print sum/count}' training_stats.csv
 ```
 
-Powodzenia! 🐍
+Good luck! 🐍

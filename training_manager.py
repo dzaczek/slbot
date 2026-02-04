@@ -167,6 +167,12 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
     # Tracking mass gain for kill detection
     last_len_check = 0
     last_len_time = time.time()
+    
+    # Track position for death analysis
+    last_positions = []  # Store last 10 positions for death analysis
+    last_snake_data = None
+    near_wall_frames = 0
+    near_enemy_frames = 0
 
     eval_timeout = 120  # 2 minutes max per genome
 
@@ -201,7 +207,13 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
                 last_eat_time = start_time
                 continue
 
-            cause_of_death = "Collision"
+            # Analyze death cause based on tracked data
+            if near_wall_frames > 3:
+                cause_of_death = "Wall"
+            elif near_enemy_frames > 3:
+                cause_of_death = "HeadCollision"
+            else:
+                cause_of_death = "BodyCollision"
             break
 
         my_snake = data.get('self')
@@ -210,6 +222,34 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
                 break
             time.sleep(0.1)
             continue
+
+        # Track data for death analysis
+        last_snake_data = my_snake
+        enemies = data.get('enemies', [])
+        
+        # Store recent positions (for analyzing death cause)
+        pos = (my_snake.get('x', 0), my_snake.get('y', 0))
+        last_positions.append(pos)
+        if len(last_positions) > 10:
+            last_positions.pop(0)
+        
+        # Check proximity to walls (map radius ~21600, center at 21600,21600)
+        map_center = 21600
+        dist_from_center = math.hypot(pos[0] - map_center, pos[1] - map_center)
+        dist_to_wall = map_center - dist_from_center
+        if dist_to_wall < 500:
+            near_wall_frames += 1
+        else:
+            near_wall_frames = max(0, near_wall_frames - 1)
+        
+        # Check proximity to enemy heads
+        for enemy in enemies:
+            enemy_dist = math.hypot(enemy.get('x', 0) - pos[0], enemy.get('y', 0) - pos[1])
+            if enemy_dist < 200:
+                near_enemy_frames += 1
+                break
+        else:
+            near_enemy_frames = max(0, near_enemy_frames - 1)
 
         # Process fitness
         current_len = my_snake.get('len', 0)
@@ -258,17 +298,32 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
             data.get('foods', [])
         )
 
-        # Small reward for moving towards food (helps learning)
+        # INCREASED reward for moving towards food (critical for learning!)
         foods = data.get('foods', [])
         if foods:
-            closest_food_dist = min([
+            food_distances = [
                 math.hypot(f[0] - my_snake['x'], f[1] - my_snake['y']) 
                 for f in foods if len(f) >= 2
-            ], default=999999)
-            
-            if last_food_distance is not None and closest_food_dist < last_food_distance:
-                fitness_score += 0.1  # Small reward for getting closer to food
-            last_food_distance = closest_food_dist
+            ]
+            if food_distances:
+                closest_food_dist = min(food_distances)
+                
+                if last_food_distance is not None:
+                    if closest_food_dist < last_food_distance:
+                        # Reward for getting closer - scaled by how close we are
+                        # Closer = bigger reward (encourages final approach)
+                        approach_reward = 0.5 * (1.0 - closest_food_dist / 1500)
+                        approach_reward = max(approach_reward, 0.1)
+                        fitness_score += approach_reward
+                    elif closest_food_dist > last_food_distance + 50:
+                        # Small penalty for moving AWAY from food
+                        fitness_score -= 0.05
+                        
+                last_food_distance = closest_food_dist
+                
+                # Bonus if very close to food (about to eat)
+                if closest_food_dist < 100:
+                    fitness_score += 0.2
 
         current_heading = my_snake.get('ang', 0)
         angle, boost = brain.decide(inputs, current_heading)
@@ -288,14 +343,29 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
     # Reward structure:
     # - Survival time: small reward (encourages living)
     # - Length: HUGE reward (main goal is to grow!)
-    # - Collision death: penalty
+    # - Death type: specific penalties
     
-    fitness_score += (survival_time * 2.0)  # Reduced from 5.0
-    fitness_score += (max_len * 20)  # Increased from 5
+    fitness_score += (survival_time * 1.0)  # Reduced - survival alone isn't enough
+    fitness_score += (max_len * 30)  # Increased - length is KING
     
-    # Penalty for collision death (not starvation)
-    if cause_of_death == "Collision" and survival_time < 15:
-        fitness_score *= 0.3  # Big penalty for quick death
+    # BONUS for actually eating (not just surviving)
+    if food_eaten_count > 0:
+        fitness_score += (food_eaten_count * 10)  # Extra bonus per food eaten
+        fitness_score += 100  # Bonus just for eating ANYTHING
+    
+    # Death-specific penalties
+    if cause_of_death == "Wall":
+        fitness_score *= 0.2  # HUGE penalty - wall death is avoidable
+        log(f"[DEATH] Genome hit WALL! Fitness penalized.")
+    elif cause_of_death == "HeadCollision":
+        fitness_score *= 0.5  # Moderate penalty - risky play
+    elif cause_of_death == "BodyCollision" and survival_time < 10:
+        fitness_score *= 0.4  # Quick body collision = bad
+    elif cause_of_death == "Starvation":
+        if food_eaten_count == 0:
+            fitness_score *= 0.3  # HARSH penalty for eating NOTHING
+        else:
+            fitness_score *= 0.7  # Mild penalty if at least tried
 
     stats = {
         'survival': survival_time,

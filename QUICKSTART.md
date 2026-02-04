@@ -1,183 +1,184 @@
 # Quick Start Guide
 
-## 🚀 Szybki Start
+## 🚀 Getting Started
 
-### 1. Instalacja (Jednorazowo)
+### 1. Installation (One-time)
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Test Systemu (Opcjonalne ale Zalecane)
+### 2. System Test (Optional but Recommended)
 ```bash
 python quick_test.py
 ```
-Uruchomi bota na 30 sekund żeby sprawdzić czy wszystko działa.
+Runs the bot for 30 seconds to verify everything works.
 
-### 3. Trening
+### 3. Training
 
-**Opcja A: Interaktywny restart (zalecane)**
+**Option A: Interactive restart (recommended)**
 ```bash
 ./restart_training.sh
 ```
-- Wybierz czy kontynuować czy zacząć od nowa
-- Automatycznie tworzy backupy
+- Choose to continue or start fresh
+- Automatically creates backups
 
-**Opcja B: Bezpośredni start**
+**Option B: Direct start**
 ```bash
 python training_manager.py
 ```
 
-### 4. Oglądanie Najlepszego Bota
+### 4. Watch the Best Bot
 ```bash
 python play_best.py
 ```
 
-### 5. Analiza Postępów
+### 5. Analyze Progress
 ```bash
 python analyze_training.py
 ```
 
 ---
 
-## 📋 Wszystkie Dostępne Komendy
+## 📋 All Available Commands
 
-### Trening
-| Komenda | Opis |
-|---------|------|
-| `./restart_training.sh` | Interaktywny restart z opcją backup |
-| `python training_manager.py` | Uruchom/wznów trening |
-| `python quick_test.py` | Test 30s (weryfikacja systemu) |
+### Training
+| Command | Description |
+|---------|-------------|
+| `./restart_training.sh` | Interactive restart with backup option |
+| `python training_manager.py` | Start/resume training |
+| `python quick_test.py` | 30s test (system verification) |
 
-### Granie
-| Komenda | Opis |
-|---------|------|
-| `python play_best.py` | Graj najlepszym genomem |
-| `python play_best.py neat-checkpoint-50` | Graj genomem z checkpointu |
+### Playing
+| Command | Description |
+|---------|-------------|
+| `python play_best.py` | Play with the best genome |
+| `python play_best.py neat-checkpoint-50` | Play genome from checkpoint |
 
-### Analiza
-| Komenda | Opis |
-|---------|------|
-| `python analyze_training.py` | Pokaż statystyki treningu |
-| `tail -f training_log.txt` | Śledź logi na żywo |
-| `tail -50 training_stats.csv` | Ostatnie 50 wyników |
+### Analysis
+| Command | Description |
+|---------|-------------|
+| `python analyze_training.py` | Show training statistics |
+| `python analyze_training.py --live` | Live mode with auto-refresh |
+| `tail -f training_log.txt` | Follow logs in real-time |
+| `tail -50 training_stats.csv` | Last 50 results |
 
 ---
 
-## 🎯 Czego Się Spodziewać
+## 🎯 What to Expect
 
-### Generacje 1-10
-- Bot będzie głupi, umrze szybko
-- Niektóre zaczną zjadać 1-3 jedzenia
+### Generations 1-10
+- Bot will be dumb, die quickly
+- Some will start eating 1-3 food
 - Fitness: ~160 → ~400
 
-### Generacje 10-30
-- Bot zaczyna regularnie jeść
-- 5-15 jedzenia na życie
+### Generations 10-30
+- Bot starts eating regularly
+- 5-15 food per life
 - Fitness: ~400 → ~1000
 
-### Generacje 30-50
-- Bot unika ścian i wrogów
-- 15-30 jedzenia
+### Generations 30-50
+- Bot avoids walls and enemies
+- 15-30 food
 - Fitness: ~1000 → ~2000+
 
-### Generacje 50+
-- Bot jest mądry!
-- Długie życie, dużo jedzenia
+### Generations 50+
+- Bot is smart!
+- Long survival, lots of food
 - Fitness: 2000+
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Bot nie je jedzenia po 50 generacjach?
+### Bot doesn't eat food after 50 generations?
 ```bash
-# Zwiększ nagrodę w training_manager.py, linia ~214:
-fitness_score += (diff * 200.0)  # Było 150.0
+# Increase food reward in training_manager.py, line ~214:
+fitness_score += (diff * 200.0)  # Was 150.0
 ```
 
-### Bot uderza w ściany?
+### Bot keeps hitting walls?
 ```bash
-# W spatial_awareness.py, linia ~209, zwiększ boost:
-wall_danger = min(wall_danger * 2.0, 1.0)  # Było 1.5
+# In spatial_awareness.py, line ~209, increase boost:
+wall_danger = min(wall_danger * 2.0, 1.0)  # Was 1.5
 ```
 
-### Trening jest za wolny?
+### Training is too slow?
 ```bash
-# W training_manager.py, linia ~442, zmień:
-NUM_WORKERS = 3  # Zmniejsz jeśli komputer jest wolny
+# In training_manager.py, line ~442, change:
+NUM_WORKERS = 3  # Reduce if computer is slow
 ```
 
-### Chrome nie otwiera się?
+### Chrome doesn't open?
 ```bash
-# Sprawdź czy Chrome jest zainstalowany
-# Zainstaluj webdriver-manager:
+# Check if Chrome is installed
+# Install webdriver-manager:
 pip install webdriver-manager
 ```
 
 ---
 
-## 📊 Parametry do Tuningu
+## 📊 Parameters for Tuning
 
-Otwórz `training_manager.py` i znajdź te wartości:
+Open `training_manager.py` and find these values:
 
 ```python
-# Linia ~214 - Nagroda za jedzenie
-fitness_score += (diff * 150.0)  # Zwiększ = bardziej agresywne jedzenie
+# Line ~214 - Food reward
+fitness_score += (diff * 150.0)  # Increase = more aggressive eating
 
-# Linia ~218 - Timeout starvation
-if time.time() - last_eat_time > 60:  # Zwiększ = więcej czasu na znalezienie jedzenia
+# Line ~218 - Starvation timeout
+if time.time() - last_eat_time > 60:  # Increase = more time to find food
 
-# Linia ~266 - Nagroda za długość
-fitness_score += (max_len * 20)  # Zwiększ = większa motywacja do wzrostu
+# Line ~266 - Length reward
+fitness_score += (max_len * 20)  # Increase = more motivation to grow
 
-# Linia ~263 - Waga survival time
-fitness_score += (survival_time * 2.0)  # Zmniejsz = mniej pasywnego przeżycia
+# Line ~263 - Survival time weight
+fitness_score += (survival_time * 2.0)  # Decrease = less passive survival
 ```
 
 ---
 
 ## 🎓 Pro Tips
 
-1. **Start Od Nowa Po Zmianach**: Stare genomy są "utrwalone" w złych nawykach
-2. **Monitoruj Logi**: `tail -f training_log.txt` pokaże co się dzieje
-3. **Backup Często**: Najlepsze genomy mogą być nadpisane
-4. **Patience**: Dobry bot potrzebuje 50-100+ generacji
-5. **Eksperymentuj**: Zmień parametry i zobacz co działa!
+1. **Start Fresh After Changes**: Old genomes are "stuck" in bad habits
+2. **Monitor Logs**: `tail -f training_log.txt` shows what's happening
+3. **Backup Often**: Best genomes can be overwritten
+4. **Patience**: A good bot needs 50-100+ generations
+5. **Experiment**: Change parameters and see what works!
 
 ---
 
-## 📁 Ważne Pliki
+## 📁 Important Files
 
-| Plik | Opis |
-|------|------|
-| `training_manager.py` | Główna pętla treningu + fitness |
-| `config_neat.txt` | Parametry NEAT (mutacje, populacja) |
-| `spatial_awareness.py` | Przetwarzanie danych z gry |
-| `ai_brain.py` | Wrapper dla sieci neuronowej |
-| `browser_engine.py` | Kontrola przeglądarki |
-| `best_genome.pkl` | Najlepszy wytrenowany genom |
-| `neat-checkpoint-X` | Checkpointy (auto-save) |
-| `training_stats.csv` | Historia wszystkich evaluacji |
+| File | Description |
+|------|-------------|
+| `training_manager.py` | Main training loop + fitness |
+| `config_neat.txt` | NEAT parameters (mutations, population) |
+| `spatial_awareness.py` | Game data processing |
+| `ai_brain.py` | Neural network wrapper |
+| `browser_engine.py` | Browser control |
+| `best_genome.pkl` | Best trained genome |
+| `neat-checkpoint-X` | Checkpoints (auto-save) |
+| `training_stats.csv` | History of all evaluations |
 
 ---
 
 ## ❓ FAQ
 
-**Q: Jak długo trwa trening?**  
-A: 50 generacji × 50 genomów = 2500 evaluacji. Z 5 workerami ~1-2 godziny.
+**Q: How long does training take?**  
+A: 50 generations × 50 genomes = 2500 evaluations. With 5 workers ~1-2 hours.
 
-**Q: Czy mogę przerwać i wznowić?**  
-A: Tak! Ctrl+C i potem `python training_manager.py` wznowi od ostatniego checkpointu.
+**Q: Can I interrupt and resume?**  
+A: Yes! Ctrl+C and then `python training_manager.py` will resume from last checkpoint.
 
-**Q: Jak zapisać najlepszego bota?**  
-A: Automatycznie zapisywany jako `best_genome.pkl` na końcu treningu.
+**Q: How to save the best bot?**  
+A: Automatically saved as `best_genome.pkl` at the end of training.
 
-**Q: Mogę trenować bez okna przeglądarki?**  
-A: Tak, w `training_manager.py` ustaw `HEADLESS = True` (linia ~443).
+**Q: Can I train without browser window?**  
+A: Yes, in `training_manager.py` set `HEADLESS = True` (line ~443).
 
-**Q: Bot jest zbyt defensywny/agresywny?**  
-A: Zmień balance między survival (linia 263) a food rewards (linia 214).
+**Q: Bot is too defensive/aggressive?**  
+A: Change balance between survival (line 263) and food rewards (line 214).
 
 ---
 
-Powodzenia! 🐍🎮
+Good luck! 🐍🎮
