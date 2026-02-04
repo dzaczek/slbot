@@ -15,75 +15,75 @@ class SlitherEnv:
         self.matrix_size = 64 # Output grid size (64x64)
         self.scale = self.matrix_size / (self.view_size * 2) # Scale factor
 
-        # Collision tracking
+        # Wall tracking (only wall matters for death classification)
         self.near_wall_frames = 0
-        self.near_enemy_frames = 0
+        
+        # Track previous length to detect food eating
+        self.prev_length = 0
 
     def reset(self):
         """Resets the game and returns initial matrix state."""
         self.browser.force_restart()
         self.near_wall_frames = 0
-        self.near_enemy_frames = 0
-        return self._get_state()
+        
+        # Get initial state and set prev_length to actual starting length
+        data = self.browser.get_game_data()
+        if data and data.get('self'):
+            self.prev_length = data['self'].get('len', 0)
+        else:
+            self.prev_length = 0
+            
+        return self._process_data_to_matrix(data)
+
+    def _get_death_reward_and_cause(self):
+        """
+        Slither.io death causes (only 2 possibilities):
+        1. Wall collision - hit the map boundary
+        2. Snake collision - our head hit another snake's body
+        
+        Note: You CAN hide your head in your OWN body (coiling) - no self-collision!
+        """
+        if self.near_wall_frames > 3:
+            return -50, "Wall"  # Preventable - should learn to avoid edges
+        else:
+            return -10, "SnakeCollision"  # Normal gameplay death
 
     def step(self, action):
         """
         Executes action and returns (next_state, reward, done, info).
-        Action: 0-7 (Direction sectors) + 8 (Boost) maybe?
-        Simpler: Action is an angle index (0-15) and boost is implied or separate?
-        Let's stick to discrete actions for DQN.
         Actions:
-        0: Keep current
-        1: Turn Left small
-        2: Turn Right small
-        3: Turn Left fast
-        4: Turn Right fast
-        5: Boost
+        0: Keep current direction
+        1: Turn Left small (~17 deg)
+        2: Turn Right small (~17 deg)
+        3: Turn Left big (~45 deg)
+        4: Turn Right big (~45 deg)
+        5: Boost (speed up, loses mass)
         """
-        # DQN usually outputs discrete index.
-        # Let's map 0-11 to 12 clock directions.
-        # Or relative changes.
-        # Given the game physics, relative steering is smoother.
-        # 0: Straight
-        # 1: Left 15 deg
-        # 2: Right 15 deg
-        # 3: Left 45 deg
-        # 4: Right 45 deg
-
         angle_change = 0
         boost = 0
 
         if action == 0: pass
-        elif action == 1: angle_change = -0.3 # ~17 deg
+        elif action == 1: angle_change = -0.3
         elif action == 2: angle_change = 0.3
-        elif action == 3: angle_change = -0.8 # ~45 deg
+        elif action == 3: angle_change = -0.8
         elif action == 4: angle_change = 0.8
         elif action == 5: boost = 1
 
-        # We need current angle to apply relative change
+        # Get current state
         data = self.browser.get_game_data()
         if not data:
-             return self._matrix_zeros(), -10, True, {"cause": "Unknown"}
+            return self._matrix_zeros(), -5, True, {"cause": "Unknown"}
 
         if data.get('dead'):
-            # Determine cause of death using tracked stats
-            cause = "BodyCollision"
-            if self.near_wall_frames > 3:
-                cause = "Wall"
-                reward = -500 # Heavy penalty for wall
-            elif self.near_enemy_frames > 3:
-                cause = "HeadCollision"
-                reward = -50
-            else:
-                reward = -20 # Standard body collision
+            reward, cause = self._get_death_reward_and_cause()
             return self._matrix_zeros(), reward, True, {"cause": cause}
 
         my_snake = data.get('self', {})
         current_ang = my_snake.get('ang', 0)
         mx, my = my_snake.get('x', 0), my_snake.get('y', 0)
+        current_len = my_snake.get('len', 0)
 
-        # UPDATE COLLISION TRACKING
-        # Check wall distance
+        # Track wall proximity
         dist_from_center = math.hypot(mx - self.map_radius, my - self.map_radius)
         dist_to_wall = self.map_radius - dist_from_center
         if dist_to_wall < 500:
@@ -91,52 +91,40 @@ class SlitherEnv:
         else:
             self.near_wall_frames = max(0, self.near_wall_frames - 1)
 
-        # Check enemy head distance
-        enemies = data.get('enemies', [])
-        found_near_enemy = False
-        for e in enemies:
-            edist = math.hypot(e['x'] - mx, e['y'] - my)
-            if edist < 200:
-                found_near_enemy = True
-                break
-
-        if found_near_enemy:
-            self.near_enemy_frames += 1
-        else:
-            self.near_enemy_frames = max(0, self.near_enemy_frames - 1)
-
+        # Execute action
         target_ang = current_ang + angle_change
-
         self.browser.send_action(target_ang, boost)
 
-        # Get new state
+        # Get new state after action
         data = self.browser.get_game_data()
         state = self._process_data_to_matrix(data)
 
-        # Reward calculation
-        reward = 0
-        done = False
+        # Check if died after action
         if not data or data.get('dead'):
-            done = True
-            # Determine cause again if dead now
-            cause = "BodyCollision"
-            if self.near_wall_frames > 3:
-                cause = "Wall"
-                reward = -500
-            elif self.near_enemy_frames > 3:
-                cause = "HeadCollision"
-                reward = -50
-            else:
-                reward = -20
-            return state, reward, done, {"cause": cause}
-        else:
-            # Survival reward
-            reward += 0.1
-            # Length reward
-            current_len = my_snake.get('len', 0)
-            reward += current_len * 0.001
+            reward, cause = self._get_death_reward_and_cause()
+            return state, reward, True, {"cause": cause}
 
-        return state, reward, done, {}
+        # === REWARD CALCULATION ===
+        reward = 0
+        new_snake = data.get('self', {})
+        new_len = new_snake.get('len', 0)
+        
+        # 1. Survival reward (small positive for staying alive)
+        reward += 0.1
+        
+        # 2. Food reward (big positive for eating)
+        if new_len > self.prev_length:
+            food_gained = new_len - self.prev_length
+            reward += food_gained * 5.0  # Strong reward for eating!
+        
+        # 3. Wall proximity penalty (encourage staying away from edges)
+        if dist_to_wall < 1000:
+            reward -= 0.5  # Small penalty for being near wall
+        
+        # Update tracked length
+        self.prev_length = new_len
+
+        return state, reward, False, {"length": new_len}
 
     def _get_state(self):
         data = self.browser.get_game_data()

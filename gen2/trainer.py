@@ -19,10 +19,10 @@ from model import MatrixPolicy
 BATCH_SIZE = 64 # Smaller batch for slower Selenium
 GAMMA = 0.99
 EPS_START = 1.0
-EPS_END = 0.1
-EPS_DECAY = 10000
+EPS_END = 0.05  # Lower minimum exploration
+EPS_DECAY = 50000  # Much slower decay (was 10000)
 TARGET_UPDATE = 1000
-MEMORY_SIZE = 10000
+MEMORY_SIZE = 50000  # Larger replay buffer
 
 class TrainingSupervisor:
     """
@@ -63,11 +63,26 @@ class TrainingSupervisor:
         # Check for degradation
         # If current avg drops below 50% of best (and best is positive)
         if self.best_avg_reward > 0 and current_avg < self.best_avg_reward * self.degradation_threshold:
-             # Just a warning or stop? For now, let's just log.
-             # Returning STOP might be too aggressive if random variance.
              return "WARNING_DEGRADATION"
 
         return None
+    
+    def get_state(self):
+        """Get supervisor state for checkpointing."""
+        return {
+            'rewards_window': list(self.rewards_window),
+            'best_avg_reward': self.best_avg_reward,
+            'episodes_since_improvement': self.episodes_since_improvement,
+        }
+    
+    def load_state(self, state):
+        """Restore supervisor state from checkpoint."""
+        if state is None:
+            return
+        self.rewards_window = deque(state['rewards_window'], maxlen=50)
+        self.best_avg_reward = state['best_avg_reward']
+        self.episodes_since_improvement = state['episodes_since_improvement']
+        print(f"   Supervisor: best_avg={self.best_avg_reward:.2f}, window_size={len(self.rewards_window)}")
 
 def worker(remote, parent_remote, worker_id, headless, nickname):
     parent_remote.close()
@@ -138,14 +153,15 @@ class SubprocVecEnv:
             p.join()
 
 class DDQNAgent:
-    def __init__(self):
+    def __init__(self, learning_rate=0.0001):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.policy_net = MatrixPolicy().to(self.device)
         self.target_net = MatrixPolicy().to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=0.0001)
+        self.learning_rate = learning_rate
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.memory = deque(maxlen=MEMORY_SIZE)
 
         self.steps_done = 0
@@ -156,12 +172,10 @@ class DDQNAgent:
 
     def select_actions(self, states):
         # states: list of numpy arrays (3, 64, 64)
-        sample = random.random()
         eps_threshold = self.get_epsilon()
         self.steps_done += len(states) # Increment by batch size
 
         # Convert to tensor batch
-        # Stack states
         states_np = np.array(states) # (B, 3, 64, 64)
         states_t = torch.tensor(states_np, dtype=torch.float32).to(self.device)
 
@@ -210,34 +224,100 @@ class DDQNAgent:
 
     def update_target(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
+    
+    def save_checkpoint(self, filepath, episode, supervisor_state=None):
+        """Save full training state to resume later."""
+        checkpoint = {
+            'episode': episode,
+            'steps_done': self.steps_done,
+            'policy_net_state': self.policy_net.state_dict(),
+            'target_net_state': self.target_net.state_dict(),
+            'optimizer_state': self.optimizer.state_dict(),
+            'memory': list(self.memory),  # Convert deque to list for pickle
+            'supervisor_state': supervisor_state,
+        }
+        torch.save(checkpoint, filepath)
+        print(f">> Checkpoint saved: {filepath} (Episode {episode}, Steps {self.steps_done})")
+    
+    def load_checkpoint(self, filepath):
+        """Load training state from checkpoint. Returns (episode, supervisor_state)."""
+        if not os.path.exists(filepath):
+            print(f"No checkpoint found at {filepath}")
+            return 0, None
+        
+        checkpoint = torch.load(filepath, map_location=self.device)
+        
+        self.policy_net.load_state_dict(checkpoint['policy_net_state'])
+        self.target_net.load_state_dict(checkpoint['target_net_state'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        self.steps_done = checkpoint['steps_done']
+        
+        # Restore memory
+        self.memory = deque(checkpoint['memory'], maxlen=MEMORY_SIZE)
+        
+        episode = checkpoint['episode']
+        supervisor_state = checkpoint.get('supervisor_state')
+        
+        print(f">> Checkpoint loaded: {filepath}")
+        print(f"   Episode: {episode}, Steps: {self.steps_done}, Memory: {len(self.memory)}")
+        print(f"   Epsilon: {self.get_epsilon():.4f}")
+        
+        return episode, supervisor_state
 
 def train(args):
-    # Use SubprocVecEnv instead of single SlitherEnv
+    # Paths
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    checkpoint_path = os.path.join(base_dir, 'checkpoint.pth')
+    best_model_path = os.path.join(base_dir, 'best_model.pth')
+    stats_file = os.path.join(base_dir, 'matrix_stats.csv')
+    
+    # Settings
+    CHECKPOINT_EVERY = 50  # Save checkpoint every N episodes
+    MAX_EPISODES = 5000000   # Total episodes to train
+    
     num_agents = args.num_agents
-    print(f"Starting Matrix-based Slither.io Training with {num_agents} agents...")
+    print(f"=" * 60)
+    print(f"Matrix-based Slither.io Training")
+    print(f"=" * 60)
+    print(f"Agents: {num_agents}")
+    print(f"Max Episodes: {MAX_EPISODES}")
+    print(f"Checkpoint every: {CHECKPOINT_EVERY} episodes")
+    print(f"Resume mode: {args.resume}")
     if args.view:
-        print("View mode enabled for the first agent.")
+        print("View mode: enabled for first agent")
+    print(f"=" * 60)
 
+    # Initialize
     env = SubprocVecEnv(num_agents=num_agents, view_first=args.view, nickname="MatrixAI")
     agent = DDQNAgent()
-
     supervisor = TrainingSupervisor()
-    best_model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best_model.pth')
-
-    # Init stats file
-    stats_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'matrix_stats.csv')
-    with open(stats_file, 'w') as f:
-        f.write("Episode,Steps,Reward,Epsilon\n")
+    
+    # Starting episode (0 or loaded from checkpoint)
+    start_episode = 0
+    
+    # Load checkpoint if resuming
+    if args.resume:
+        if os.path.exists(checkpoint_path):
+            start_episode, sup_state = agent.load_checkpoint(checkpoint_path)
+            supervisor.load_state(sup_state)
+            print(f"Resuming from episode {start_episode}")
+        else:
+            print("No checkpoint found, starting fresh.")
+    
+    # Init or append to stats file
+    if not args.resume or not os.path.exists(stats_file):
+        with open(stats_file, 'w') as f:
+            f.write("Episode,Steps,Reward,Epsilon,Cause,MemorySize,LearningRate,AvgReward50\n")
+    else:
+        print(f"Appending to existing stats file: {stats_file}")
 
     # Reset all environments
-    states = env.reset() # List of states
+    states = env.reset()
 
     # Tracking per agent
     current_rewards = [0] * num_agents
     current_steps = [0] * num_agents
-    total_episodes_finished = 0
-
-    MAX_EPISODES = 500
+    total_episodes_finished = start_episode
 
     try:
         while total_episodes_finished < MAX_EPISODES:
@@ -249,8 +329,6 @@ def train(args):
 
             # 3. Store and update
             for i in range(num_agents):
-                # If done, next_states[i] is the RESET state.
-                # The terminal state is in infos[i]['terminal_observation']
                 if dones[i]:
                     terminal_state = infos[i]['terminal_observation']
                     agent.memory.append((states[i], actions[i], rewards[i], terminal_state, dones[i]))
@@ -262,29 +340,35 @@ def train(args):
 
                     eps = agent.get_epsilon()
                     cause = infos[i].get('cause', 'Unknown')
-                    print(f"Episode finished | Agent {i} | Steps: {current_steps[i]} | Reward: {current_rewards[i]:.2f} | Cause: {cause}")
+                    print(f"Ep {total_episodes_finished} | Agent {i} | Steps: {current_steps[i]} | Reward: {current_rewards[i]:.2f} | Eps: {eps:.3f} | {cause}")
 
                     # Supervisor Step
                     sup_action = supervisor.step(current_rewards[i])
                     if sup_action == "SAVE_CHECKPOINT":
-                        print(">> SUPERVISOR: New Best Average Reward! Saving model...")
+                        print(">> SUPERVISOR: New Best! Saving best model...")
                         torch.save(agent.policy_net.state_dict(), best_model_path)
                     elif sup_action == "DECAY_LR":
-                        print(">> SUPERVISOR: Stagnation detected. Decaying Learning Rate.")
+                        print(">> SUPERVISOR: Stagnation. Decaying LR.")
                         for param_group in agent.optimizer.param_groups:
                             param_group['lr'] *= 0.5
                             print(f"   New LR: {param_group['lr']}")
                     elif sup_action == "WARNING_DEGRADATION":
-                        print(">> SUPERVISOR: Warning! Performance degradation detected.")
+                        print(">> SUPERVISOR: Warning! Performance degradation.")
 
+                    # Write stats
+                    mem_size = len(agent.memory)
+                    lr = agent.optimizer.param_groups[0]['lr']
+                    avg_reward = np.mean(list(supervisor.rewards_window)) if len(supervisor.rewards_window) > 0 else 0
                     with open(stats_file, 'a') as f:
-                        f.write(f"{total_episodes_finished},{current_steps[i]},{current_rewards[i]:.2f},{eps:.4f}\n")
+                        f.write(f"{total_episodes_finished},{current_steps[i]},{current_rewards[i]:.2f},{eps:.4f},{cause},{mem_size},{lr:.6f},{avg_reward:.2f}\n")
 
-                    # Reset trackers for this agent
+                    # Periodic checkpoint save
+                    if total_episodes_finished % CHECKPOINT_EVERY == 0:
+                        agent.save_checkpoint(checkpoint_path, total_episodes_finished, supervisor.get_state())
+
+                    # Reset trackers
                     current_rewards[i] = 0
                     current_steps[i] = 0
-
-                    # Update state to the new reset state
                     states[i] = next_states[i]
                 else:
                     agent.memory.append((states[i], actions[i], rewards[i], next_states[i], dones[i]))
@@ -298,24 +382,39 @@ def train(args):
             # 5. Target update
             if agent.steps_done % TARGET_UPDATE == 0:
                 agent.update_target()
-                print("Target Network Updated")
+                print(">> Target Network Updated")
 
     except KeyboardInterrupt:
-        print("Training stopped.")
+        print("\n" + "=" * 60)
+        print("Training interrupted by user (Ctrl+C)")
+        print("Saving checkpoint before exit...")
+        agent.save_checkpoint(checkpoint_path, total_episodes_finished, supervisor.get_state())
+        print("=" * 60)
     except Exception as e:
         print(f"Error: {e}")
         import traceback
         traceback.print_exc()
+        # Try to save on error too
+        try:
+            agent.save_checkpoint(checkpoint_path, total_episodes_finished, supervisor.get_state())
+        except:
+            pass
     finally:
         env.close()
+        print(f"Training ended at episode {total_episodes_finished}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Slither.io DDQN Training")
     parser.add_argument("--num_agents", type=int, default=1, help="Number of parallel agents")
     parser.add_argument("--view", action="store_true", help="Show browser for the first agent")
+    parser.add_argument("--resume", action="store_true", help="Resume training from last checkpoint")
     args = parser.parse_args()
 
+    # On Windows, spawn is default. On Unix, fork.
+    # multiprocessing needs this protection.
     try:
         train(args)
     except Exception as e:
         print(f"Main loop error: {e}")
+        import traceback
+        traceback.print_exc()
