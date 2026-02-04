@@ -291,6 +291,14 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
             fitness_score *= 0.5  # Penalty for starvation
             break
 
+        # Anti-Looping Mechanism (Dynamic Timeout)
+        # Prevent bot from just spinning safely forever
+        current_len = max(my_snake.get('len', 0), 1)
+        if (time.time() - start_time) * 20 > 100 * current_len: # Approx 20 FPS
+             cause_of_death = "Timeout"
+             fitness_score -= 100 # Penalty for wasting time without growing
+             break
+
         # Get neural network decision
         inputs = spatial.calculate_sectors(
             my_snake,
@@ -355,8 +363,9 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
     
     # Death-specific penalties
     if cause_of_death == "Wall":
-        fitness_score *= 0.2  # HUGE penalty - wall death is avoidable
-        log(f"[DEATH] Genome hit WALL! Fitness penalized.")
+        fitness_score *= 0.1  # EXTREME penalty - wall death is strictly forbidden
+        fitness_score -= 500  # Flat penalty to ensure negative impact
+        log(f"[DEATH] Genome hit WALL! Fitness penalized heavily.")
     elif cause_of_death == "HeadCollision":
         fitness_score *= 0.5  # Moderate penalty - risky play
     elif cause_of_death == "BodyCollision" and survival_time < 10:
@@ -366,6 +375,8 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
             fitness_score *= 0.3  # HARSH penalty for eating NOTHING
         else:
             fitness_score *= 0.7  # Mild penalty if at least tried
+    elif cause_of_death == "Timeout":
+        fitness_score *= 0.8 # Penalty for looping
 
     stats = {
         'survival': survival_time,
