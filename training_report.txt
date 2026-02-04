@@ -2,15 +2,15 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 685
+Total evaluations: 689
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min  
 -----------------------------------------
-Fitness            3333.1   9507.7  273.0
-Survival Time (s)  94.9     129.4   60.0 
+Fitness            3333.5   9507.7  273.0
+Survival Time (s)  95.0     129.4   60.0 
 Food Eaten         27.2     47      2    
 Max Length         27.2     47      2    
 
@@ -19,18 +19,18 @@ Max Length         27.2     47      2
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation         511 ( 74.6%) ████████████████████████████████████████
-  Unknown            174 ( 25.4%) █████████████
+  Starvation         514 ( 74.6%) ████████████████████████████████████████
+  Unknown            175 ( 25.4%) █████████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change  
 -------------------------------------------
-Avg Fitness   3291.3     3940.4    ↑ +649.0
-Avg Food      27.8       27.5      ↓ -0.3  
-Avg Length    27.8       27.5      ↓ -0.3  
-Avg Survival  93.9       102.8     ↑ +8.9  
+Avg Fitness   3291.3     3946.0    ↑ +654.6
+Avg Food      27.8       27.6      ↓ -0.2  
+Avg Length    27.8       27.6      ↓ -0.2  
+Avg Survival  93.9       103.1     ↑ +9.2  
 Bots that ate food: 100% → 100%
 
 ──────────────────────────────────────────────────────────────────────
@@ -53,9 +53,9 @@ Bots that ate food: 100% → 100%
   LEARNING ASSESSMENT
 ──────────────────────────────────────────────────────────────────────
 Improvement (2nd half vs 1st half):
-✓ Fitness:  +219.5 (GOOD - Bot is learning!)
+✓ Fitness:  +229.7 (GOOD - Bot is learning!)
 ✗ Food:     -0.3 (NOT LEARNING TO EAT!)
 
 Recommendations:
 
-Analysis completed at 2026-02-04 10:04:27
+Analysis completed at 2026-02-04 10:05:29
