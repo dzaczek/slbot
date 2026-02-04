@@ -88,12 +88,44 @@ This shows:
 The bot automatically saves checkpoints (`neat-checkpoint-X`) every generation.
 To resume, run `python training_manager.py` again. The script will detect the latest checkpoint and continue from where it left off.
 
+## NEW: Double DQN Snake Agent (PyTorch)
+
+A new, modern reinforcement learning agent has been added for a localized 20x20 Grid Snake environment.
+
+### Prerequisites
+
+You need to install PyTorch and Pygame:
+```bash
+pip install torch torchvision pygame numpy
+```
+
+### Running the DDQN Agent
+
+To start training the new Double DQN agent:
+```bash
+python agent.py
+```
+
+### Architecture
+
+*   **Algorithm**: Double Deep Q-Network (DDQN) with Polyack soft updates.
+*   **Input**: Hybrid Input Model.
+    *   **Visual**: A Convolutional Neural Network (CNN) processes the 20x20 Grid state (Head, Body, Food, Walls).
+    *   **Orientation**: A Vector input captures the snake's current heading.
+*   **Reward System**: Dense rewards with distance shaping (+/- 0.05 per step relative to food) and heavy penalties/rewards for death/eating.
+
+### Configuration
+
+Hyperparameters (Batch Size, Gamma, Epsilon) and Grid settings are located at the top of `agent.py`.
+
+---
+
 ## Deployment (VPS / Headless)
 
 For long-term training, we recommend running on a VPS.
 See the **[VPS Deployment Guide](VPS_GUIDE.md)** for detailed instructions on setting up Xvfb and headless Chrome.
 
-## Configuration
+## Configuration (NEAT)
 
 *   **`config_neat.txt`**: Adjust NEAT parameters (population size, mutation rates, etc.).
 *   **`spatial_awareness.py`**: Modify logic for input calculation.
@@ -108,7 +140,7 @@ Key changes for better learning:
 - **Penalties for bad behavior** - collision and starvation are punished
 - **Larger population** - 50 genomes (was 30) for more diversity
 
-## Architecture
+## Architecture (NEAT)
 
 *   **`browser_engine.py`**: Handles Selenium driver and JS injection.
 *   **`spatial_awareness.py`**: Processes raw game data into neural network inputs.
