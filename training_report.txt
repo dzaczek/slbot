@@ -2,15 +2,15 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 642
+Total evaluations: 646
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min  
 -----------------------------------------
-Fitness            3270.5   9507.7  273.0
-Survival Time (s)  94.3     129.4   60.0 
+Fitness            3273.1   9507.7  273.0
+Survival Time (s)  94.4     129.4   60.0 
 Food Eaten         27.1     47      2    
 Max Length         27.1     47      2    
 
@@ -19,18 +19,18 @@ Max Length         27.1     47      2
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation         488 ( 76.0%) ████████████████████████████████████████
-  Unknown            154 ( 24.0%) ████████████
+  Starvation         491 ( 76.0%) ████████████████████████████████████████
+  Unknown            155 ( 24.0%) ████████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change  
 -------------------------------------------
-Avg Fitness   3291.3     3473.7    ↑ +182.3
+Avg Fitness   3291.3     3520.3    ↑ +229.0
 Avg Food      27.8       27.4      ↓ -0.4  
 Avg Length    27.8       27.4      ↓ -0.4  
-Avg Survival  93.9       98.6      ↑ +4.7  
+Avg Survival  93.9       99.7      ↑ +5.8  
 Bots that ate food: 100% → 100%
 
 ──────────────────────────────────────────────────────────────────────
@@ -46,16 +46,16 @@ Bots that ate food: 100% → 100%
 6   52        7487.8   122.2s  36    36   Unknown
 7   437       7266.4   120.0s  34    34   Unknown
 8   546       7233.8   120.0s  34    34   Unknown
-9   540       7009.9   122.6s  33    33   Unknown
-10  220       6977.2   120.0s  33    33   Unknown
+9   608       7032.1   120.0s  33    33   Unknown
+10  540       7009.9   122.6s  33    33   Unknown
 
 ──────────────────────────────────────────────────────────────────────
   LEARNING ASSESSMENT
 ──────────────────────────────────────────────────────────────────────
 Improvement (2nd half vs 1st half):
-✓ Fitness:  +50.2 (GOOD - Bot is learning!)
+✓ Fitness:  +43.0 (GOOD - Bot is learning!)
 ✗ Food:     -0.7 (NOT LEARNING TO EAT!)
 
 Recommendations:
 
-Analysis completed at 2026-02-04 09:47:56
+Analysis completed at 2026-02-04 09:48:58
