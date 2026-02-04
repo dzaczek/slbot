@@ -31,18 +31,62 @@ A robust AI bot for Slither.io using NeuroEvolution of Augmenting Topologies (NE
 
 ## Usage
 
-To start the training loop:
+### Starting Training
 
+**Option 1: Interactive Restart (RECOMMENDED)**
+```bash
+./restart_training.sh
+```
+This script will:
+- Detect existing checkpoints
+- Offer to backup old training and start fresh
+- Or continue from last checkpoint
+
+**Option 2: Direct Training**
 ```bash
 python training_manager.py
 ```
+Starts training and automatically resumes from the latest checkpoint if available.
 
-3.  Start the evolution process.
-4.  Automatically restart the game upon death.
+**Option 3: Fresh Start (Manual)**
+```bash
+# Backup old training
+mkdir backup_old
+mv neat-checkpoint-* backup_old/
+mv best_genome.pkl backup_old/
+
+# Start fresh
+python training_manager.py
+```
+
+### Playing the Best Bot
+
+Watch your trained bot play:
+```bash
+python play_best.py
+```
+
+Or play from a specific checkpoint:
+```bash
+python play_best.py neat-checkpoint-50
+```
+
+### Analyzing Progress
+
+Check training statistics:
+```bash
+python analyze_training.py
+```
+
+This shows:
+- Average/max fitness over time
+- Food eating statistics
+- Causes of death
+- Improvement trends
 
 **Resuming Training**:
-The bot automatically saves checkpoints (`neat-checkpoint-X`) every 5 generations.
-To resume, simply run `python training_manager.py` again. The script will detect the latest checkpoint and continue from where it left off.
+The bot automatically saves checkpoints (`neat-checkpoint-X`) every generation.
+To resume, run `python training_manager.py` again. The script will detect the latest checkpoint and continue from where it left off.
 
 ## Deployment (VPS / Headless)
 
@@ -53,6 +97,16 @@ See the **[VPS Deployment Guide](VPS_GUIDE.md)** for detailed instructions on se
 
 *   **`config_neat.txt`**: Adjust NEAT parameters (population size, mutation rates, etc.).
 *   **`spatial_awareness.py`**: Modify logic for input calculation.
+*   **`training_manager.py`**: Adjust fitness rewards, timeouts, and penalties.
+
+### Recent Improvements (See IMPROVEMENTS.md for details)
+
+Key changes for better learning:
+- **150x reward for eating food** (was 25x) - bot now REALLY wants to eat
+- **60s starvation timeout** (was 20s) - more time to learn
+- **Better wall detection** - each sector independently checked
+- **Penalties for bad behavior** - collision and starvation are punished
+- **Larger population** - 50 genomes (was 30) for more diversity
 
 ## Architecture
 

@@ -60,9 +60,13 @@ class SpatialAwareness:
         head_direction = [0.5] * self.num_sectors  # 0.5 = neutral/no head
         head_speed = [0.0] * self.num_sectors
         
+        # RELATIVE SIZE (0.0 = I'm bigger or no enemy, 1.0 = enemy is bigger)
+        enemy_relative_size = [0.0] * self.num_sectors
+        
         mx, my = my_snake['x'], my_snake['y']
         my_angle = my_snake.get('ang', 0)
         my_speed = my_snake.get('sp', 0)
+        my_len = my_snake.get('len', 0)  # Added missing definition
         
         # ============================================
         # 1. PROCESS FOOD
@@ -139,6 +143,50 @@ class SpatialAwareness:
                     
                     # Normalize speed (typical max ~20)
                     head_speed[sector] = min(enemy_speed / 20.0, 1.0)
+                    
+                    # RELATIVE SIZE CALCULATION
+                    enemy_len = len(snake.get('pts', []))
+                    if enemy_len > my_len:
+                        ratio = min(enemy_len / max(my_len, 1), 2.0)
+                        size_danger = (ratio - 1.0) 
+                        enemy_relative_size[sector] = min(max(size_danger, 0.0), 1.0)
+                    else:
+                        enemy_relative_size[sector] = 0.0 
+
+                # ==========================================================
+                # PREDICTIVE CUTOFF DETECTION (Anti-Kamikaze Logic)
+                # ==========================================================
+                # Even if enemy is small, if they boost in front of us -> DEATH.
+                # We project their position into the future based on speed.
+                
+                # Predict where enemy head will be in 10-15 frames (~0.5s)
+                # Speed factor: Boosting snakes move faster
+                pred_frames = 12
+                pred_x = enemy_x + math.cos(enemy_angle) * (enemy_speed * pred_frames)
+                pred_y = enemy_y + math.sin(enemy_angle) * (enemy_speed * pred_frames)
+                
+                # Check distance of this FUTURE position to our CURRENT head
+                pred_dist = math.hypot(pred_x - mx, pred_y - my)
+                
+                # If their future position is very close to our head (cutoff attempt)
+                if pred_dist < 300: # Danger zone
+                    # Calculate angle to this danger zone
+                    pred_abs_angle = math.atan2(pred_y - my, pred_x - mx)
+                    pred_rel_angle = self._normalize_angle(pred_abs_angle - my_angle)
+                    pred_sector = self._angle_to_sector(pred_rel_angle)
+                    
+                    # Treat this predicted spot as a SOLID BODY/WALL
+                    # This overrides "size" advantage. Collision is collision.
+                    cutoff_danger = 1.0 - (pred_dist / 600)
+                    cutoff_danger = min(cutoff_danger * 2.0, 1.0) # Panic mode!
+                    
+                    if cutoff_danger > body_proximity[pred_sector]:
+                        body_proximity[pred_sector] = cutoff_danger
+                        # Also flag as "head danger" to discourage biting
+                        head_proximity[pred_sector] = max(head_proximity[pred_sector], cutoff_danger)
+
+            # -----------------------------------------
+            # 2B. PROCESS ENEMY BODY SEGMENTS
             
             # -----------------------------------------
             # 2B. PROCESS ENEMY BODY SEGMENTS
@@ -168,29 +216,36 @@ class SpatialAwareness:
         body_density = [min(v, 1.0) for v in body_density]
         
         # ============================================
-        # 3. PROCESS WALLS
+        # 3. PROCESS WALLS (CRITICAL - IMPROVED!)
         # ============================================
         center_x, center_y = self.map_radius, self.map_radius
         dist_from_center = math.hypot(mx - center_x, my - center_y)
         dist_to_wall = self.map_radius - dist_from_center
         
-        if dist_to_wall < MAX_DIST:
-            # Wall direction (away from center)
-            wall_abs_angle = math.atan2(my - center_y, mx - center_x)
-            wall_rel_angle = self._normalize_angle(wall_abs_angle - my_angle)
-            wall_sector = self._angle_to_sector(wall_rel_angle)
+        # Check wall danger in EACH sector independently
+        for i in range(self.num_sectors):
+            # Calculate the direction this sector points to
+            sector_angle = i * self.sector_angle
+            sector_abs_angle = my_angle + sector_angle - math.pi  # Adjust for sector 0 = ahead
             
-            wall_danger = 1.0 - (dist_to_wall / MAX_DIST)
+            # Check distance to wall in this direction
+            test_x = mx + MAX_DIST * math.cos(sector_abs_angle)
+            test_y = my + MAX_DIST * math.sin(sector_abs_angle)
+            test_dist_from_center = math.hypot(test_x - center_x, test_y - center_y)
             
-            # Wall affects multiple sectors
-            for offset in range(-3, 4):  # 7 sectors affected
-                sector = (wall_sector + offset) % self.num_sectors
-                sector_danger = wall_danger * (1.0 - abs(offset) * 0.15)
-                sector_danger = max(sector_danger, 0.0)
+            # If test point would be beyond wall
+            if test_dist_from_center > self.map_radius * 0.95:
+                # Calculate actual distance to wall in this direction
+                actual_dist_to_wall = self.map_radius * 0.95 - dist_from_center
                 
-                # Wall counts as body (collision = death)
-                if sector_danger > body_proximity[sector]:
-                    body_proximity[sector] = sector_danger
+                if actual_dist_to_wall < MAX_DIST:
+                    wall_danger = 1.0 - (actual_dist_to_wall / MAX_DIST)
+                    wall_danger = max(wall_danger, 0.0)
+                    wall_danger = min(wall_danger * 1.5, 1.0)  # Boost wall danger!
+                    
+                    # Set as body danger (collision = death)
+                    if wall_danger > body_proximity[i]:
+                        body_proximity[i] = wall_danger
         
         # ============================================
         # 4. GLOBAL INPUTS
@@ -223,6 +278,9 @@ class SpatialAwareness:
             head_proximity +      # 24 - where are enemy heads (HIGH DANGER)
             head_direction +      # 24 - are they coming towards us?
             head_speed +          # 24 - how fast are they moving
+            
+            # Relative Size (24) - NEW
+            enemy_relative_size + # 24 - 0.0 if I'm bigger, 1.0 if they are bigger
             
             # Globals (3)
             [edge_proximity, norm_center_angle, wall_ahead]

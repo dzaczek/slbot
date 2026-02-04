@@ -162,6 +162,11 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
     food_eaten_count = 0
     fitness_score = 0.0
     cause_of_death = "Unknown"
+    last_food_distance = None  # Track if getting closer to food
+    
+    # Tracking mass gain for kill detection
+    last_len_check = 0
+    last_len_time = time.time()
 
     eval_timeout = 120  # 2 minutes max per genome
 
@@ -209,16 +214,41 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
         # Process fitness
         current_len = my_snake.get('len', 0)
 
+        # Initialize last_len_check on first frame
+        if last_len_check == 0:
+            last_len_check = current_len
+
         if current_len > max_len:
             diff = current_len - max_len
-            fitness_score += (diff * 25.0)  # Bonus for eating
+            
+            # KILL DETECTION
+            # If we grow by a LOT in a short time, it's likely a kill
+            # Eating a single orb usually gives small growth
+            # Eating a dead snake gives rapid massive growth
+            time_diff = time.time() - last_len_time
+            if diff > 15 and time_diff < 1.0:
+                # Likely a kill! Huge bonus!
+                fitness_score += 500.0
+                print(f"[KILL] Genome {worker_id} killed something! +500 fitness")
+            
+            fitness_score += (diff * 150.0)  # Standard eating bonus
             food_eaten_count += diff
             max_len = current_len
             last_eat_time = time.time()
+            
+            last_len_check = current_len
+            last_len_time = time.time()
+            
+        elif current_len < last_len_check:
+            # Snake shrank (boost usage)
+            # Maybe small penalty for inefficient boosting?
+            pass
+            last_len_check = current_len
 
-        # Starvation check
-        if time.time() - last_eat_time > 20:
+        # Starvation check - MUCH more lenient now
+        if time.time() - last_eat_time > 60:  # Was 20s, now 60s
             cause_of_death = "Starvation"
+            fitness_score *= 0.5  # Penalty for starvation
             break
 
         # Get neural network decision
@@ -227,6 +257,18 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
             data.get('enemies', []),
             data.get('foods', [])
         )
+
+        # Small reward for moving towards food (helps learning)
+        foods = data.get('foods', [])
+        if foods:
+            closest_food_dist = min([
+                math.hypot(f[0] - my_snake['x'], f[1] - my_snake['y']) 
+                for f in foods if len(f) >= 2
+            ], default=999999)
+            
+            if last_food_distance is not None and closest_food_dist < last_food_distance:
+                fitness_score += 0.1  # Small reward for getting closer to food
+            last_food_distance = closest_food_dist
 
         current_heading = my_snake.get('ang', 0)
         angle, boost = brain.decide(inputs, current_heading)
@@ -242,8 +284,18 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
 
     # Calculate final fitness
     survival_time = time.time() - start_time
-    fitness_score += (survival_time * 5.0)
-    fitness_score += (max_len * 5)
+    
+    # Reward structure:
+    # - Survival time: small reward (encourages living)
+    # - Length: HUGE reward (main goal is to grow!)
+    # - Collision death: penalty
+    
+    fitness_score += (survival_time * 2.0)  # Reduced from 5.0
+    fitness_score += (max_len * 20)  # Increased from 5
+    
+    # Penalty for collision death (not starvation)
+    if cause_of_death == "Collision" and survival_time < 15:
+        fitness_score *= 0.3  # Big penalty for quick death
 
     stats = {
         'survival': survival_time,

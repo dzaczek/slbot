@@ -4,7 +4,7 @@
 [NEAT]
 fitness_criterion        = max
 fitness_threshold        = 100000
-pop_size                 = 30
+pop_size                 = 50
 reset_on_extinction      = True
 no_fitness_termination   = False
 # Note: With 3 parallel workers, 30 genomes will evaluate ~3x faster
@@ -50,13 +50,13 @@ response_mutate_power    = 0.0
 response_mutate_rate     = 0.0
 response_replace_rate    = 0.0
 
-# Connection add/remove rates
-conn_add_prob            = 0.6
-conn_delete_prob         = 0.5
+# Connection add/remove rates (more aggressive evolution)
+conn_add_prob            = 0.7
+conn_delete_prob         = 0.4
 
-# Node add/remove rates
-node_add_prob            = 0.3
-node_delete_prob         = 0.2
+# Node add/remove rates (slower complexity growth)
+node_add_prob            = 0.2
+node_delete_prob         = 0.15
 
 # Enabled gene parameters
 enabled_default          = True
@@ -81,12 +81,15 @@ enabled_rate_to_true_add  = 0.0
 #   - head_direction[24]: is head coming at us? (0=away, 1=towards)
 #   - head_speed[24]: enemy speed
 #
+# RELATIVE SIZE (24 inputs):
+#   - enemy_relative_size[24]: 0.0 if I'm bigger, 1.0 if they are bigger
+#
 # GLOBAL (3 inputs):
 #   - edge_proximity: distance to map edge
 #   - angle_to_center: direction to safe center
 #   - wall_ahead: immediate wall danger
 #
-num_inputs               = 195
+num_inputs               = 219
 num_hidden               = 0
 # Outputs: Angle (0-1 mapped to 0 to 2PI) and Boost (0-1)
 num_outputs              = 2
@@ -108,12 +111,12 @@ compatibility_threshold  = 3.0
 
 [DefaultStagnation]
 species_fitness_func     = max
-max_stagnation           = 20
-species_elitism          = 2
+max_stagnation           = 15
+species_elitism          = 3
 
 [DefaultReproduction]
-elitism                  = 2
-survival_threshold       = 0.2
+elitism                  = 3
+survival_threshold       = 0.25
 min_species_size         = 2
 
 # Comment regarding Population Size:
