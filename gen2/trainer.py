@@ -35,10 +35,13 @@ class DDQNAgent:
 
         self.steps_done = 0
 
+    def get_epsilon(self):
+        return EPS_END + (EPS_START - EPS_END) * \
+            np.exp(-1. * self.steps_done / EPS_DECAY)
+
     def select_action(self, state):
         sample = random.random()
-        eps_threshold = EPS_END + (EPS_START - EPS_END) * \
-            np.exp(-1. * self.steps_done / EPS_DECAY)
+        eps_threshold = self.get_epsilon()
         self.steps_done += 1
 
         if sample > eps_threshold:
@@ -86,6 +89,11 @@ def train():
 
     num_episodes = 500
 
+    # Init stats file
+    stats_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'matrix_stats.csv')
+    with open(stats_file, 'w') as f:
+        f.write("Episode,Steps,Reward,Epsilon\n")
+
     print("Starting Matrix-based Slither.io Training...")
 
     for i_episode in range(num_episodes):
@@ -98,7 +106,7 @@ def train():
         # But step is slow.
         for t in range(1000):
             action = agent.select_action(state)
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, info = env.step(action)
 
             # Store in memory
             agent.memory.append((state, action, reward, next_state, done))
@@ -110,7 +118,12 @@ def train():
             agent.optimize_model()
 
             if done:
-                print(f"Episode {i_episode} finished after {t+1} steps. Reward: {total_reward:.2f}")
+                eps = agent.get_epsilon()
+                print(f"Episode {i_episode} finished after {t+1} steps. Reward: {total_reward:.2f}. Cause: {info.get('cause', 'Unknown')}")
+
+                # Log stats
+                with open(stats_file, 'a') as f:
+                    f.write(f"{i_episode},{t+1},{total_reward:.2f},{eps:.4f}\n")
                 break
 
             # Target update
