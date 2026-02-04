@@ -2,15 +2,15 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 67
+Total evaluations: 70
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min   
 ------------------------------------------
-Fitness            3294.4   8760.3  2148.5
-Survival Time (s)  93.0     126.5   62.8  
+Fitness            3255.3   8760.3  2148.5
+Survival Time (s)  92.5     126.5   62.8  
 Food Eaten         27.6     42      25    
 Max Length         27.6     42      25    
 
@@ -19,19 +19,19 @@ Max Length         27.6     42      25
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation          52 ( 77.6%) ████████████████████████████████████████
-  Unknown             15 ( 22.4%) ███████████
+  Starvation          55 ( 78.6%) ████████████████████████████████████████
+  Unknown             15 ( 21.4%) ██████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change
 -----------------------------------------
-Avg Fitness   3294.4     3294.4    → +0.0
+Avg Fitness   3255.3     3255.3    → +0.0
 Avg Food      27.6       27.6      → +0.0
 Avg Length    27.6       27.6      → +0.0
-Avg Survival  93.0       93.0      → +0.0
-Bots that ate food: 67% → 67%
+Avg Survival  92.5       92.5      → +0.0
+Bots that ate food: 70% → 70%
 
 ──────────────────────────────────────────────────────────────────────
   TOP 10 PERFORMERS
@@ -54,4 +54,4 @@ Bots that ate food: 67% → 67%
 ──────────────────────────────────────────────────────────────────────
 Need at least 200 evaluations for learning assessment.
 
-Analysis completed at 2026-02-04 06:36:07
+Analysis completed at 2026-02-04 06:37:09
