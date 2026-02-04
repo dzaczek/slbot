@@ -226,7 +226,7 @@ class SpatialAwareness:
         for i in range(self.num_sectors):
             # Calculate the direction this sector points to
             sector_angle = i * self.sector_angle
-            sector_abs_angle = my_angle + sector_angle - math.pi  # Adjust for sector 0 = ahead
+            sector_abs_angle = my_angle + sector_angle # Sector 0 is ahead (relative angle 0)
             
             # Check distance to wall in this direction
             test_x = mx + MAX_DIST * math.cos(sector_abs_angle)
@@ -234,14 +234,15 @@ class SpatialAwareness:
             test_dist_from_center = math.hypot(test_x - center_x, test_y - center_y)
             
             # If test point would be beyond wall
-            if test_dist_from_center > self.map_radius * 0.95:
+            if test_dist_from_center > self.map_radius:
                 # Calculate actual distance to wall in this direction
-                actual_dist_to_wall = self.map_radius * 0.95 - dist_from_center
+                # Use strict map radius (21600) instead of 0.95 buffer to fix sensor blindness
+                actual_dist_to_wall = self.map_radius - dist_from_center
                 
                 if actual_dist_to_wall < MAX_DIST:
                     wall_danger = 1.0 - (actual_dist_to_wall / MAX_DIST)
                     wall_danger = max(wall_danger, 0.0)
-                    wall_danger = min(wall_danger * 1.5, 1.0)  # Boost wall danger!
+                    wall_danger = min(wall_danger * 2.0, 1.0)  # Higher boost for wall danger
                     
                     # Set as body danger (collision = death)
                     if wall_danger > body_proximity[i]:
