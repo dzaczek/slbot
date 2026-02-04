@@ -5,9 +5,6 @@ from collections import namedtuple
 import numpy as np
 import math
 
-pygame.init()
-font = pygame.font.Font(pygame.font.get_default_font(), 25)
-
 class Direction(Enum):
     RIGHT = 1
     LEFT = 2
@@ -29,12 +26,24 @@ BLUE2 = (0, 100, 255)
 BLACK = (0, 0, 0)
 
 class SnakeGameAI:
-    def __init__(self, w=GRID_SIZE*BLOCK_SIZE, h=GRID_SIZE*BLOCK_SIZE):
+    def __init__(self, w=GRID_SIZE*BLOCK_SIZE, h=GRID_SIZE*BLOCK_SIZE, render=True):
         self.w = w
         self.h = h
+        self.render_mode = render
+
+        # Lazy Init pygame
+        if not pygame.get_init():
+            pygame.init()
+
         # Init display
-        self.display = pygame.display.set_mode((self.w, self.h))
-        pygame.display.set_caption('Snake')
+        if self.render_mode:
+            self.font = pygame.font.Font(pygame.font.get_default_font(), 25)
+            self.display = pygame.display.set_mode((self.w, self.h))
+            pygame.display.set_caption('Snake')
+        else:
+            self.display = None
+            self.font = None
+
         self.clock = pygame.time.Clock()
         self.reset()
 
@@ -128,6 +137,9 @@ class SnakeGameAI:
         return False
 
     def _update_ui(self):
+        if not self.render_mode:
+            return
+
         self.display.fill(BLACK)
 
         for pt in self.snake:
@@ -136,8 +148,9 @@ class SnakeGameAI:
 
         pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x*BLOCK_SIZE, self.food.y*BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
 
-        text = font.render("Score: " + str(self.score), True, WHITE)
-        self.display.blit(text, [0, 0])
+        if self.font:
+            text = self.font.render("Score: " + str(self.score), True, WHITE)
+            self.display.blit(text, [0, 0])
         pygame.display.flip()
 
     def _move(self, action):
