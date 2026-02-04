@@ -2,35 +2,35 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 374
+Total evaluations: 378
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min  
 -----------------------------------------
-Fitness            3232.4   8760.3  284.8
-Survival Time (s)  93.2     126.8   60.0 
-Food Eaten         27.3     46      2    
-Max Length         27.3     46      2    
+Fitness            3216.6   8760.3  283.9
+Survival Time (s)  93.0     126.8   60.0 
+Food Eaten         27.2     46      2    
+Max Length         27.2     46      2    
 
 ──────────────────────────────────────────────────────────────────────
   CAUSE OF DEATH
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation         290 ( 77.5%) ████████████████████████████████████████
-  Unknown             84 ( 22.5%) ███████████
+  Starvation         294 ( 77.8%) ████████████████████████████████████████
+  Unknown             84 ( 22.2%) ███████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change  
 -------------------------------------------
-Avg Fitness   3291.3     3128.1    ↓ -163.3
-Avg Food      27.8       26.7      ↓ -1.1  
-Avg Length    27.8       26.7      ↓ -1.1  
-Avg Survival  93.9       91.4      ↓ -2.5  
+Avg Fitness   3291.3     3065.1    ↓ -226.3
+Avg Food      27.8       26.4      ↓ -1.4  
+Avg Length    27.8       26.4      ↓ -1.4  
+Avg Survival  93.9       90.9      ↓ -3.0  
 Bots that ate food: 100% → 100%
 
 ──────────────────────────────────────────────────────────────────────
@@ -53,10 +53,10 @@ Bots that ate food: 100% → 100%
   LEARNING ASSESSMENT
 ──────────────────────────────────────────────────────────────────────
 Improvement (2nd half vs 1st half):
-✗ Fitness:  -363.5 (NO IMPROVEMENT)
-✗ Food:     -0.5 (NOT LEARNING TO EAT!)
+✗ Fitness:  -370.3 (NO IMPROVEMENT)
+✗ Food:     -0.7 (NOT LEARNING TO EAT!)
 
 Recommendations:
 ⚠ No fitness improvement - Consider restarting with fresh population
 
-Analysis completed at 2026-02-04 08:17:09
+Analysis completed at 2026-02-04 08:18:11
