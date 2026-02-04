@@ -2,36 +2,36 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 96
+Total evaluations: 97
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min   
 ------------------------------------------
-Fitness            3227.4   8760.3  2148.5
-Survival Time (s)  93.2     126.5   62.8  
-Food Eaten         27.6     46      25    
-Max Length         27.6     46      25    
+Fitness            3229.7   8760.3  2148.5
+Survival Time (s)  93.1     126.5   62.8  
+Food Eaten         27.8     46      25    
+Max Length         27.8     46      25    
 
 ──────────────────────────────────────────────────────────────────────
   CAUSE OF DEATH
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation          76 ( 79.2%) ████████████████████████████████████████
-  Unknown             20 ( 20.8%) ██████████
+  Starvation          77 ( 79.4%) ████████████████████████████████████████
+  Unknown             20 ( 20.6%) ██████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change
 -----------------------------------------
-Avg Fitness   3227.4     3227.4    → +0.0
-Avg Food      27.6       27.6      → +0.0
-Avg Length    27.6       27.6      → +0.0
-Avg Survival  93.2       93.2      → +0.0
-Bots that ate food: 96% → 96%
+Avg Fitness   3229.7     3229.7    → +0.0
+Avg Food      27.8       27.8      → +0.0
+Avg Length    27.8       27.8      → +0.0
+Avg Survival  93.1       93.1      → +0.0
+Bots that ate food: 97% → 97%
 
 ──────────────────────────────────────────────────────────────────────
   TOP 10 PERFORMERS
@@ -54,4 +54,4 @@ Bots that ate food: 96% → 96%
 ──────────────────────────────────────────────────────────────────────
 Need at least 200 evaluations for learning assessment.
 
-Analysis completed at 2026-02-04 06:45:24
+Analysis completed at 2026-02-04 06:46:26
