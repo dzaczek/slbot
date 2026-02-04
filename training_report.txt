@@ -2,14 +2,14 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 322
+Total evaluations: 325
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min   
 ------------------------------------------
-Fitness            3254.6   8760.3  1515.1
+Fitness            3258.5   8760.3  1515.1
 Survival Time (s)  93.5     126.8   62.8  
 Food Eaten         27.5     46      17    
 Max Length         27.5     46      17    
@@ -19,18 +19,18 @@ Max Length         27.5     46      17
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation         249 ( 77.3%) ████████████████████████████████████████
-  Unknown             73 ( 22.7%) ███████████
+  Starvation         251 ( 77.2%) ████████████████████████████████████████
+  Unknown             74 ( 22.8%) ███████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change  
 -------------------------------------------
-Avg Fitness   3291.3     3051.7    ↓ -239.6
+Avg Fitness   3291.3     3089.4    ↓ -202.0
 Avg Food      27.8       27.1      ↓ -0.7  
 Avg Length    27.8       27.1      ↓ -0.7  
-Avg Survival  93.9       91.0      ↓ -2.9  
+Avg Survival  93.9       91.7      ↓ -2.2  
 Bots that ate food: 100% → 100%
 
 ──────────────────────────────────────────────────────────────────────
@@ -53,10 +53,10 @@ Bots that ate food: 100% → 100%
   LEARNING ASSESSMENT
 ──────────────────────────────────────────────────────────────────────
 Improvement (2nd half vs 1st half):
-✗ Fitness:  -289.3 (NO IMPROVEMENT)
+✗ Fitness:  -264.6 (NO IMPROVEMENT)
 ✗ Food:     -0.3 (NOT LEARNING TO EAT!)
 
 Recommendations:
 ⚠ No fitness improvement - Consider restarting with fresh population
 
-Analysis completed at 2026-02-04 08:00:39
+Analysis completed at 2026-02-04 08:01:41
