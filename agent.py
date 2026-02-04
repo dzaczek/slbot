@@ -167,11 +167,13 @@ def train():
 
             print(f'Game {agent.n_games} Score {score} Record {record} Eps {agent.epsilon:.2f}')
 
+            # Log to file
+            with open('ddqn_stats.csv', 'a') as f:
+                f.write(f'{agent.n_games},{score},{record},{agent.epsilon:.4f}\n')
+
             # Decay epsilon
             if agent.epsilon > agent.epsilon_min:
                 agent.epsilon *= agent.epsilon_decay
-
-            # Optional: Add plotting logic here if needed, or save to file
 
 if __name__ == '__main__':
     train()
