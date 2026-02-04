@@ -2,15 +2,15 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 623
+Total evaluations: 627
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min  
 -----------------------------------------
-Fitness            3256.7   9507.7  273.0
-Survival Time (s)  94.0     127.2   60.0 
+Fitness            3263.1   9507.7  273.0
+Survival Time (s)  94.2     129.4   60.0 
 Food Eaten         27.1     47      2    
 Max Length         27.1     47      2    
 
@@ -19,18 +19,18 @@ Max Length         27.1     47      2
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation         476 ( 76.4%) ████████████████████████████████████████
-  Unknown            147 ( 23.6%) ████████████
+  Starvation         478 ( 76.2%) ████████████████████████████████████████
+  Unknown            149 ( 23.8%) ████████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change  
 -------------------------------------------
-Avg Fitness   3291.3     3442.4    ↑ +151.1
+Avg Fitness   3291.3     3477.9    ↑ +186.5
 Avg Food      27.8       27.4      ↓ -0.4  
 Avg Length    27.8       27.4      ↓ -0.4  
-Avg Survival  93.9       98.7      ↑ +4.8  
+Avg Survival  93.9       99.5      ↑ +5.6  
 Bots that ate food: 100% → 100%
 
 ──────────────────────────────────────────────────────────────────────
@@ -53,9 +53,9 @@ Bots that ate food: 100% → 100%
   LEARNING ASSESSMENT
 ──────────────────────────────────────────────────────────────────────
 Improvement (2nd half vs 1st half):
-✓ Fitness:  +47.3 (GOOD - Bot is learning!)
+✓ Fitness:  +57.5 (GOOD - Bot is learning!)
 ✗ Food:     -0.7 (NOT LEARNING TO EAT!)
 
 Recommendations:
 
-Analysis completed at 2026-02-04 09:41:45
+Analysis completed at 2026-02-04 09:42:47
