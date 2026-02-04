@@ -2,7 +2,7 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 195
+Total evaluations: 199
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
@@ -10,7 +10,7 @@ Total evaluations: 195
 Metric             Average  Max     Min   
 ------------------------------------------
 Fitness            3373.4   8760.3  2148.5
-Survival Time (s)  94.5     126.8   62.8  
+Survival Time (s)  94.4     126.8   62.8  
 Food Eaten         27.6     46      25    
 Max Length         27.6     46      25    
 
@@ -19,18 +19,18 @@ Max Length         27.6     46      25
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation         145 ( 74.4%) ████████████████████████████████████████
-  Unknown             50 ( 25.6%) █████████████
+  Starvation         148 ( 74.4%) ████████████████████████████████████████
+  Unknown             51 ( 25.6%) █████████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change  
 -------------------------------------------
-Avg Fitness   3291.3     3505.8    ↑ +214.4
-Avg Food      27.8       27.6      ↓ -0.3  
-Avg Length    27.8       27.6      ↓ -0.3  
-Avg Survival  93.9       96.0      ↑ +2.1  
+Avg Fitness   3291.3     3488.0    ↑ +196.6
+Avg Food      27.8       27.4      ↓ -0.5  
+Avg Length    27.8       27.4      ↓ -0.5  
+Avg Survival  93.9       95.2      ↑ +1.3  
 Bots that ate food: 100% → 100%
 
 ──────────────────────────────────────────────────────────────────────
@@ -54,4 +54,4 @@ Bots that ate food: 100% → 100%
 ──────────────────────────────────────────────────────────────────────
 Need at least 200 evaluations for learning assessment.
 
-Analysis completed at 2026-02-04 07:19:24
+Analysis completed at 2026-02-04 07:20:26
