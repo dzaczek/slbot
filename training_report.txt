@@ -2,14 +2,14 @@
   SLITHER.IO NEAT BOT - TRAINING ANALYSIS
 ======================================================================
 File: training_stats.csv
-Total evaluations: 533
+Total evaluations: 536
 
 ──────────────────────────────────────────────────────────────────────
   OVERALL STATISTICS
 ──────────────────────────────────────────────────────────────────────
 Metric             Average  Max     Min  
 -----------------------------------------
-Fitness            3238.3   9507.7  273.0
+Fitness            3241.4   9507.7  273.0
 Survival Time (s)  93.4     127.2   60.0 
 Food Eaten         27.0     47      2    
 Max Length         27.0     47      2    
@@ -19,18 +19,18 @@ Max Length         27.0     47      2
 ──────────────────────────────────────────────────────────────────────
 
   Deaths by Cause
-  Starvation         409 ( 76.7%) ████████████████████████████████████████
-  Unknown            124 ( 23.3%) ████████████
+  Starvation         411 ( 76.7%) ████████████████████████████████████████
+  Unknown            125 ( 23.3%) ████████████
 
 ──────────────────────────────────────────────────────────────────────
   RECENT PERFORMANCE (Last 100 vs First 100)
 ──────────────────────────────────────────────────────────────────────
 Metric        First 100  Last 100  Change 
 ------------------------------------------
-Avg Fitness   3291.3     3316.0    ↑ +24.7
+Avg Fitness   3291.3     3357.1    ↑ +65.7
 Avg Food      27.8       26.2      ↓ -1.6 
 Avg Length    27.8       26.2      ↓ -1.6 
-Avg Survival  93.9       93.7      ↓ -0.3 
+Avg Survival  93.9       94.2      ↑ +0.2 
 Bots that ate food: 100% → 100%
 
 ──────────────────────────────────────────────────────────────────────
@@ -53,10 +53,10 @@ Bots that ate food: 100% → 100%
   LEARNING ASSESSMENT
 ──────────────────────────────────────────────────────────────────────
 Improvement (2nd half vs 1st half):
-✗ Fitness:  -61.3 (NO IMPROVEMENT)
+✗ Fitness:  -73.0 (NO IMPROVEMENT)
 ✗ Food:     -1.0 (NOT LEARNING TO EAT!)
 
 Recommendations:
 ⚠ No fitness improvement - Consider restarting with fresh population
 
-Analysis completed at 2026-02-04 09:09:46
+Analysis completed at 2026-02-04 09:10:48
