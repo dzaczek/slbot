@@ -24,6 +24,51 @@ EPS_DECAY = 10000
 TARGET_UPDATE = 1000
 MEMORY_SIZE = 10000
 
+class TrainingSupervisor:
+    """
+    Monitors training progress to detect stagnation or degradation.
+    """
+    def __init__(self, patience=50, improvement_threshold=0.01, degradation_threshold=0.5):
+        self.patience = patience
+        self.improvement_threshold = improvement_threshold
+        self.degradation_threshold = degradation_threshold
+
+        self.rewards_window = deque(maxlen=50) # Moving average window
+        self.best_avg_reward = -float('inf')
+        self.episodes_since_improvement = 0
+
+        self.actions_log = []
+
+    def step(self, episode_reward):
+        self.rewards_window.append(episode_reward)
+
+        if len(self.rewards_window) < 10:
+            return None # Not enough data
+
+        current_avg = np.mean(self.rewards_window)
+
+        # Check for improvement
+        if current_avg > self.best_avg_reward + self.improvement_threshold:
+            self.best_avg_reward = current_avg
+            self.episodes_since_improvement = 0
+            return "SAVE_CHECKPOINT"
+
+        self.episodes_since_improvement += 1
+
+        # Check for stagnation
+        if self.episodes_since_improvement >= self.patience:
+            self.episodes_since_improvement = 0 # Reset to give time for LR decay to work
+            return "DECAY_LR"
+
+        # Check for degradation
+        # If current avg drops below 50% of best (and best is positive)
+        if self.best_avg_reward > 0 and current_avg < self.best_avg_reward * self.degradation_threshold:
+             # Just a warning or stop? For now, let's just log.
+             # Returning STOP might be too aggressive if random variance.
+             return "WARNING_DEGRADATION"
+
+        return None
+
 def worker(remote, parent_remote, worker_id, headless, nickname):
     parent_remote.close()
     try:
@@ -37,31 +82,8 @@ def worker(remote, parent_remote, worker_id, headless, nickname):
                 next_state, reward, done, info = env.step(action)
                 if done:
                     # Automatically reset if done
-                    # Note: We return the transition result (done=True)
-                    # The next step from main process will be start of new episode.
-                    # But for the Agent, we need the "next_state" for the buffer.
-                    # Standard practice: Return info about reset?
-                    # Usually: return next_state (which is terminal), and maybe extra info['terminal_observation']
-                    # Here, let's just reset immediately so the worker is ready.
-                    reset_state = env.reset()
-                    # We return next_state (terminal) so the agent learns from death.
-                    # But we also need to tell main process that we reset.
-                    # Let's attach the reset state to info or return it separately?
-                    # For simplicity: Just return the terminal state.
-                    # The main loop will see done=True.
-                    # BUT: The NEXT step's state needs to be the reset_state.
-                    # So we should return (reset_state, reward, done, info) where reset_state is the new start?
-                    # NO. The transition is (s, a, r, s', done). s' must be the terminal state.
-                    # So we return terminal state.
-                    # The worker needs to store the reset state for the *next* step call?
-                    # Or we send 'reset' command explicitly from main?
-                    # Explicit reset is safer for synchronization but slower.
-                    # Let's do auto-reset and return (reset_state, reward, done, info)
-                    # but stash the terminal state in info?
-                    # Standard Gym VectorEnv returns (reset_state, reward, done, info) where info has "terminal_observation".
-
-                    # Let's do that.
                     info['terminal_observation'] = next_state
+                    reset_state = env.reset()
                     next_state = reset_state
 
                 remote.send((next_state, reward, done, info))
@@ -199,10 +221,11 @@ def train(args):
     env = SubprocVecEnv(num_agents=num_agents, view_first=args.view, nickname="MatrixAI")
     agent = DDQNAgent()
 
+    supervisor = TrainingSupervisor()
+    best_model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best_model.pth')
+
     # Init stats file
     stats_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'matrix_stats.csv')
-    # If restarting, maybe append? For now, overwrite as per original logic,
-    # but maybe we should check if file exists? Original overwrote. I'll stick to original behavior.
     with open(stats_file, 'w') as f:
         f.write("Episode,Steps,Reward,Epsilon\n")
 
@@ -214,8 +237,7 @@ def train(args):
     current_steps = [0] * num_agents
     total_episodes_finished = 0
 
-    MAX_EPISODES = 500 # Total episodes across all agents? Or per agent?
-    # Let's say total episodes.
+    MAX_EPISODES = 500
 
     try:
         while total_episodes_finished < MAX_EPISODES:
@@ -241,6 +263,19 @@ def train(args):
                     eps = agent.get_epsilon()
                     cause = infos[i].get('cause', 'Unknown')
                     print(f"Episode finished | Agent {i} | Steps: {current_steps[i]} | Reward: {current_rewards[i]:.2f} | Cause: {cause}")
+
+                    # Supervisor Step
+                    sup_action = supervisor.step(current_rewards[i])
+                    if sup_action == "SAVE_CHECKPOINT":
+                        print(">> SUPERVISOR: New Best Average Reward! Saving model...")
+                        torch.save(agent.policy_net.state_dict(), best_model_path)
+                    elif sup_action == "DECAY_LR":
+                        print(">> SUPERVISOR: Stagnation detected. Decaying Learning Rate.")
+                        for param_group in agent.optimizer.param_groups:
+                            param_group['lr'] *= 0.5
+                            print(f"   New LR: {param_group['lr']}")
+                    elif sup_action == "WARNING_DEGRADATION":
+                        print(">> SUPERVISOR: Warning! Performance degradation detected.")
 
                     with open(stats_file, 'a') as f:
                         f.write(f"{total_episodes_finished},{current_steps[i]},{current_rewards[i]:.2f},{eps:.4f}\n")
@@ -280,8 +315,6 @@ if __name__ == "__main__":
     parser.add_argument("--view", action="store_true", help="Show browser for the first agent")
     args = parser.parse_args()
 
-    # On Windows, spawn is default. On Unix, fork.
-    # multiprocessing needs this protection.
     try:
         train(args)
     except Exception as e:
