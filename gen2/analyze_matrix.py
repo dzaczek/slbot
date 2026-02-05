@@ -49,16 +49,39 @@ def print_table_row(cols, widths, color=Colors.ENDC):
 
 def analyze():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(script_dir, 'matrix_stats.csv')
+    # Try training_stats.csv first (user preference), then matrix_stats.csv
+    possible_files = ['training_stats.csv', 'matrix_stats.csv']
+    csv_path = None
     
-    if not os.path.exists(csv_path):
+    # Check command line argument first
+    if len(sys.argv) > 1:
+        arg_path = sys.argv[1]
+        if os.path.exists(arg_path):
+            csv_path = arg_path
+        elif os.path.exists(os.path.join(script_dir, arg_path)):
+            csv_path = os.path.join(script_dir, arg_path)
+            
+    # If no arg or invalid, check default files
+    if not csv_path:
+        for fname in possible_files:
+            p = os.path.join(script_dir, fname)
+            if os.path.exists(p):
+                csv_path = p
+                break
+    
+    if not csv_path:
         print(colored("❌ No stats file found!", Colors.RED))
-        print(f"   Expected: {csv_path}")
+        print(f"   Expected one of: {possible_files}")
         print("   Run 'python gen2/trainer.py' first.")
         return
     
+    print(colored(f"📂 Analyzing: {os.path.basename(csv_path)}", Colors.CYAN))
+
     try:
         df = pd.read_csv(csv_path)
+        # Normalize column names if needed
+        if 'LR' in df.columns and 'LearningRate' not in df.columns:
+            df['LearningRate'] = df['LR']
     except Exception as e:
         print(colored(f"❌ Error reading CSV: {e}", Colors.RED))
         return
@@ -118,26 +141,33 @@ def analyze():
     # Progress Analysis
     print_section("📈 LEARNING PROGRESS")
     
-    if len(df) >= 100:
-        first_100_avg = df['Reward'].head(100).mean()
-        last_100_avg = df['Reward'].tail(100).mean()
-        improvement = last_100_avg - first_100_avg
+    n_episodes = len(df)
+    window = min(100, max(5, n_episodes // 5))  # Adaptive window: 20% of data or min 5, max 100
+    
+    if n_episodes >= 2 * window:
+        first_avg = df['Reward'].head(window).mean()
+        last_avg = df['Reward'].tail(window).mean()
+        improvement = last_avg - first_avg
         
-        print_stat("First 100 Avg:", f"{first_100_avg:.2f}")
-        print_stat("Last 100 Avg:", f"{last_100_avg:.2f}")
+        print_stat(f"First {window} Avg:", f"{first_avg:.2f}")
+        print_stat(f"Last {window} Avg:", f"{last_avg:.2f}")
         
         if improvement > 0:
-            print_stat("Improvement:", f"+{improvement:.2f}", Colors.GREEN)
+            pct_gain = (improvement / abs(first_avg)) * 100 if first_avg != 0 else 0
+            print_stat("Improvement:", f"+{improvement:.2f} ({pct_gain:+.1f}%)", Colors.GREEN)
         else:
             print_stat("Change:", f"{improvement:.2f}", Colors.RED)
+    else:
+        print_stat("Note:", "Need more data for progress analysis", Colors.DIM)
     
-    # Trend (last 50 episodes)
-    if len(df) >= 50:
-        recent = df.tail(50)
-        slope = np.polyfit(range(50), recent['Reward'].values, 1)[0]
+    # Trend (recent episodes)
+    trend_window = min(50, n_episodes)
+    if n_episodes >= 10:
+        recent = df.tail(trend_window)
+        slope = np.polyfit(range(len(recent)), recent['Reward'].values, 1)[0]
         trend = "📈 Improving" if slope > 0.1 else "📉 Declining" if slope < -0.1 else "➡️ Stable"
         trend_color = Colors.GREEN if slope > 0.1 else Colors.RED if slope < -0.1 else Colors.YELLOW
-        print_stat("Recent Trend:", trend, trend_color)
+        print_stat(f"Trend (last {trend_window}):", trend, trend_color)
     
     # Epsilon Progress
     print_section("🎲 EXPLORATION (EPSILON)")
@@ -161,42 +191,48 @@ def analyze():
     print("└" + "─" * 12 + "┴" + "─" * 12 + "┴" + "─" * 14 + "┘")
     
     # === MOVING AVERAGE WITH STANDARD DEVIATION (Console) ===
-    print_section("📉 MOVING AVERAGE ± STD DEV (last 200 episodes)")
+    print_section("📉 MOVING AVERAGE ± STD DEV")
     
-    if len(df) >= 50:
+    if len(df) >= 10:
         # Divide into chunks for text display
-        window = 50
+        window = max(5, len(df) // 5)  # Dynamic window size
         n_points = min(10, len(df) // window)
         
-        print("│")
-        print("│  Episode Range      │   Avg Reward   │   Std Dev   │  Range (±1σ)")
-        print("├" + "─" * 22 + "┼" + "─" * 16 + "┼" + "─" * 13 + "┼" + "─" * 20)
-        
-        for i in range(n_points):
-            start_idx = len(df) - (n_points - i) * window
-            end_idx = start_idx + window
-            if start_idx < 0:
-                continue
-            chunk = df.iloc[start_idx:end_idx]
-            avg = chunk['Reward'].mean()
-            std = chunk['Reward'].std()
-            ep_start = int(chunk['Episode'].iloc[0])
-            ep_end = int(chunk['Episode'].iloc[-1])
+        if n_points > 0:
+            print("│")
+            print("│  Episode Range      │   Avg Reward   │   Std Dev   │  Range (±1σ)")
+            print("├" + "─" * 22 + "┼" + "─" * 16 + "┼" + "─" * 13 + "┼" + "─" * 20)
             
-            # Color based on average
-            if avg > 0:
-                color = Colors.GREEN
-            elif avg > -20:
-                color = Colors.YELLOW
-            else:
-                color = Colors.RED
+            for i in range(n_points):
+                # Calculate start/end indices to cover the whole range effectively
+                # or just chunks from end
+                start_idx = len(df) - (n_points - i) * window
+                end_idx = start_idx + window
+                
+                if start_idx < 0: continue
+                
+                chunk = df.iloc[start_idx:end_idx]
+                if len(chunk) == 0: continue
+                
+                avg = chunk['Reward'].mean()
+                std = chunk['Reward'].std()
+                ep_start = int(chunk['Episode'].iloc[0])
+                ep_end = int(chunk['Episode'].iloc[-1])
+                
+                # Color based on average
+                if avg > 0:
+                    color = Colors.GREEN
+                elif avg > -20:
+                    color = Colors.YELLOW
+                else:
+                    color = Colors.RED
+                
+                range_str = f"[{avg-std:>7.1f} to {avg+std:>7.1f}]"
+                print(colored(f"│  {ep_start:>5} - {ep_end:<5}     │  {avg:>10.2f}    │  {std:>8.2f}   │  {range_str}", color))
             
-            range_str = f"[{avg-std:>7.1f} to {avg+std:>7.1f}]"
-            print(colored(f"│  {ep_start:>5} - {ep_end:<5}     │  {avg:>10.2f}    │  {std:>8.2f}   │  {range_str}", color))
-        
-        print("└" + "─" * 22 + "┴" + "─" * 16 + "┴" + "─" * 13 + "┴" + "─" * 20)
+            print("└" + "─" * 22 + "┴" + "─" * 16 + "┴" + "─" * 13 + "┴" + "─" * 20)
     else:
-        print("│  (Need at least 50 episodes for this analysis)")
+        print("│  (Need at least 10 episodes for this analysis)")
     
     # === REWARD HISTOGRAM (Console ASCII) ===
     print_section("📊 REWARD DISTRIBUTION (ASCII Histogram)")

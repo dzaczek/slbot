@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import random
+import time
 import os
 from collections import deque
 
@@ -203,7 +204,7 @@ class DDQNAgent:
     def update_target(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def save_checkpoint(self, filepath, episode, supervisor_state=None):
+    def save_checkpoint(self, filepath, episode, max_steps=None, supervisor_state=None):
         checkpoint = {
             'episode': episode,
             'steps_done': self.steps_done,
@@ -212,13 +213,14 @@ class DDQNAgent:
             'optimizer_state': self.optimizer.state_dict(),
             # Saving memory is heavy, maybe skip or save separately?
             # For now skip saving memory to save disk/time
+            'max_steps': max_steps,  # Curriculum state
             'supervisor_state': supervisor_state,
         }
         torch.save(checkpoint, filepath)
 
     def load_checkpoint(self, filepath):
         if not os.path.exists(filepath):
-            return 0, None
+            return 0, 200, None  # episode, max_steps (default), supervisor_state
 
         checkpoint = torch.load(filepath, map_location=self.device)
         self.policy_net.load_state_dict(checkpoint['policy_net_state'])
@@ -226,4 +228,5 @@ class DDQNAgent:
         self.optimizer.load_state_dict(checkpoint['optimizer_state'])
         self.steps_done = checkpoint['steps_done']
 
-        return checkpoint['episode'], checkpoint.get('supervisor_state')
+        max_steps = checkpoint.get('max_steps', 200)  # Default to 200 for old checkpoints
+        return checkpoint['episode'], max_steps, checkpoint.get('supervisor_state')

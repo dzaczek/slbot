@@ -170,6 +170,7 @@ class SlitherBrowser:
         """
         Retrieves game state in a SINGLE JS call.
         Includes limits on returned objects for performance.
+        Also returns the actual view dimensions for correct scaling.
         """
         fetch_js = f"""
         function getGameState() {{
@@ -185,11 +186,29 @@ class SlitherBrowser:
                 return {{ dead: true, in_menu: in_menu }};
             }}
 
+            // Get actual view dimensions from game
+            // gsc = global scale, determines how much world space is visible
+            var canvas = document.getElementById('mc') || document.querySelector('canvas');
+            var canvasW = canvas ? canvas.width : 800;
+            var canvasH = canvas ? canvas.height : 600;
+            var gsc = window.gsc || 0.9;  // global scale (zoom level)
+            
+            // Calculate actual visible world area
+            // Visible width in world units = canvas pixels / scale
+            var viewWidth = canvasW / gsc;
+            var viewHeight = canvasH / gsc;
+            var viewRadius = Math.max(viewWidth, viewHeight) / 2;
+
             // My snake data
             var my_pts = [];
             if (window.slither.pts) {{
-                var step = Math.max(1, Math.floor(window.slither.pts.length / MAX_BODY_PTS));
-                for (var j = 0; j < window.slither.pts.length && my_pts.length < MAX_BODY_PTS; j += step) {{
+                var ptsLen = window.slither.pts.length;
+                // Trim ghost tail dynamically (Increased)
+                var trimCount = Math.floor(ptsLen * 0.15) + Math.floor((window.slither.sp || 5.7) * 2.0);
+                var startIndex = Math.min(ptsLen - 1, trimCount);
+                
+                var step = Math.max(1, Math.floor(ptsLen / MAX_BODY_PTS));
+                for (var j = startIndex; j < ptsLen && my_pts.length < MAX_BODY_PTS; j += step) {{
                     var p = window.slither.pts[j];
                     if (p.xx !== undefined) my_pts.push([p.xx, p.yy]);
                     else if (p.x !== undefined) my_pts.push([p.x, p.y]);
@@ -205,11 +224,12 @@ class SlitherBrowser:
                 pts: my_pts
             }};
 
-            // Foods (limited for performance)
+            // Foods (limited for performance) - only within view radius
             var visible_foods = [];
             if (window.foods && window.foods.length) {{
                 var myX = my_snake.x;
                 var myY = my_snake.y;
+                var viewRadSq = viewRadius * viewRadius * 1.2; // slight buffer
                 
                 // Get closest foods first
                 var foodList = [];
@@ -219,7 +239,10 @@ class SlitherBrowser:
                         var dx = f.rx - myX;
                         var dy = f.ry - myY;
                         var dist = dx*dx + dy*dy;
-                        foodList.push([f.rx, f.ry, f.sz || 1, dist]);
+                        // Only include foods within view
+                        if (dist < viewRadSq) {{
+                            foodList.push([f.rx, f.ry, f.sz || 1, dist]);
+                        }}
                     }}
                 }}
                 
@@ -230,57 +253,250 @@ class SlitherBrowser:
                 }}
             }}
 
-            // Enemies (limited for performance)
+            // Enemies - check if ANY part (head or body) is within view
             var visible_enemies = [];
+            var totalSlithers = window.slithers ? window.slithers.length : 0;
+            
             if (window.slithers && window.slithers.length) {{
-                var enemyList = [];
                 var myX = my_snake.x;
                 var myY = my_snake.y;
+                // Much larger search radius - snake bodies can be very long
+                var searchRadSq = viewRadius * viewRadius * 9; // 3x radius for search
+                var viewRadSq = viewRadius * viewRadius * 1.5; // actual view for filtering points
+                
+                var enemyList = [];
                 
                 for (var i = 0; i < window.slithers.length; i++) {{
                     var s = window.slithers[i];
                     if (s === window.slither) continue;
+                    if (!s || !s.pts) continue;
                     
-                    var dx = s.xx - myX;
-                    var dy = s.yy - myY;
-                    var dist = dx*dx + dy*dy;
-                    enemyList.push([s, dist]);
+                    // Check if head OR any body part is potentially visible
+                    var minDist = Infinity;
+                    var hasVisiblePart = false;
+                    
+                    // Check head
+                    var hdx = (s.xx || 0) - myX;
+                    var hdy = (s.yy || 0) - myY;
+                    var headDist = hdx*hdx + hdy*hdy;
+                    if (headDist < viewRadSq) hasVisiblePart = true;
+                    minDist = Math.min(minDist, headDist);
+                    
+                    // Check some body points (sample every 10th for speed)
+                    if (!hasVisiblePart && s.pts && s.pts.length > 0) {{
+                        var ptsLen = s.pts.length;
+                        // Trim ghost tail dynamically (Increased)
+                        var trimCount = Math.floor(ptsLen * 0.25) + Math.floor((s.sp || 5.7) * 4.0);
+                        var startIndex = Math.min(ptsLen - 1, trimCount);
+                        
+                        var step = Math.max(1, Math.floor(ptsLen / 20));
+                        for (var j = startIndex; j < ptsLen; j += step) {{
+                            var p = s.pts[j];
+                            var px = p.xx !== undefined ? p.xx : (p.x || 0);
+                            var py = p.yy !== undefined ? p.yy : (p.y || 0);
+                            var bdx = px - myX;
+                            var bdy = py - myY;
+                            var bodyDist = bdx*bdx + bdy*bdy;
+                            if (bodyDist < viewRadSq) {{
+                                hasVisiblePart = true;
+                                break;
+                            }}
+                            minDist = Math.min(minDist, bodyDist);
+                        }}
+                    }}
+                    
+                    // Include if any part is visible OR if close enough to matter
+                    if (hasVisiblePart || minDist < searchRadSq) {{
+                        enemyList.push([s, minDist, hasVisiblePart ? 0 : 1]);
+                    }}
                 }}
                 
-                // Sort by distance
-                enemyList.sort(function(a, b) {{ return a[1] - b[1]; }});
+                // Sort: visible first, then by distance
+                enemyList.sort(function(a, b) {{ 
+                    if (a[2] !== b[2]) return a[2] - b[2];
+                    return a[1] - b[1]; 
+                }});
                 
-                // Take closest enemies
+                // Take enemies (prioritize visible ones)
                 for (var i = 0; i < Math.min(enemyList.length, MAX_ENEMIES); i++) {{
                     var s = enemyList[i][0];
                     
-                    // Get limited body points
+                    // Get body points - filter to only those in view
                     var pts = [];
                     if (s.pts) {{
-                        var step = Math.max(1, Math.floor(s.pts.length / MAX_BODY_PTS));
-                        for (var j = 0; j < s.pts.length && pts.length < MAX_BODY_PTS; j += step) {{
+                        var ptsLen = s.pts.length;
+                        // Trim ghost tail dynamically (Increased)
+                        var trimCount = Math.floor(ptsLen * 0.25) + Math.floor((s.sp || 5.7) * 4.0);
+                        var startIndex = Math.min(ptsLen - 1, trimCount);
+                        
+                        var step = Math.max(1, Math.floor(ptsLen / MAX_BODY_PTS));
+                        for (var j = startIndex; j < ptsLen && pts.length < MAX_BODY_PTS; j += step) {{
                             var p = s.pts[j];
-                            if (p.xx !== undefined) pts.push([p.xx, p.yy]);
-                            else if (p.x !== undefined) pts.push([p.x, p.y]);
+                            var px = p.xx !== undefined ? p.xx : (p.x || 0);
+                            var py = p.yy !== undefined ? p.yy : (p.y || 0);
+                            
+                            // Only include points that could be in view
+                            var pdx = px - myX;
+                            var pdy = py - myY;
+                            if (pdx*pdx + pdy*pdy < viewRadSq * 2) {{
+                                pts.push([px, py]);
+                            }}
                         }}
                     }}
 
                     visible_enemies.push({{
                         id: s.id,
-                        x: s.xx,
-                        y: s.yy,
-                        ang: s.ang,
-                        sp: s.sp,
+                        x: s.xx || 0,
+                        y: s.yy || 0,
+                        ang: s.ang || 0,
+                        sp: s.sp || 0,
                         pts: pts
                     }});
                 }}
             }}
 
+            // DETECT DYNAMIC MAP BOUNDARY
+            // Method: Find closest boundary point to snake position
+            var mapRadius = 0;
+            var mapCenterX = 0;
+            var mapCenterY = 0;
+            var distToNearestBoundary = Infinity;
+            var boundarySource = 'none';
+            var possibleMapVars = {{}};
+            
+            // Check for pbx/pby boundary polygon arrays
+            if (typeof window.pbx !== 'undefined' && typeof window.pby !== 'undefined' &&
+                window.pbx && window.pby && window.pbx.length > 5) {{
+                
+                // Find min/max of boundary points to get extent
+                var minX = Infinity, maxX = -Infinity;
+                var minY = Infinity, maxY = -Infinity;
+                var validCount = 0;
+                
+                for (var i = 0; i < window.pbx.length; i++) {{
+                    var px = window.pbx[i];
+                    var py = window.pby[i];
+                    if (px !== 0 || py !== 0) {{
+                        if (px < minX) minX = px;
+                        if (px > maxX) maxX = px;
+                        if (py < minY) minY = py;
+                        if (py > maxY) maxY = py;
+                        validCount++;
+                        
+                        // Calculate distance from snake to this boundary point
+                        var dist = Math.sqrt(Math.pow(px - my_snake.x, 2) + Math.pow(py - my_snake.y, 2));
+                        if (dist < distToNearestBoundary) {{
+                            distToNearestBoundary = dist;
+                        }}
+                    }}
+                }}
+                
+                // VALIDATION: Lower threshold to 3 points (triangle is enough)
+                if (validCount >= 3) {{
+                    var calcRadius = Math.max(maxX - minX, maxY - minY) / 2;
+                    
+                    // VALIDATION: Radius must be reasonable (e.g. > 1000)
+                    if (calcRadius > 1000) {{
+                        mapRadius = calcRadius;
+                        mapCenterX = (minX + maxX) / 2;
+                        mapCenterY = (minY + maxY) / 2;
+                        boundarySource = 'pbxy';
+                        
+                        possibleMapVars['pbx_count'] = validCount;
+                        possibleMapVars['extent'] = Math.round(maxX-minX) + 'x' + Math.round(maxY-minY);
+                        possibleMapVars['center'] = Math.round(mapCenterX) + ',' + Math.round(mapCenterY);
+                        possibleMapVars['radius'] = Math.round(mapRadius);
+                        possibleMapVars['dist_to_boundary'] = Math.round(distToNearestBoundary);
+                    }}
+                }}
+            }}
+            
+            // Fallback to grd if pbx/pby not useful
+            if (mapRadius <= 1000 && typeof window.grd !== 'undefined' && window.grd > 1000) {{
+                mapRadius = window.grd;
+                mapCenterX = window.grd;
+                mapCenterY = window.grd;
+                boundarySource = 'grd';
+                possibleMapVars['grd'] = window.grd;
+            }}
+            
+            // FAILSAFE: If no boundary found, use standard map size
+            if (mapRadius <= 1000) {{
+                mapRadius = 21600;
+                mapCenterX = 21600;
+                mapCenterY = 21600;
+                boundarySource = 'default';
+            }}
+            
+            // ABSOLUTE SAFETY: If snake is extremely far out, clamp coordinates
+            // This prevents "running into void" if map radius calculation fails
+            var distFromCenter = Math.sqrt(Math.pow(my_snake.x - mapCenterX, 2) + Math.pow(my_snake.y - mapCenterY, 2));
+            if (distFromCenter > mapRadius + 500) {{
+                 // If we are way outside what we think is the map, maybe the map is actually bigger?
+                 // Or we are dead. But let's assume we need to show a wall.
+                 // Actually, if we are outside, distToWall will be negative, which is correct (DANGER).
+            }}
+            
+            // Fallback to grd if pbx/pby not useful
+            if (mapRadius <= 100 && typeof window.grd !== 'undefined' && window.grd > 0) {{
+                mapRadius = window.grd;
+                mapCenterX = window.grd;
+                mapCenterY = window.grd;
+                boundarySource = 'grd';
+                possibleMapVars['grd'] = window.grd;
+            }}
+            
+            // Final fallback
+            if (mapRadius <= 100) {{
+                mapRadius = 21600;
+                mapCenterX = 21600;
+                mapCenterY = 21600;
+                boundarySource = 'default';
+            }}
+            
+            // Calculate distance to wall
+            var distToWall;
+            
+            // PREFERRED: Use Circular calculation based on detected parameters
+            // Since Slither map is a circle, this is mathematically more accurate 
+            // than distance to sparse vertices in pbx array.
+            if (mapRadius > 0) {{
+                var distFromCenter = Math.sqrt(Math.pow(my_snake.x - mapCenterX, 2) + Math.pow(my_snake.y - mapCenterY, 2));
+                distToWall = mapRadius - distFromCenter;
+            }} 
+            // FALLBACK: Use vertex distance if circle calc failed
+            else if (distToNearestBoundary < Infinity) {{
+                distToWall = distToNearestBoundary;
+            }} else {{
+                distToWall = 0;
+            }}
+            
             return {{
                 dead: false,
                 self: my_snake,
                 foods: visible_foods,
-                enemies: visible_enemies
+                enemies: visible_enemies,
+                view_radius: viewRadius,
+                gsc: gsc,
+                dist_to_wall: distToWall,
+                map_radius: mapRadius,
+                map_center_x: mapCenterX,
+                map_center_y: mapCenterY,
+                debug: {{
+                    total_slithers: totalSlithers,
+                    visible_enemies: visible_enemies.length,
+                    total_foods: window.foods ? window.foods.length : 0,
+                    visible_foods: visible_foods.length,
+                    dist_to_wall: Math.round(distToWall),
+                    map_radius: Math.round(mapRadius),
+                    map_cx: Math.round(mapCenterX),
+                    map_cy: Math.round(mapCenterY),
+                    snake_x: Math.round(my_snake.x),
+                    snake_y: Math.round(my_snake.y),
+                    dist_from_center: Math.round(distFromCenter),
+                    boundary_source: boundarySource,
+                    map_vars: possibleMapVars  // Return as object, not string
+                }}
             }};
         }}
         return getGameState();
@@ -362,9 +578,476 @@ class SlitherBrowser:
             self._handle_login()
             self.inject_override_script()
 
-    def close(self):
-        """Close browser instance."""
+    def inject_view_plus_overlay(self):
+        """
+        Injects a visual overlay canvas that shows the bot's perception grid.
+        Includes a CLIENT-SIDE RENDER LOOP for real-time (60fps) visualization without lag.
+        """
+        js_code = """
+        (function() {
+            // Remove existing overlay if present
+            var existingContainer = document.getElementById('bot-vision-container');
+            if (existingContainer) existingContainer.remove();
+            
+            // Create container for all elements
+            var container = document.createElement('div');
+            container.id = 'bot-vision-container';
+            container.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;pointer-events:none;';
+            document.body.appendChild(container);
+            
+            // Create overlay canvas
+            var canvas = document.createElement('canvas');
+            canvas.id = 'bot-vision-overlay';
+            canvas.width = 168; // 84 * 2
+            canvas.height = 168;
+            canvas.style.cssText = 'border:2px solid #00ff00;background:rgba(0,0,0,0.8);' +
+                                   'border-radius:5px;display:block;margin-bottom:5px;';
+            container.appendChild(canvas);
+            
+            // Create stats display
+            var stats = document.createElement('div');
+            stats.id = 'bot-vision-stats';
+            stats.style.cssText = 'background:rgba(0,0,0,0.9);padding:6px 8px;border-radius:5px;' +
+                                  'font-size:11px;color:#0f0;font-family:monospace;margin-top:5px;' +
+                                  'line-height:1.4;pointer-events:none;';
+            stats.innerHTML = 'Initializing Real-Time View...';
+            container.appendChild(stats);
+            
+            // Create legend
+            var legend = document.createElement('div');
+            legend.id = 'bot-vision-legend';
+            legend.style.cssText = 'background:rgba(0,0,0,0.8);padding:6px 8px;border-radius:5px;' +
+                                   'font-size:10px;color:white;font-family:monospace;margin-top:5px;' +
+                                   'display:flex;flex-wrap:wrap;gap:4px 10px;max-width:168px;';
+            legend.innerHTML = '<span style="color:#00ff00">■ Food</span>' +
+                               '<span style="color:#ff0000">■ Enemy</span>' +
+                               '<span style="color:#00ffff">■ Self</span>' +
+                               '<span style="color:#ff00ff">■ Wall</span>';
+            container.appendChild(legend);
+
+            // --- REAL-TIME RENDERER ---
+            window.renderBotVisionLoop = function() {
+                requestAnimationFrame(window.renderBotVisionLoop);
+
+                var canvas = document.getElementById('bot-vision-overlay');
+                if (!canvas) return;
+                var ctx = canvas.getContext('2d');
+                
+                // Game checks
+                if (!window.slither || !window.slither.xx) return;
+                
+                // 1. Calculate View Properties (Same logic as get_game_data)
+                var gameCanvas = document.getElementById('mc') || document.querySelector('canvas');
+                var canvasW = gameCanvas ? gameCanvas.width : 800;
+                var canvasH = gameCanvas ? gameCanvas.height : 600;
+                var gsc = window.gsc || 0.9;
+                
+                var viewWidth = canvasW / gsc;
+                var viewHeight = canvasH / gsc;
+                var viewRadius = Math.max(viewWidth, viewHeight) / 2;
+                
+                // Grid setup (84x84)
+                var gridSize = 84;
+                var scale = 2; // Pixel size on overlay
+                
+                // Clear and Status
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Debug Text Helper
+                function drawDebugText(text, y) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = '10px monospace';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(text, 5, y);
+                }
+
+                // Helper: World to Matrix
+                var myX = window.slither.xx;
+                var myY = window.slither.yy;
+                var matrixScale = gridSize / (viewRadius * 2);
+                
+                // ... (rest of toGrid) ...
+                
+                function toGrid(wx, wy) {
+                    var dx = wx - myX;
+                    var dy = wy - myY;
+                    var gx = (dx * matrixScale) + (gridSize / 2);
+                    var gy = (dy * matrixScale) + (gridSize / 2);
+                    return {x: gx, y: gy};
+                }
+
+                // 2. Draw Food (Green)
+                ctx.fillStyle = '#00ff00';
+                if (window.foods) {
+                    var viewRadSq = viewRadius * viewRadius * 1.2;
+                    for (var i = 0; i < window.foods.length; i++) {
+                        var f = window.foods[i];
+                        if (!f || !f.rx) continue;
+                        
+                        // Visibility check
+                        var dx = f.rx - myX;
+                        var dy = f.ry - myY;
+                        if (dx*dx + dy*dy > viewRadSq) continue;
+                        
+                        var p = toGrid(f.rx, f.ry);
+                        if (p.x >= 0 && p.x < gridSize && p.y >= 0 && p.y < gridSize) {
+                            var sz = (f.sz || 1) * matrixScale * scale * 2.5; // Reduced scaling (was 10)
+                            ctx.beginPath();
+                            ctx.arc(p.x * scale, p.y * scale, Math.max(1.5, sz), 0, 2*Math.PI);
+                            ctx.fill();
+                        }
+                    }
+                }
+
+                // 3. Draw Enemies (Red)
+                if (window.slithers) {
+                    var viewRadSq = viewRadius * viewRadius * 1.5;
+                    for (var i = 0; i < window.slithers.length; i++) {
+                        var s = window.slithers[i];
+                        if (s === window.slither) continue;
+                        
+                        // Calculate REAL thickness
+                        // Base width is ~29. sc is scale.
+                        var snakeWidth = (s.sc || 1) * 29;
+                        var gridWidth = snakeWidth * matrixScale * scale;
+                        var drawRadius = Math.max(scale, gridWidth / 2);
+
+                        // Body
+                        ctx.fillStyle = '#ff6600'; // Body color
+                        if (s.pts) {
+                             var ptsLen = s.pts.length;
+                             // TRIM TAIL DYNAMICALLY (Increased):
+                             // Remove ghost points from tail (start of array)
+                             // Trimming ~25% of history points + speed offset to match real visual length
+                             var trimCount = Math.floor(ptsLen * 0.25) + Math.floor((s.sp || 5.7) * 4.0);
+                             var startIndex = Math.min(ptsLen - 1, trimCount);
+                             
+                             var step = Math.max(1, Math.floor(ptsLen / 100));
+                             
+                             for (var j = startIndex; j < ptsLen; j+=step) {
+                                 var pt = s.pts[j];
+                                 var px = pt.xx !== undefined ? pt.xx : (pt.x || 0);
+                                 var py = pt.yy !== undefined ? pt.yy : (pt.y || 0);
+                                 
+                                 var pdx = px - myX;
+                                 var pdy = py - myY;
+                                 if (pdx*pdx + pdy*pdy > viewRadSq) continue;
+
+                                 var pp = toGrid(px, py);
+                                 if (pp.x >= -5 && pp.x < gridSize+5 && pp.y >= -5 && pp.y < gridSize+5) {
+                                     // Tapering logic: Tail is at index 0
+                                     // Reduce radius for the first 20% of the body
+                                     var taperFactor = 1.0;
+                                     if (j < ptsLen * 0.2) {
+                                         taperFactor = 0.3 + (0.7 * (j / (ptsLen * 0.2)));
+                                     }
+                                     
+                                     var currentRadius = drawRadius * taperFactor;
+                                     
+                                     ctx.beginPath();
+                                     ctx.arc(pp.x * scale, pp.y * scale, currentRadius, 0, 2*Math.PI);
+                                     ctx.fill();
+                                 }
+                             }
+                        }
+
+                        // Head
+                        var hx = s.xx || 0;
+                        var hy = s.yy || 0;
+                        var hp = toGrid(hx, hy);
+                        if (hp.x >= -5 && hp.x < gridSize+5 && hp.y >= -5 && hp.y < gridSize+5) {
+                            ctx.fillStyle = '#ff0000'; // Head color
+                            ctx.beginPath();
+                            ctx.arc(hp.x * scale, hp.y * scale, drawRadius * 1.2, 0, 2*Math.PI);
+                            ctx.fill();
+                        }
+                    }
+                }
+
+                // 4. Draw Self (Cyan/Blue)
+                var myWidth = (window.slither.sc || 1) * 29;
+                var myGridWidth = myWidth * matrixScale * scale;
+                var myRadius = Math.max(scale, myGridWidth / 2);
+
+                // Body
+                ctx.fillStyle = '#0088ff';
+                if (window.slither.pts) {
+                    var ptsLen = window.slither.pts.length;
+                    // TRIM TAIL DYNAMICALLY (Self - Increased):
+                    var trimCount = Math.floor(ptsLen * 0.15) + Math.floor((window.slither.sp || 5.7) * 2.0);
+                    var startIndex = Math.min(ptsLen - 1, trimCount);
+                    
+                    var step = Math.max(1, Math.floor(ptsLen / 100));
+                    
+                    for (var j = startIndex; j < ptsLen; j+=step) {
+                        var pt = window.slither.pts[j];
+                        var px = pt.xx !== undefined ? pt.xx : (pt.x || 0);
+                        var py = pt.yy !== undefined ? pt.yy : (pt.y || 0);
+                        var pp = toGrid(px, py);
+                        
+                        // Tapering logic for self
+                        var taperFactor = 1.0;
+                        if (j < ptsLen * 0.2) {
+                            taperFactor = 0.3 + (0.7 * (j / (ptsLen * 0.2)));
+                        }
+                        var currentRadius = myRadius * taperFactor;
+                        
+                        ctx.beginPath();
+                        ctx.arc(pp.x * scale, pp.y * scale, currentRadius, 0, 2*Math.PI);
+                        ctx.fill();
+                    }
+                }
+                // Head
+                ctx.fillStyle = '#00ffff';
+                var sp = toGrid(myX, myY);
+                ctx.beginPath();
+                ctx.arc(sp.x * scale, sp.y * scale, myRadius * 1.2, 0, 2*Math.PI);
+                ctx.fill();
+
+                // 5. Draw Wall/Boundary (Magenta)
+                // DETECT DYNAMIC MAP BOUNDARY (Updated to match get_game_data)
+            // Method: Find closest boundary point to snake position
+            var mapRadius = 0;
+            var mapCenterX = 0;
+            var mapCenterY = 0;
+            var boundarySource = 'def';
+            
+            // Try pbx/pby (Polygon Boundary X/Y)
+            var pbxValid = false;
+            if (typeof window.pbx !== 'undefined' && typeof window.pby !== 'undefined' &&
+                window.pbx && window.pby && window.pbx.length > 5) {
+                
+                var minX = Infinity, maxX = -Infinity;
+                var minY = Infinity, maxY = -Infinity;
+                var validCount = 0;
+                
+                for(var i=0; i<window.pbx.length; i++) {
+                     var px = window.pbx[i]; 
+                     var py = window.pby[i];
+                     if(px!==0 || py!==0) {
+                        if(px<minX) minX=px; if(px>maxX) maxX=px;
+                        if(py<minY) minY=py; if(py>maxY) maxY=py;
+                        validCount++;
+                     }
+                }
+                
+                // VALIDATION: Lower threshold to 3 points (triangle is enough)
+                if (validCount >= 3) {
+                    var calcRadius = Math.max(maxX-minX, maxY-minY)/2;
+                    // VALIDATION: Radius must be reasonable (e.g. > 1000)
+                    if (calcRadius > 1000) {
+                        mapCenterX = (minX+maxX)/2;
+                        mapCenterY = (minY+maxY)/2;
+                        mapRadius = calcRadius;
+                        boundarySource = 'pbx';
+                        pbxValid = true;
+                    }
+                }
+            }
+            
+            if (!pbxValid) {
+                if (typeof window.grd !== 'undefined' && window.grd > 1000) {
+                    mapRadius = window.grd;
+                    mapCenterX = window.grd;
+                    mapCenterY = window.grd;
+                    boundarySource = 'grd';
+                } else {
+                    mapRadius = 21600;
+                    mapCenterX = 21600;
+                    mapCenterY = 21600;
+                    boundarySource = 'def';
+                }
+            }
+
+                // Scan grid for wall pixels (expensive but accurate visualization)
+                // Optimization: Only scan if near wall
+                var distFromCenter = Math.sqrt(Math.pow(myX-mapCenterX, 2) + Math.pow(myY-mapCenterY, 2));
+                var distToWall = mapRadius - distFromCenter;
+                
+                // Debug values for stats (store in window for update function to read)
+                window._botVisionDebug = {
+                    mapRadius: Math.round(mapRadius),
+                    distToWall: Math.round(distToWall),
+                    boundarySource: boundarySource,
+                    viewRadius: Math.round(viewRadius),
+                    pbxCount: window.pbx ? window.pbx.length : 0
+                };
+                
+                // DRAW WALL (New Method: Path with Hole)
+                // Draws the wall area by filling everything OUTSIDE the map circle
+                // We draw this ALWAYS, but only visible parts will show on canvas
+                
+                var centerGrid = toGrid(mapCenterX, mapCenterY);
+                var cx = centerGrid.x * scale;
+                var cy = centerGrid.y * scale;
+                var r = mapRadius * matrixScale * scale;
+
+                ctx.save();
+                ctx.beginPath();
+                // 1. Outer rectangle (entire canvas + huge buffer)
+                ctx.rect(-100, -100, canvas.width+200, canvas.height+200);
+                // 2. Inner circle (map) - drawn COUNTER-CLOCKWISE to create a hole
+                ctx.arc(cx, cy, r, 0, 2 * Math.PI, true);
+                
+                // Fill using 'evenodd' rule to paint only the area between rect and circle
+                // Use bright magenta with transparency
+                ctx.fillStyle = 'rgba(255, 0, 255, 0.4)'; 
+                ctx.fill('evenodd');
+                
+                // Draw boundary line explicitly
+                ctx.strokeStyle = '#ff00ff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.restore();
+
+                // RADAR: Always show direction and distance to wall
+                var vcx = myX - mapCenterX;
+                var vcy = myY - mapCenterY;
+                var distFromMapCenter = Math.sqrt(vcx*vcx + vcy*vcy);
+                
+                // Always draw radar if we have a valid map center
+                if (mapRadius > 0) { 
+                    // Normalize vector towards wall
+                    // If we are at center, choose Up
+                    var nx = 0, ny = -1;
+                    if (distFromMapCenter > 1) {
+                         nx = vcx / distFromMapCenter;
+                         ny = vcy / distFromMapCenter;
+                    }
+                    
+                    // Draw guide line towards nearest wall
+                    var centerP = {x: gridSize/2, y: gridSize/2}; // Center of our view
+                    // Point on the edge of our view grid (for radar arrow)
+                    var arrowDist = (gridSize/2 - 8) * scale;
+                    var ax = centerP.x * scale + nx * arrowDist;
+                    var ay = centerP.y * scale + ny * arrowDist;
+                    
+                    // Draw Arrow
+                    ctx.beginPath();
+                    ctx.arc(ax, ay, 5, 0, 2*Math.PI);
+                    ctx.fillStyle = '#ff00ff'; // Solid Magenta
+                    ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    // Arrow Tip
+                    ctx.beginPath();
+                    ctx.moveTo(ax + nx*8, ay + ny*8);
+                    ctx.lineTo(ax - ny*4, ay + nx*4);
+                    ctx.lineTo(ax + ny*4, ay - nx*4);
+                    ctx.fillStyle = 'white';
+                    ctx.fill();
+                    
+                    // Show text distance near the arrow
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 12px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = "black";
+                    ctx.shadowBlur = 2;
+                    // Offset text slightly towards center to keep it in view
+                    ctx.fillText(Math.round(distToWall), ax - nx*20, ay - ny*20);
+                    ctx.shadowBlur = 0;
+                }
+
+                // Draw PBX vertices explicitly if available (to verify alignment)
+                if (window.pbx && window.pbx.length > 0) {
+                     ctx.fillStyle = '#ffffff'; // White dots for vertices
+                     for(var i=0; i<window.pbx.length; i++) {
+                         var px = window.pbx[i]; var py = window.pby[i];
+                         if (px!=0 || py!=0) {
+                             var p = toGrid(px, py);
+                             // Draw if within reasonable range of canvas
+                             if (p.x >= -20 && p.x < gridSize+20 && p.y >= -20 && p.y < gridSize+20) {
+                                 ctx.fillRect(p.x*scale-1.5, p.y*scale-1.5, 3, 3);
+                             }
+                         }
+                     }
+                }
+
+                // Grid lines
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                for (var i=0; i<=gridSize; i+=10) {
+                    ctx.moveTo(i*scale, 0); ctx.lineTo(i*scale, gridSize*scale);
+                    ctx.moveTo(0, i*scale); ctx.lineTo(gridSize*scale, i*scale);
+                }
+                ctx.stroke();
+
+                // Crosshair
+                var cx = (gridSize/2)*scale + scale/2;
+                var cy = (gridSize/2)*scale + scale/2;
+                ctx.strokeStyle = 'white';
+                ctx.beginPath();
+                ctx.moveTo(cx-5, cy); ctx.lineTo(cx+5, cy);
+                ctx.moveTo(cx, cy-5); ctx.lineTo(cx, cy+5);
+                ctx.stroke();
+            };
+            
+            // Start loop
+            console.log('SlitherBot: Starting Real-Time Render Loop');
+            window.renderBotVisionLoop();
+        })();
+        """
         try:
-            self.driver.quit()
+            self.driver.execute_script(js_code)
+            log("[VIEW-PLUS] Real-Time Overlay injected")
+        except Exception as e:
+            log(f"[VIEW-PLUS] Failed to inject overlay: {e}")
+
+    def update_view_plus_overlay(self, matrix=None, gsc=None, view_radius=None, debug_info=None):
+        """
+        Updates ONLY the stats text. The grid is now rendered Client-Side (JS) for 60fps performance.
+        Matrix argument is ignored but kept for compatibility.
+        """
+        # Stats values
+        gsc_val = float(gsc) if gsc else 0.0
+        
+        # Debug info defaults
+        enemies_total = 0
+        enemies_visible = 0
+        foods_visible = 0
+        dist_to_wall = 0
+        map_radius = 21600
+        snake_x = 0
+        snake_y = 0
+        boundary_source = '?'
+        
+        if debug_info:
+            enemies_total = debug_info.get('total_slithers', 0)
+            enemies_visible = debug_info.get('visible_enemies', 0)
+            foods_visible = debug_info.get('visible_foods', 0)
+            dist_to_wall = debug_info.get('dist_to_wall', 0)
+            map_radius = debug_info.get('map_radius', 21600)
+            snake_x = debug_info.get('snake_x', 0)
+            snake_y = debug_info.get('snake_y', 0)
+            boundary_source = debug_info.get('boundary_source', '?')
+
+        js_code = f"""
+        (function() {{
+            var stats = document.getElementById('bot-vision-stats');
+            if (stats) {{
+                // Use Client-Side Debug Data if available (more accurate to what's rendered)
+                var d = window._botVisionDebug;
+                if (d) {{
+                     var wallStatus = '';
+                     if (d.viewRadius && d.distToWall < d.viewRadius * 2.5) wallStatus = ' <span style="color:#ff00ff;font-weight:bold">⚠ WALL</span>';
+                     
+                     stats.innerHTML = 'src:' + d.boundarySource + ' (' + (d.pbxCount||0) + ' pts) R:' + d.mapRadius + 
+                                       '<br>pos:{snake_x},{snake_y}<br>wall:' + d.distToWall + wallStatus +
+                                       '<br>en:{enemies_visible}/{enemies_total} fd:{foods_visible}';
+                }} else {{
+                     stats.innerHTML = 'src:{boundary_source} R:{map_radius}<br>pos:{snake_x},{snake_y}<br>wall:{dist_to_wall}<br>en:{enemies_visible}/{enemies_total} fd:{foods_visible}';
+                }}
+            }}
+        }})();
+        """
+        try:
+            self.driver.execute_script(js_code)
         except:
             pass
+

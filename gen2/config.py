@@ -25,8 +25,8 @@ class OptimizationConfig:
     gamma: float = 0.99
     grad_clip: float = 10.0
     eps_start: float = 1.0
-    eps_end: float = 0.05
-    eps_decay: int = 100000
+    eps_end: float = 0.1           # Higher minimum exploration (was 0.05)
+    eps_decay: int = 300000        # Slower decay - 3x longer exploration (was 100000)
     target_update_freq: int = 2000
     max_episodes: int = 5000000
     checkpoint_every: int = 50

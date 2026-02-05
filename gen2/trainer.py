@@ -84,7 +84,7 @@ class VecFrameStack:
     def close(self):
         self.venv.close()
 
-def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size):
+def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, view_plus=False):
     parent_remote.close()
     
     picard_names = [
@@ -94,7 +94,7 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
     chosen_name = f"{random.choice(picard_names)}_{worker_id}"
     
     try:
-        env = SlitherEnv(headless=headless, nickname=chosen_name, matrix_size=matrix_size)
+        env = SlitherEnv(headless=headless, nickname=chosen_name, matrix_size=matrix_size, view_plus=view_plus)
 
         while True:
             cmd, data = remote.recv()
@@ -119,14 +119,16 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
         remote.close()
 
 class SubprocVecEnv:
-    def __init__(self, num_agents, matrix_size, view_first=False, nickname="dzaczekAI"):
+    def __init__(self, num_agents, matrix_size, view_first=False, view_plus=False, nickname="dzaczekAI"):
         self.num_agents = num_agents
         self.remotes, self.work_remotes = zip(*[mp.Pipe() for _ in range(num_agents)])
         self.ps = []
 
         for i in range(num_agents):
             is_headless = not (view_first and i == 0)
-            p = mp.Process(target=worker, args=(self.work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size))
+            # Enable view_plus only for the first agent when view mode is active
+            agent_view_plus = view_plus and (i == 0) and not is_headless
+            p = mp.Process(target=worker, args=(self.work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, agent_view_plus))
             p.daemon = True
             p.start()
             self.ps.append(p)
@@ -172,12 +174,15 @@ def train(args):
     print(f"  Model: {cfg.model.architecture} ({cfg.model.activation})")
     print(f"  LR: {cfg.opt.lr}")
     print(f"  PER: {cfg.buffer.prioritized}")
+    print(f"  No-Limit Mode: {args.no_limit}")
+    print(f"  View-Plus Mode: {args.view_plus}")
 
     # Initialize Env
     raw_env = SubprocVecEnv(
         num_agents=cfg.env.num_agents,
         matrix_size=cfg.env.resolution[0], # Assuming square
-        view_first=args.view,
+        view_first=args.view or args.view_plus,  # view_plus implies view
+        view_plus=args.view_plus,
         nickname="AI_Opt"
     )
     env = VecFrameStack(raw_env, k=cfg.env.frame_stack)
@@ -185,19 +190,23 @@ def train(args):
     # Initialize Agent
     agent = DDQNAgent(cfg)
     
+    # Curriculum Settings (default)
+    max_steps_per_episode = 200  # Progressive Episode Limit (Start small)
+
     # Resume
     start_episode = 0
     if args.resume and os.path.exists(checkpoint_path):
-        start_episode, _ = agent.load_checkpoint(checkpoint_path)
-        print(f"Resumed from episode {start_episode}")
+        start_episode, loaded_max_steps, _ = agent.load_checkpoint(checkpoint_path)
+        max_steps_per_episode = loaded_max_steps
+        if args.no_limit:
+            print(f"Resumed from episode {start_episode} (INFINITY MODE - no step limit)")
+        else:
+            print(f"Resumed from episode {start_episode}, max_steps={max_steps_per_episode}")
 
     # Initialize stats file
     if not os.path.exists(stats_file) or not args.resume:
         with open(stats_file, 'w') as f:
             f.write("Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause\n")
-
-    # Curriculum Settings
-    max_steps_per_episode = 200 # Progressive Episode Limit (Start small)
 
     # LR Scheduler (Linear Warmup)
     # 0 to target_lr in 10000 steps
@@ -237,7 +246,7 @@ def train(args):
                 episode_steps[i] += 1
 
                 force_done = False
-                if episode_steps[i] >= max_steps_per_episode:
+                if not args.no_limit and episode_steps[i] >= max_steps_per_episode:
                     force_done = True
 
                 # Treat as done if environment finished OR we force it (TimeLimit)
@@ -264,20 +273,32 @@ def train(args):
                     current_beta = min(1.0, agent.memory.beta_start + agent.memory.frame * (1.0 - agent.memory.beta_start) / agent.memory.beta_frames)
 
                     lr = agent.optimizer.param_groups[0]['lr']
-                    cause = infos[i].get('cause', 'Unknown')
+                    
+                    # Determine cause of episode end
+                    if force_done and not dones[i]:
+                        cause = "MaxSteps"  # Bot survived! Episode ended due to step limit
+                    else:
+                        cause = infos[i].get('cause', 'Unknown')
 
-                    print(f"Ep {start_episode} | Ag {i} | Rw: {episode_rewards[i]:.2f} | St: {episode_steps[i]} | Eps: {eps:.3f} | L: {loss_val:.4f} | {cause}")
+                    # Get extra info for debugging location
+                    pos = infos[i].get('pos', (0,0))
+                    wall_dist = infos[i].get('wall_dist', -1)
+                    pos_str = f"Pos:({pos[0]:.0f},{pos[1]:.0f})"
+                    wall_str = f" Wall:{wall_dist:.0f}" if wall_dist >= 0 else ""
+
+                    print(f"Ep {start_episode} | Ag {i} | Rw: {episode_rewards[i]:.2f} | St: {episode_steps[i]} | Eps: {eps:.3f} | L: {loss_val:.4f} | {cause} | {pos_str}{wall_str}")
 
                     with open(stats_file, 'a') as f:
                         f.write(f"{start_episode},{episode_steps[i]},{episode_rewards[i]:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause}\n")
 
                     if start_episode % cfg.opt.checkpoint_every == 0:
-                        agent.save_checkpoint(checkpoint_path, start_episode)
-
-                        # Curriculum Update
-                        if start_episode % 100 == 0:
-                            max_steps_per_episode += 50
+                        # Curriculum Update (before saving so checkpoint has new value)
+                        # Skip curriculum updates in no-limit mode
+                        if not args.no_limit and start_episode % 100 == 0:
+                            max_steps_per_episode += 100  # Faster progression: +100 every 100 episodes
                             print(f">> Curriculum: Increased max steps to {max_steps_per_episode}")
+                        
+                        agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode)
 
                     episode_rewards[i] = 0
                     episode_steps[i] = 0
@@ -297,7 +318,7 @@ def train(args):
 
     except KeyboardInterrupt:
         print("Interrupted. Saving...")
-        agent.save_checkpoint(checkpoint_path, start_episode)
+        agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode)
     finally:
         env.close()
 
@@ -305,7 +326,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_agents", type=int, default=0, help="Override config num_agents")
     parser.add_argument("--view", action="store_true", help="View first agent")
+    parser.add_argument("--view-plus", action="store_true", help="View first agent with bot vision overlay grid")
     parser.add_argument("--resume", action="store_true", help="Resume")
+    parser.add_argument("--no-limit", action="store_true", help="No step limit (infinity mode)")
     args = parser.parse_args()
 
     mp.set_start_method('spawn', force=True)
