@@ -33,10 +33,19 @@ class VecFrameStack:
         self.frames = [deque(maxlen=k) for _ in range(self.num_agents)]
 
         # Initialize frames with initial reset
+        # We don't call reset here to avoid double reset, or we do?
+        # Standard wrappers often wait for explicit reset.
+        pass
+
+    def reset(self):
         obs = self.venv.reset()
+        stacked_obs = []
         for i, o in enumerate(obs):
-            for _ in range(k):
+            self.frames[i].clear()
+            for _ in range(self.k):
                 self.frames[i].append(o)
+            stacked_obs.append(np.concatenate(list(self.frames[i]), axis=0))
+        return stacked_obs
 
     def step(self, actions):
         obs, rews, dones, infos = self.venv.step(actions)
@@ -201,11 +210,7 @@ def train(args):
     episode_steps = [0] * cfg.env.num_agents
 
     # Initial Reset
-    states = env.frames # Access internal frames from init? No, VecFrameStack init calls reset.
-    # We need to get the first observation.
-    # VecFrameStack.__init__ populated self.frames but didn't return them.
-    # We can just call _get_obs
-    states = env._get_obs()
+    states = env.reset()
 
     try:
         while start_episode < cfg.opt.max_episodes:
@@ -234,34 +239,37 @@ def train(args):
                 force_done = False
                 if episode_steps[i] >= max_steps_per_episode:
                     force_done = True
-                    # Ideally we should send reset to worker, but we can't easily.
-                    # We just treat it as done for training purposes (bootstrap limit).
-                    # But the environment continues.
-                    # This creates a disconnect: Agent thinks it's done, but Env is not.
-                    # Next state will be continuation.
-                    # Standard Gym wrappers handle this by `TimeLimit`.
-                    # For now, we will just NOT force done in the env, but we can treat it as 'done' for memory?
-                    # Actually, if we truncate, done=False usually but we handle bootstrapping.
-                    # Let's simple ignore forcing done for now as handling 'reset' asynchronously is hard without
-                    # 'reset_one' capability in SubprocVecEnv.
-                    pass
 
-                if dones[i]:
-                    # Store transition with terminal state
-                    agent.remember(states[i], actions[i], rewards[i], infos[i]['terminal_observation'], True)
+                # Treat as done if environment finished OR we force it (TimeLimit)
+                # Note: If force_done is True, we use 'next_states[i]' as the next state,
+                # but we mark 'done' as True in memory to reset the return calculation (bootstrapping).
+                # However, for correct bootstrapping in PPO/DQN with TimeLimit, we usually use done=False
+                # and handle 'truncated' separately. But for this simple implementation,
+                # marking done=True is a safe heuristic to prevent infinite loops,
+                # effectively treating timeout as a terminal state "you ran out of time".
+
+                if dones[i] or force_done:
+                    terminal_state = infos[i]['terminal_observation'] if dones[i] else next_states[i]
+
+                    # Store transition
+                    # If force_done, we treat it as done.
+                    agent.remember(states[i], actions[i], rewards[i], terminal_state, True)
 
                     # Log
                     start_episode += 1
                     eps = agent.get_epsilon()
                     loss_val = loss if loss is not None else 0
-                    beta = agent.memory.beta_start # Approximation
+
+                    # Calculate current beta
+                    current_beta = min(1.0, agent.memory.beta_start + agent.memory.frame * (1.0 - agent.memory.beta_start) / agent.memory.beta_frames)
+
                     lr = agent.optimizer.param_groups[0]['lr']
                     cause = infos[i].get('cause', 'Unknown')
 
                     print(f"Ep {start_episode} | Ag {i} | Rw: {episode_rewards[i]:.2f} | St: {episode_steps[i]} | Eps: {eps:.3f} | L: {loss_val:.4f} | {cause}")
 
                     with open(stats_file, 'a') as f:
-                        f.write(f"{start_episode},{episode_steps[i]},{episode_rewards[i]:.2f},{eps:.4f},{loss_val:.4f},{beta:.2f},{lr:.6f},{cause}\n")
+                        f.write(f"{start_episode},{episode_steps[i]},{episode_rewards[i]:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause}\n")
 
                     if start_episode % cfg.opt.checkpoint_every == 0:
                         agent.save_checkpoint(checkpoint_path, start_episode)
