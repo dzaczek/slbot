@@ -14,7 +14,16 @@ from per import PrioritizedReplayBuffer
 class DDQNAgent:
     def __init__(self, config: Config):
         self.config = config
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Device selection: CUDA -> MPS -> CPU
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
+
+        print(f"Agent running on device: {self.device}")
 
         # Calculate input channels (3 base channels * frame_stack)
         self.input_channels = 3 * config.env.frame_stack
