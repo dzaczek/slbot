@@ -1,6 +1,9 @@
-# Slither.io NEAT Bot - Complete Step-by-Step Guide
+# Slither.io NEAT Bot (Gen 1) - Complete Step-by-Step Guide
 
-This guide explains every component of the bot in detail, including how JavaScript injection works, how control is hijacked, and how to run training.
+**NOTE: This guide applies to the Legacy NEAT Bot located in the `gen1/` directory.**
+For the modern Deep Q-Network (DQN) bot, please refer to the `gen2/` directory and `README.md`.
+
+This guide explains every component of the Gen 1 bot in detail, including how JavaScript injection works, how control is hijacked, and how to run training.
 
 ---
 
@@ -41,14 +44,15 @@ pip install -r requirements.txt
 
 ```
 slbot/
-├── config_neat.txt        # NEAT algorithm configuration
-├── browser_engine.py      # Selenium + JS injection logic
-├── spatial_awareness.py   # Converts game state to NN inputs
-├── ai_brain.py            # NEAT network wrapper
-├── training_manager.py    # Main training loop
-├── smoke_test.py          # Verification script
-├── requirements.txt       # Python dependencies
-└── README.md              # Quick start guide
+├── gen1/
+│   ├── config_neat.txt        # NEAT algorithm configuration
+│   ├── browser_engine.py      # Selenium + JS injection logic
+│   ├── spatial_awareness.py   # Converts game state to NN inputs
+│   ├── ai_brain.py            # NEAT network wrapper
+│   ├── training_manager.py    # Main training loop
+│   └── smoke_test.py          # Verification script
+├── gen2/                      # New DQN Bot (see README)
+└── README.md                  # Main documentation
 ```
 
 ---
@@ -78,7 +82,7 @@ SlitherBrowser.__init__()
 
 ### The Injection Code (Explained Line by Line)
 
-Located in `browser_engine.py`, method `inject_override_script()`:
+Located in `gen1/browser_engine.py`, method `inject_override_script()`:
 
 ```javascript
 // STEP 1: Reduce graphics quality (optional optimization)
@@ -140,7 +144,7 @@ function gameLoop() {
 
 ### Our Control Method
 
-In `browser_engine.py`, method `send_action(angle, boost)`:
+In `gen1/browser_engine.py`, method `send_action(angle, boost)`:
 
 ```python
 def send_action(self, angle, boost):
@@ -182,7 +186,7 @@ Calling `driver.execute_script()` has overhead (~5-20ms per call). If we called 
 
 ### The Solution: Single JSON Batch
 
-In `browser_engine.py`, method `get_game_data()`:
+In `gen1/browser_engine.py`, method `get_game_data()`:
 
 ```javascript
 function getGameState() {
@@ -254,7 +258,7 @@ return getGameState();
 When the snake dies, we detect it and restart instantly without reloading the page:
 
 ```python
-# In training_manager.py
+# In gen1/training_manager.py
 data = browser.get_game_data()
 if data.get('dead', False):
     # Snake died - calculate fitness and restart
@@ -305,7 +309,7 @@ The 360° view around the snake is divided into 24 equal sectors (15° each):
 
 ### Trap Detection Algorithm
 
-Located in `spatial_awareness.py`, method `detect_encirclement()`:
+Located in `gen1/spatial_awareness.py`, method `detect_encirclement()`:
 
 ```python
 def detect_encirclement(self, my_pos, enemy_pts):
@@ -351,7 +355,8 @@ source venv/bin/activate
 ### Step 2: Start Training
 
 ```bash
-./venv/bin/python training_manager.py
+cd gen1
+python training_manager.py
 ```
 
 ### What Happens:
@@ -390,7 +395,7 @@ pip install neat-python
 
 ### Chrome doesn't open
 - Ensure Chrome is installed
-- Try: `pip install webdriver-manager` and modify `browser_engine.py` to use it
+- Try: `pip install webdriver-manager` and modify `gen1/browser_engine.py` to use it
 
 ### Game doesn't start
 - The "Play" button might need clicking first time
@@ -413,4 +418,4 @@ After basic training works:
 
 ---
 
-*Created for the Slither.io NEAT Bot project*
+*Created for the Slither.io NEAT Bot project (Gen 1)*

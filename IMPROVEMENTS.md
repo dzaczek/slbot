@@ -1,4 +1,7 @@
-# Bot Improvements - What Was Changed
+# Gen 1 (NEAT) Improvements - What Was Changed
+
+**NOTE: This file documents improvements made to the Gen 1 (NEAT) bot.**
+For Gen 2 (DQN), refer to the code in `gen2/`.
 
 ## Problem
 Bot was dumb - died after 20 seconds from starvation, didn't eat food, just survived the initial time.
@@ -49,15 +52,16 @@ Bot was dumb - died after 20 seconds from starvation, didn't eat food, just surv
 - **Why**: More diversity = faster learning
 
 ### 10. **More Aggressive Evolution**
-- Increased conn_add_prob: 0.6 → 0.7
-- Decreased node_add_prob: 0.3 → 0.2 (slower complexity growth)
-- Increased elitism: 2 → 3 (more best ones survive)
+- **Increased conn_add_prob**: 0.6 → 0.7
+- **Decreased node_add_prob**: 0.3 → 0.2 (slower complexity growth)
+- **Increased elitism**: 2 → 3 (more best ones survive)
 - **Why**: Faster exploration, but with controlled complexity
 
-## How to Resume Training
+## How to Resume Training (Gen 1)
 
 ### Option 1: Continue from Old Genome (Slow Learning)
 ```bash
+cd gen1
 python training_manager.py
 # Will automatically load neat-checkpoint-100
 ```
@@ -66,6 +70,7 @@ python training_manager.py
 
 ### Option 2: START FRESH (RECOMMENDED!)
 ```bash
+cd gen1
 # Backup old checkpoints
 mkdir old_training
 mv neat-checkpoint-* old_training/
@@ -80,12 +85,13 @@ python training_manager.py
 
 ### Option 3: Hybrid - Create New Population with Inspiration
 ```bash
+cd gen1
 # Delete checkpoints but keep training_stats
 rm neat-checkpoint-*
 python training_manager.py
 ```
 
-## What to Expect
+## What to Expect (Gen 1)
 
 ### First 10 Generations:
 - Bot will still die quickly (starvation/collision)
@@ -106,6 +112,7 @@ python training_manager.py
 ## How to Check Progress
 
 ```bash
+cd gen1
 # Analyze statistics
 python analyze_training.py
 
@@ -134,6 +141,7 @@ If bot eats but is too defensive:
 ## Debug Tips
 
 ```bash
+cd gen1
 # View last 50 results
 tail -50 training_stats.csv
 

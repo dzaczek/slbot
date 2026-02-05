@@ -2,3 +2,18 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Training data and checkpoints
+*.pth
+backup_*/
+gen2/backup_*/
+neat-checkpoint-*
+training_stats.csv
+training_stats_old.csv
+gen2/matrix_stats.csv
+fatal_error.log
+temp_slitherbot/
+
+# Browser logs
+chromedriver.log
+geckodriver.log

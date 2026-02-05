@@ -21,7 +21,7 @@ class SlitherBrowser:
     # Limits for performance
     MAX_FOODS = 100      # Max food items to process
     MAX_ENEMIES = 15     # Max enemy snakes to process
-    MAX_BODY_PTS = 50    # Max body points per enemy
+    MAX_BODY_PTS = 100   # Max body points per enemy (increased for better visibility)
     
     def __init__(self, headless=True, nickname="NEATBot"):
         self.nickname = nickname
@@ -186,12 +186,23 @@ class SlitherBrowser:
             }}
 
             // My snake data
+            var my_pts = [];
+            if (window.slither.pts) {{
+                var step = Math.max(1, Math.floor(window.slither.pts.length / MAX_BODY_PTS));
+                for (var j = 0; j < window.slither.pts.length && my_pts.length < MAX_BODY_PTS; j += step) {{
+                    var p = window.slither.pts[j];
+                    if (p.xx !== undefined) my_pts.push([p.xx, p.yy]);
+                    else if (p.x !== undefined) my_pts.push([p.x, p.y]);
+                }}
+            }}
+
             var my_snake = {{
                 x: window.slither.xx,
                 y: window.slither.yy,
                 ang: window.slither.ang,
                 sp: window.slither.sp,
-                len: window.slither.pts ? window.slither.pts.length : 0
+                len: window.slither.pts ? window.slither.pts.length : 0,
+                pts: my_pts
             }};
 
             // Foods (limited for performance)

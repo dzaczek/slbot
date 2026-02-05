@@ -16,24 +16,24 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from slither_env import SlitherEnv
 from model import MatrixPolicy
 
-BATCH_SIZE = 64 # Smaller batch for slower Selenium
-GAMMA = 0.99
-EPS_START = 1.0
-EPS_END = 0.05  # Lower minimum exploration
-EPS_DECAY = 50000  # Much slower decay (was 10000)
-TARGET_UPDATE = 1000
-MEMORY_SIZE = 50000  # Larger replay buffer
+BATCH_SIZE = 64       # Smaller batch for slower Selenium
+GAMMA = 0.99          # Discount factor
+EPS_START = 1.0       # Start with full exploration
+EPS_END = 0.05        # Minimum exploration
+EPS_DECAY = 100000    # Much slower decay for longer exploration (was 50000)
+TARGET_UPDATE = 2000  # Less frequent target updates for stability (was 1000)
+MEMORY_SIZE = 100000  # Larger replay buffer to retain good experiences (was 50000)
 
 class TrainingSupervisor:
     """
     Monitors training progress to detect stagnation or degradation.
     """
-    def __init__(self, patience=50, improvement_threshold=0.01, degradation_threshold=0.5):
+    def __init__(self, patience=100, improvement_threshold=0.01, degradation_threshold=0.4):
         self.patience = patience
         self.improvement_threshold = improvement_threshold
         self.degradation_threshold = degradation_threshold
 
-        self.rewards_window = deque(maxlen=50) # Moving average window
+        self.rewards_window = deque(maxlen=100) # Moving average window (increased for stability)
         self.best_avg_reward = -float('inf')
         self.episodes_since_improvement = 0
 
@@ -117,7 +117,7 @@ def worker(remote, parent_remote, worker_id, headless, nickname):
         remote.close()
 
 class SubprocVecEnv:
-    def __init__(self, num_agents, view_first=False, nickname="MatrixAI"):
+    def __init__(self, num_agents, view_first=False, nickname="dzaczekAI"):
         self.num_agents = num_agents
         self.remotes, self.work_remotes = zip(*[mp.Pipe() for _ in range(num_agents)])
         self.ps = []
@@ -353,7 +353,16 @@ def train(args):
                             param_group['lr'] *= 0.5
                             print(f"   New LR: {param_group['lr']}")
                     elif sup_action == "WARNING_DEGRADATION":
-                        print(">> SUPERVISOR: Warning! Performance degradation.")
+                        print(">> SUPERVISOR: CRITICAL DEGRADATION! Rolling back to best model...")
+                        # Load best model weights to policy net
+                        if os.path.exists(best_model_path):
+                            agent.policy_net.load_state_dict(torch.load(best_model_path))
+                            agent.update_target() # Sync target net immediately
+                            # Reset optimizer to prevent momentum from pushing in the wrong direction again
+                            # (Optional, but usually safer to keep LR but clear state, here we just keep going)
+                            print("   >> Rollback complete. Resumed from best state.")
+                        else:
+                            print("   >> Error: No best model to rollback to!")
 
                     # Write stats
                     mem_size = len(agent.memory)

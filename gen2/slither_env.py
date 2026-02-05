@@ -4,7 +4,7 @@ import sys
 import os
 
 # Add parent directory to path to import browser_engine
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from browser_engine import SlitherBrowser
 
 class SlitherEnv:
@@ -137,8 +137,8 @@ class SlitherEnv:
         """
         Converts raw JSON data to a 3-channel Matrix (64x64).
         Channel 0: Food
-        Channel 1: Enemies (Head = 1.0, Body = 0.5)
-        Channel 2: Self (Head = 1.0, Body = 0.5) + Walls (1.0)
+        Channel 1: Enemies (Head = 1.0, Body = 0.5) + Walls (1.0) -> DANGER
+        Channel 2: Self (Head = 1.0, Body = 0.5) -> SAFE/SELF
         """
         matrix = np.zeros((3, self.matrix_size, self.matrix_size), dtype=np.float32)
 
@@ -202,37 +202,44 @@ class SlitherEnv:
 
         # 3. Self & Walls (Channel 2)
         # Self Head
-        # Always center? Yes, but drawing it helps convolution see it
         cx, cy = self.matrix_size // 2, self.matrix_size // 2
         matrix[2, cy, cx] = 1.0
 
-        # Self Body?
-        # browser_engine.get_game_data doesn't return my body points in 'self'
-        # It only returns 'pts' length.
-        # So we can't draw our own body unless we track it or modify browser_engine.
-        # For now, ignore self body (assuming we know where we are).
+        # Self Body (now available via 'pts' in 'self')
+        for pt in my_snake.get('pts', []):
+            px, py = pt[0], pt[1]
+            bx, by = world_to_matrix(px, py)
+            if 0 <= bx < self.matrix_size and 0 <= by < self.matrix_size:
+                matrix[2, by, bx] = 0.5 # Body
 
-        # Walls
-        # Check corners of view
-        # Map radius is 21600. Center is 21600, 21600.
-        # If mx + view_size > 2 * radius ... etc
-        # Simple rasterization: check every pixel? Too slow.
-        # Check boundary intersection.
-        # Or just checking if a point in matrix corresponds to out of bounds.
-
-        # Optimization: Just check distance from center
+        # Walls (Channel 1 - DANGER)
+        # Check boundary intersection efficiently using numpy
         map_center = 21600
         dist_from_map_center = math.hypot(mx - map_center, my - map_center)
+        
+        # Only calculate if wall is potentially visible (within view range)
         if dist_from_map_center + self.view_size > map_center:
-             # Wall is visible
-             pass
-             # For every pixel in matrix, calc world coord, check dist > radius
-             # This is slow in python.
-             # Approximate: Draw a big circle?
-             # Let's skip drawing walls for now, assume inputs handle it?
-             # Or simpler:
-             # Calculate nearest point on wall circle.
-             pass
+             y_grid, x_grid = np.ogrid[:self.matrix_size, :self.matrix_size]
+             
+             # Convert matrix coords to world coords
+             # mat_x = (dx * scale) + size/2  => dx = (mat_x - size/2) / scale
+             dx_world = (x_grid - (self.matrix_size / 2)) / self.scale
+             dy_world = (y_grid - (self.matrix_size / 2)) / self.scale
+             
+             wx = mx + dx_world
+             wy = my + dy_world
+             
+             # Squared distance from map center
+             dist_sq = (wx - map_center)**2 + (wy - map_center)**2
+             
+             # Radius squared
+             radius_sq = self.map_radius**2
+             
+             # Mask where dist > radius (outside map)
+             wall_mask = dist_sq > radius_sq
+             
+             # Draw walls as solid obstacles in ENEMY channel (Danger)
+             matrix[1][wall_mask] = 1.0
 
         return matrix
 

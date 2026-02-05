@@ -163,11 +163,11 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
     fitness_score = 0.0
     cause_of_death = "Unknown"
     last_food_distance = None  # Track if getting closer to food
-    
+
     # Tracking mass gain for kill detection
     last_len_check = 0
     last_len_time = time.time()
-    
+
     # Track position for death analysis
     last_positions = []  # Store last 10 positions for death analysis
     last_snake_data = None
@@ -226,13 +226,13 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
         # Track data for death analysis
         last_snake_data = my_snake
         enemies = data.get('enemies', [])
-        
+
         # Store recent positions (for analyzing death cause)
         pos = (my_snake.get('x', 0), my_snake.get('y', 0))
         last_positions.append(pos)
         if len(last_positions) > 10:
             last_positions.pop(0)
-        
+
         # Check proximity to walls (map radius ~21600, center at 21600,21600)
         map_center = 21600
         dist_from_center = math.hypot(pos[0] - map_center, pos[1] - map_center)
@@ -241,7 +241,7 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
             near_wall_frames += 1
         else:
             near_wall_frames = max(0, near_wall_frames - 1)
-        
+
         # Check proximity to enemy heads
         for enemy in enemies:
             enemy_dist = math.hypot(enemy.get('x', 0) - pos[0], enemy.get('y', 0) - pos[1])
@@ -260,7 +260,7 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
 
         if current_len > max_len:
             diff = current_len - max_len
-            
+
             # KILL DETECTION
             # If we grow by a LOT in a short time, it's likely a kill
             # Eating a single orb usually gives small growth
@@ -270,15 +270,15 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
                 # Likely a kill! Huge bonus!
                 fitness_score += 500.0
                 print(f"[KILL] Genome {worker_id} killed something! +500 fitness")
-            
+
             fitness_score += (diff * 150.0)  # Standard eating bonus
             food_eaten_count += diff
             max_len = current_len
             last_eat_time = time.time()
-            
+
             last_len_check = current_len
             last_len_time = time.time()
-            
+
         elif current_len < last_len_check:
             # Snake shrank (boost usage)
             # Maybe small penalty for inefficient boosting?
@@ -310,12 +310,12 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
         foods = data.get('foods', [])
         if foods:
             food_distances = [
-                math.hypot(f[0] - my_snake['x'], f[1] - my_snake['y']) 
+                math.hypot(f[0] - my_snake['x'], f[1] - my_snake['y'])
                 for f in foods if len(f) >= 2
             ]
             if food_distances:
                 closest_food_dist = min(food_distances)
-                
+
                 if last_food_distance is not None:
                     if closest_food_dist < last_food_distance:
                         # Reward for getting closer - scaled by how close we are
@@ -326,9 +326,9 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
                     elif closest_food_dist > last_food_distance + 50:
                         # Small penalty for moving AWAY from food
                         fitness_score -= 0.05
-                        
+
                 last_food_distance = closest_food_dist
-                
+
                 # Bonus if very close to food (about to eat)
                 if closest_food_dist < 100:
                     fitness_score += 0.2
@@ -347,20 +347,20 @@ def eval_genome_worker(worker_id, genome, config, browser_mgr, spatial):
 
     # Calculate final fitness
     survival_time = time.time() - start_time
-    
+
     # Reward structure:
     # - Survival time: small reward (encourages living)
     # - Length: HUGE reward (main goal is to grow!)
     # - Death type: specific penalties
-    
+
     fitness_score += (survival_time * 1.0)  # Reduced - survival alone isn't enough
     fitness_score += (max_len * 30)  # Increased - length is KING
-    
+
     # BONUS for actually eating (not just surviving)
     if food_eaten_count > 0:
         fitness_score += (food_eaten_count * 10)  # Extra bonus per food eaten
         fitness_score += 100  # Bonus just for eating ANYTHING
-    
+
     # Death-specific penalties
     if cause_of_death == "Wall":
         fitness_score *= 0.1  # EXTREME penalty - wall death is strictly forbidden
@@ -453,7 +453,7 @@ class ParallelEvaluator:
         # Collect results
         results_count = 0
         completed_ids = set()
-        
+
         while results_count < len(pending):
             try:
                 genome_id, fitness, stats = self.result_queue.get(timeout=180)  # 3 min timeout
@@ -484,7 +484,7 @@ class ParallelEvaluator:
                 genome.fitness = 1.0  # Minimal fitness (penalty for timeout/crash)
                 missing_count += 1
                 log(f"[WARN] Genome {genome_id} timed out - assigned penalty fitness 1.0")
-        
+
         log(f"[MAIN] Generation complete. {results_count}/{len(pending)} evaluated, {missing_count} timed out.")
 
     def _log_to_csv(self, genome_id, fitness, stats):
@@ -572,7 +572,7 @@ def run_neat(config_path, num_workers=3, headless=False):
 
 if __name__ == "__main__":
     # Configuration
-    NUM_WORKERS = 5  # Number of parallel browser instances (10 may overload system)
+    NUM_WORKERS = 6  # Number of parallel browser instances (10 may overload system)
     HEADLESS = True  # Set to True for headless mode (faster, no windows)
 
     try:
