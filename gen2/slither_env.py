@@ -77,15 +77,15 @@ class SlitherEnv:
             dist_to_wall = self.map_radius - dist_from_center
             
             # Debug log for death analysis
-            # print(f"DEATH DEBUG: Pos=({mx:.0f},{my:.0f}) DistToWall={dist_to_wall:.0f} Radius={self.map_radius}")
+            print(f"DEBUG DEATH: Pos=({mx:.1f}, {my:.1f}) DistToWall={dist_to_wall:.1f} MapR={self.map_radius}")
             
             # If very close to wall at death, it's wall collision
-
-            if dist_to_wall < 300:  # Close to boundary
+            # Increased threshold from 300 to 1200 because wall visual boundary is fuzzy
+            if dist_to_wall < 1200:  
                 return -50, "Wall"
         
         # Fallback: use frame tracking
-        if self.near_wall_frames > 2:
+        if self.near_wall_frames > 0:
             return -50, "Wall"  # Preventable - should learn to avoid edges
         else:
             return -10, "SnakeCollision"  # Normal gameplay death
