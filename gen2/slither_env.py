@@ -8,11 +8,11 @@ import os
 from browser_engine import SlitherBrowser
 
 class SlitherEnv:
-    def __init__(self, headless=True, nickname="MatrixBot"):
+    def __init__(self, headless=True, nickname="MatrixBot", matrix_size=84):
         self.browser = SlitherBrowser(headless=headless, nickname=nickname)
         self.map_radius = 21600
         self.view_size = 1200 # Radius of view
-        self.matrix_size = 64 # Output grid size (64x64)
+        self.matrix_size = matrix_size # Output grid size (default 84x84)
         self.scale = self.matrix_size / (self.view_size * 2) # Scale factor
 
         # Wall tracking (only wall matters for death classification)
