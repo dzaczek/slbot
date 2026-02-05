@@ -84,11 +84,24 @@ class TrainingSupervisor:
         self.episodes_since_improvement = state['episodes_since_improvement']
         print(f"   Supervisor: best_avg={self.best_avg_reward:.2f}, window_size={len(self.rewards_window)}")
 
-def worker(remote, parent_remote, worker_id, headless, nickname):
+def worker(remote, parent_remote, worker_id, headless, nickname_prefix):
     parent_remote.close()
+    
+    # Picard Character Names
+    picard_names = [
+        "Picard!!.", "Riker!!.", "Data!!.", "Worf!!.", "Troi!!.", "LaForge!!.",
+        "Crusher!!.", "Q!!.", "Seven!!.", "Raffi!!.", "Rios!!.", "Jurati!!.",
+        "Soji!!.", "Guinan!!.", "Locutus!!.", "Borg!!."
+    ]
+    
+    # Select random name or consistent based on worker_id if we want stability
+    # Using random choice here so re-launches get different names
+    chosen_name = random.choice(picard_names)
+    
     try:
         # Initialize environment inside the worker process
-        env = SlitherEnv(headless=headless, nickname=f"{nickname}_{worker_id}")
+        # We ignore the prefix/worker_id in the actual game nickname now
+        env = SlitherEnv(headless=headless, nickname=chosen_name)
 
         while True:
             cmd, data = remote.recv()
@@ -288,7 +301,7 @@ def train(args):
     print(f"=" * 60)
 
     # Initialize
-    env = SubprocVecEnv(num_agents=num_agents, view_first=args.view, nickname="MatrixAI")
+    env = SubprocVecEnv(num_agents=num_agents, view_first=args.view, nickname="dzaczekAI")
     agent = DDQNAgent()
     supervisor = TrainingSupervisor()
     
