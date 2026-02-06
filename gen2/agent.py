@@ -52,8 +52,7 @@ class DDQNAgent:
             self.optimizer,
             mode='max',
             factor=config.opt.scheduler_factor,
-            patience=config.opt.scheduler_patience,
-            verbose=True
+            patience=config.opt.scheduler_patience
         )
 
         if config.buffer.prioritized:
