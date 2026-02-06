@@ -19,9 +19,9 @@ class SlitherBrowser:
     """
     
     # Limits for performance
-    MAX_FOODS = 100      # Max food items to process
-    MAX_ENEMIES = 15     # Max enemy snakes to process
-    MAX_BODY_PTS = 100   # Max body points per enemy (increased for better visibility)
+    MAX_FOODS = 300      # Max food items to process (Increased for better sensing)
+    MAX_ENEMIES = 50     # Max enemy snakes to process (Increased to fix invisible snakes)
+    MAX_BODY_PTS = 150   # Max body points per enemy (increased for better visibility)
     
     def __init__(self, headless=True, nickname="NEATBot"):
         self.nickname = nickname
@@ -352,9 +352,9 @@ class SlitherBrowser:
             if (window.slithers && window.slithers.length) {{
                 var myX = my_snake.x;
                 var myY = my_snake.y;
-                // Much larger search radius - snake bodies can be very long
-                var searchRadSq = viewRadius * viewRadius * 9; // 3x radius for search
-                var viewRadSq = viewRadius * viewRadius * 1.5; // actual view for filtering points
+                // Expanded search radius to prevent "invisible snakes" on minimap edge
+                var searchRadSq = viewRadius * viewRadius * 25; // 5x radius for search (was 3x)
+                var viewRadSq = viewRadius * viewRadius * 2.0;  // Expanded view for filtering points
                 
                 var enemyList = [];
                 
@@ -363,7 +363,7 @@ class SlitherBrowser:
                     if (s === window.slither) continue;
                     if (!s || !s.pts) continue;
                     
-                    // Check if head OR any body part is potentially visible
+                    // Check if head OR any body part is potentially visible or close enough to be relevant
                     var minDist = Infinity;
                     var hasVisiblePart = false;
                     
@@ -377,8 +377,7 @@ class SlitherBrowser:
                     // Check some body points (sample every 10th for speed)
                     if (!hasVisiblePart && s.pts && s.pts.length > 0) {{
                         var ptsLen = s.pts.length;
-                        // Trim ghost tail dynamically (Increased)
-                        var trimCount = Math.floor(ptsLen * 0.25) + Math.floor((s.sp || 5.7) * 4.0);
+                        var trimCount = Math.floor(ptsLen * 0.1) + Math.floor((s.sp || 5.7) * 2.0);
                         var startIndex = Math.min(ptsLen - 1, trimCount);
                         
                         var step = Math.max(1, Math.floor(ptsLen / 20));
@@ -409,7 +408,7 @@ class SlitherBrowser:
                     return a[1] - b[1]; 
                 }});
                 
-                // Take enemies (prioritize visible ones)
+                // Take enemies (increased limit)
                 for (var i = 0; i < Math.min(enemyList.length, MAX_ENEMIES); i++) {{
                     var s = enemyList[i][0];
                     
@@ -448,11 +447,6 @@ class SlitherBrowser:
             }}
 
             // DETECT MAP BOUNDARY
-            // Map is a circle: center = (grd, grd), radius = grd
-            // grd IS the radius. Earlier "wall deaths" at dist 7000-9000 were snake collisions.
-            // Proof: bot alive at dist 11061 from center, so radius must be > 11061.
-            // With grd=32550 as radius, map extends from 0 to 65100.
-            
             var possibleMapVars = {{}};
             var boundarySource = 'none';
             var distToWall = 99999;
