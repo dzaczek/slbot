@@ -364,6 +364,11 @@ def train(args):
     warmup_steps = 10000
     target_lr = cfg.opt.lr
 
+    # Autonomy / Stabilization Vars
+    reward_window = deque(maxlen=100)
+    best_avg_reward = -float('inf')
+    episodes_since_improvement = 0
+
     # Metrics tracking
     total_steps = agent.steps_done
     episode_rewards = [0] * cfg.env.num_agents
@@ -429,6 +434,28 @@ def train(args):
 
                     with open(stats_file, 'a') as f:
                         f.write(f"{start_episode},{episode_steps[i]},{episode_rewards[i]:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause},{curriculum.current_stage},{episode_food[i]}\n")
+
+                    # Autonomy Logic (Scheduler & Watchdog)
+                    reward_window.append(episode_rewards[i])
+                    if len(reward_window) >= 20:
+                        avg_reward = sum(reward_window) / len(reward_window)
+
+                        # Scheduler step
+                        agent.step_scheduler(avg_reward)
+
+                        # Watchdog for stagnation
+                        if avg_reward > best_avg_reward:
+                            best_avg_reward = avg_reward
+                            episodes_since_improvement = 0
+                        else:
+                            episodes_since_improvement += 1
+
+                        if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
+                            print(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Boosting exploration.")
+                            agent.boost_exploration(target_eps=0.5)
+                            episodes_since_improvement = 0
+                            reward_window.clear()
+                            best_avg_reward = -float('inf')
 
                     # Track metrics for curriculum promotion
                     curriculum.record_episode(episode_food[i], episode_steps[i])

@@ -99,6 +99,32 @@ class SlitherEnv:
         """Returns True if position is within threshold of wall."""
         return self.last_dist_to_wall < threshold
 
+    def _draw_line(self, matrix, channel, x0, y0, x1, y1, value):
+        """Draws a line on the matrix using Bresenham's algorithm."""
+        x0, y0 = int(x0), int(y0)
+        x1, y1 = int(x1), int(y1)
+
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        err = dx - dy
+
+        while True:
+            if 0 <= x0 < self.matrix_size and 0 <= y0 < self.matrix_size:
+                matrix[channel, y0, x0] = value
+
+            if x0 == x1 and y0 == y1:
+                break
+
+            e2 = 2 * err
+            if e2 > -dy:
+                err -= dy
+                x0 += sx
+            if e2 < dx:
+                err += dx
+                y0 += sy
+
     # =====================================================
     # DEATH CLASSIFICATION (Forensic approach)
     # =====================================================
@@ -411,24 +437,46 @@ class SlitherEnv:
         for e in enemies:
             ex, ey = e['x'], e['y']
             hx, hy = world_to_matrix(ex, ey)
+
+            pts = e.get('pts', [])
+
+            # Draw line from head to first body point
+            if pts:
+                px, py = pts[0][0], pts[0][1]
+                bx, by = world_to_matrix(px, py)
+                self._draw_line(matrix, 1, hx, hy, bx, by, 0.5)
+
+            # Draw lines between body points
+            for i in range(len(pts) - 1):
+                 p1 = pts[i]
+                 p2 = pts[i+1]
+                 x1, y1 = world_to_matrix(p1[0], p1[1])
+                 x2, y2 = world_to_matrix(p2[0], p2[1])
+                 self._draw_line(matrix, 1, x1, y1, x2, y2, 0.5)
+
+            # Ensure Head is distinct (drawn last)
             if 0 <= hx < self.matrix_size and 0 <= hy < self.matrix_size:
                 matrix[1, hy, hx] = 1.0
 
-            for pt in e.get('pts', []):
-                 px, py = pt[0], pt[1]
-                 bx, by = world_to_matrix(px, py)
-                 if 0 <= bx < self.matrix_size and 0 <= by < self.matrix_size:
-                     matrix[1, by, bx] = 0.5
-
         # 3. Self (Channel 2)
         cx, cy = self.matrix_size // 2, self.matrix_size // 2
-        matrix[2, cy, cx] = 1.0
 
-        for pt in my_snake.get('pts', []):
-            px, py = pt[0], pt[1]
-            bx, by = world_to_matrix(px, py)
-            if 0 <= bx < self.matrix_size and 0 <= by < self.matrix_size:
-                matrix[2, by, bx] = 0.5
+        my_pts = my_snake.get('pts', [])
+
+        # Head to first point
+        if my_pts:
+             px, py = my_pts[0][0], my_pts[0][1]
+             bx, by = world_to_matrix(px, py)
+             self._draw_line(matrix, 2, cx, cy, bx, by, 0.5)
+
+        for i in range(len(my_pts) - 1):
+            p1 = my_pts[i]
+            p2 = my_pts[i+1]
+            x1, y1 = world_to_matrix(p1[0], p1[1])
+            x2, y2 = world_to_matrix(p2[0], p2[1])
+            self._draw_line(matrix, 2, x1, y1, x2, y2, 0.5)
+
+        matrix[2, cy, cx] = 1.0
 
         # 4. Walls (Channel 1 - DANGER) 
         # We draw wall based on grd circle, but this is approximate.
