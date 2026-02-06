@@ -166,6 +166,98 @@ class SlitherBrowser:
         except Exception as e:
             log(f"[OVERRIDE] Failed: {e}")
 
+    def scan_game_variables(self):
+        """
+        One-time scan of ALL game variables to find boundary-related ones.
+        Returns a dict of potentially relevant variables.
+        """
+        scan_js = """
+        var results = {};
+        
+        // 1. Scan ALL window-level variables for numbers in map-size range
+        var numericVars = {};
+        var arrayVars = {};
+        var knownSkip = ['innerWidth','innerHeight','scrollX','scrollY','pageXOffset','pageYOffset',
+                         'screenX','screenY','screenLeft','screenTop','outerWidth','outerHeight',
+                         'devicePixelRatio','length','performance'];
+        
+        for (var key in window) {
+            try {
+                if (knownSkip.indexOf(key) >= 0) continue;
+                var val = window[key];
+                
+                // Numeric variables (potential radius, center, size)
+                if (typeof val === 'number' && !isNaN(val) && isFinite(val)) {
+                    if (val > 100 && val < 200000) {
+                        numericVars[key] = val;
+                    }
+                }
+                
+                // Arrays (potential boundary polygons)
+                if (Array.isArray(val) && val.length > 3 && val.length < 10000) {
+                    // Check if it contains numbers
+                    if (typeof val[0] === 'number') {
+                        arrayVars[key] = {length: val.length, first3: val.slice(0,3), last3: val.slice(-3)};
+                    }
+                }
+            } catch(e) {}
+        }
+        
+        results['numeric'] = numericVars;
+        results['arrays'] = arrayVars;
+        
+        // 2. Specific slither.io variables to check
+        var specific = {};
+        var checkVars = ['grd','msx','msy','msc','bsr','bsc','bsc2','border','map_size',
+                         'arena_size','game_radius','rfbx','rfby','cst','sector_size',
+                         'grid_size','world_size','fmlts','fpsls','protocol_version',
+                         'mcp','mcx','mcy','gla','glr','bmx','bmy','bmr'];
+        
+        for (var i = 0; i < checkVars.length; i++) {
+            var v = checkVars[i];
+            try {
+                if (typeof window[v] !== 'undefined') {
+                    var val = window[v];
+                    if (typeof val === 'number') specific[v] = val;
+                    else if (typeof val === 'string') specific[v] = val;
+                    else if (Array.isArray(val)) specific[v] = 'Array(' + val.length + ')';
+                    else if (typeof val === 'object' && val !== null) specific[v] = 'Object';
+                    else specific[v] = typeof val;
+                }
+            } catch(e) {}
+        }
+        results['specific'] = specific;
+        
+        // 3. Snake position for reference
+        if (window.slither) {
+            results['snake_pos'] = {x: window.slither.xx, y: window.slither.yy};
+        }
+        
+        // 4. Check for boundary drawing functions
+        var funcNames = [];
+        for (var key in window) {
+            try {
+                if (typeof window[key] === 'function') {
+                    var src = window[key].toString().substring(0, 200);
+                    if (src.indexOf('border') >= 0 || src.indexOf('bound') >= 0 || 
+                        src.indexOf('pbx') >= 0 || src.indexOf('grd') >= 0 ||
+                        src.indexOf('arena') >= 0 || src.indexOf('wall') >= 0) {
+                        funcNames.push(key);
+                    }
+                }
+            } catch(e) {}
+        }
+        results['boundary_funcs'] = funcNames;
+        
+        return results;
+        """
+        try:
+            result = self.driver.execute_script(scan_js)
+            return result
+        except Exception as e:
+            log(f"[SCAN] Failed: {e}")
+            return None
+
     def get_game_data(self):
         """
         Retrieves game state in a SINGLE JS call.
@@ -355,121 +447,50 @@ class SlitherBrowser:
                 }}
             }}
 
-            // DETECT DYNAMIC MAP BOUNDARY
-            // Method: Find closest boundary point to snake position
-            var mapRadius = 0;
+            // DETECT MAP BOUNDARY
+            // Map is a circle: center = (grd, grd), radius = grd
+            // grd IS the radius. Earlier "wall deaths" at dist 7000-9000 were snake collisions.
+            // Proof: bot alive at dist 11061 from center, so radius must be > 11061.
+            // With grd=32550 as radius, map extends from 0 to 65100.
+            
+            var possibleMapVars = {{}};
+            var boundarySource = 'none';
+            var distToWall = 99999;
+            var distFromCenter = 99999;
+            
             var mapCenterX = 0;
             var mapCenterY = 0;
-            var distToNearestBoundary = Infinity;
-            var boundarySource = 'none';
-            var possibleMapVars = {{}};
+            var mapRadius = 21600; // Safe default
             
-            // Check for pbx/pby boundary polygon arrays
-            if (typeof window.pbx !== 'undefined' && typeof window.pby !== 'undefined' &&
-                window.pbx && window.pby && window.pbx.length > 5) {{
-                
-                // Find min/max of boundary points to get extent
-                var minX = Infinity, maxX = -Infinity;
-                var minY = Infinity, maxY = -Infinity;
-                var validCount = 0;
-                
-                for (var i = 0; i < window.pbx.length; i++) {{
-                    var px = window.pbx[i];
-                    var py = window.pby[i];
-                    if (px !== 0 || py !== 0) {{
-                        if (px < minX) minX = px;
-                        if (px > maxX) maxX = px;
-                        if (py < minY) minY = py;
-                        if (py > maxY) maxY = py;
-                        validCount++;
-                        
-                        // Calculate distance from snake to this boundary point
-                        var dist = Math.sqrt(Math.pow(px - my_snake.x, 2) + Math.pow(py - my_snake.y, 2));
-                        if (dist < distToNearestBoundary) {{
-                            distToNearestBoundary = dist;
-                        }}
-                    }}
-                }}
-                
-                // VALIDATION: Lower threshold to 3 points (triangle is enough)
-                if (validCount >= 3) {{
-                    var calcRadius = Math.max(maxX - minX, maxY - minY) / 2;
-                    
-                    // VALIDATION: Radius must be reasonable (e.g. > 1000)
-                    if (calcRadius > 1000) {{
-                        mapRadius = calcRadius;
-                        mapCenterX = (minX + maxX) / 2;
-                        mapCenterY = (minY + maxY) / 2;
-                        boundarySource = 'pbxy';
-                        
-                        possibleMapVars['pbx_count'] = validCount;
-                        possibleMapVars['extent'] = Math.round(maxX-minX) + 'x' + Math.round(maxY-minY);
-                        possibleMapVars['center'] = Math.round(mapCenterX) + ',' + Math.round(mapCenterY);
-                        possibleMapVars['radius'] = Math.round(mapRadius);
-                        possibleMapVars['dist_to_boundary'] = Math.round(distToNearestBoundary);
-                    }}
-                }}
-            }}
-            
-            // Fallback to grd if pbx/pby not useful
-            if (mapRadius <= 1000 && typeof window.grd !== 'undefined' && window.grd > 1000) {{
-                mapRadius = window.grd;
+            if (typeof window.grd !== 'undefined' && window.grd > 1000) {{
                 mapCenterX = window.grd;
                 mapCenterY = window.grd;
-                boundarySource = 'grd';
-                possibleMapVars['grd'] = window.grd;
-            }}
-            
-            // FAILSAFE: If no boundary found, use standard map size
-            if (mapRadius <= 1000) {{
-                mapRadius = 21600;
-                mapCenterX = 21600;
-                mapCenterY = 21600;
-                boundarySource = 'default';
-            }}
-            
-            // ABSOLUTE SAFETY: If snake is extremely far out, clamp coordinates
-            // This prevents "running into void" if map radius calculation fails
-            var distFromCenter = Math.sqrt(Math.pow(my_snake.x - mapCenterX, 2) + Math.pow(my_snake.y - mapCenterY, 2));
-            if (distFromCenter > mapRadius + 500) {{
-                 // If we are way outside what we think is the map, maybe the map is actually bigger?
-                 // Or we are dead. But let's assume we need to show a wall.
-                 // Actually, if we are outside, distToWall will be negative, which is correct (DANGER).
-            }}
-            
-            // Fallback to grd if pbx/pby not useful
-            if (mapRadius <= 100 && typeof window.grd !== 'undefined' && window.grd > 0) {{
-                mapRadius = window.grd;
-                mapCenterX = window.grd;
-                mapCenterY = window.grd;
-                boundarySource = 'grd';
-                possibleMapVars['grd'] = window.grd;
-            }}
-            
-            // Final fallback
-            if (mapRadius <= 100) {{
-                mapRadius = 21600;
-                mapCenterX = 21600;
-                mapCenterY = 21600;
-                boundarySource = 'default';
-            }}
-            
-            // Calculate distance to wall
-            var distToWall;
-            
-            // PREFERRED: Use Circular calculation based on detected parameters
-            // Since Slither map is a circle, this is mathematically more accurate 
-            // than distance to sparse vertices in pbx array.
-            if (mapRadius > 0) {{
-                var distFromCenter = Math.sqrt(Math.pow(my_snake.x - mapCenterX, 2) + Math.pow(my_snake.y - mapCenterY, 2));
+                mapRadius = window.grd * 0.98;  // Confirmed by reference bots: radius = grd * 0.98
+                
+                distFromCenter = Math.sqrt(
+                    Math.pow(my_snake.x - mapCenterX, 2) + 
+                    Math.pow(my_snake.y - mapCenterY, 2)
+                );
                 distToWall = mapRadius - distFromCenter;
-            }} 
-            // FALLBACK: Use vertex distance if circle calc failed
-            else if (distToNearestBoundary < Infinity) {{
-                distToWall = distToNearestBoundary;
-            }} else {{
-                distToWall = 0;
+                boundarySource = 'grd';
+                
+                possibleMapVars['grd'] = window.grd;
+                possibleMapVars['map_center'] = Math.round(mapCenterX) + ',' + Math.round(mapCenterY);
+                possibleMapVars['map_radius'] = Math.round(mapRadius);
+                possibleMapVars['dist_from_center'] = Math.round(distFromCenter);
             }}
+            
+            // Also capture pbx info for debugging (NOT used for wall detection)
+            var pbxCount = 0;
+            if (typeof window.pbx !== 'undefined' && window.pbx) {{
+                for (var i = 0; i < window.pbx.length; i++) {{
+                    if (window.pbx[i] !== 0 || (window.pby && window.pby[i] !== 0)) pbxCount++;
+                }}
+            }}
+            
+            possibleMapVars['pbx_count'] = pbxCount;
+            possibleMapVars['FINAL_source'] = boundarySource;
+            possibleMapVars['FINAL_dist_to_wall'] = Math.round(distToWall);
             
             return {{
                 dead: false,
@@ -479,6 +500,7 @@ class SlitherBrowser:
                 view_radius: viewRadius,
                 gsc: gsc,
                 dist_to_wall: distToWall,
+                dist_from_center: distFromCenter,
                 map_radius: mapRadius,
                 map_center_x: mapCenterX,
                 map_center_y: mapCenterY,
@@ -488,14 +510,11 @@ class SlitherBrowser:
                     total_foods: window.foods ? window.foods.length : 0,
                     visible_foods: visible_foods.length,
                     dist_to_wall: Math.round(distToWall),
-                    map_radius: Math.round(mapRadius),
-                    map_cx: Math.round(mapCenterX),
-                    map_cy: Math.round(mapCenterY),
+                    dist_from_center: Math.round(distFromCenter),
                     snake_x: Math.round(my_snake.x),
                     snake_y: Math.round(my_snake.y),
-                    dist_from_center: Math.round(distFromCenter),
                     boundary_source: boundarySource,
-                    map_vars: possibleMapVars  // Return as object, not string
+                    map_vars: possibleMapVars
                 }}
             }};
         }}
@@ -806,58 +825,23 @@ class SlitherBrowser:
                 ctx.fill();
 
                 // 5. Draw Wall/Boundary (Magenta)
-                // DETECT DYNAMIC MAP BOUNDARY (Updated to match get_game_data)
-            // Method: Find closest boundary point to snake position
-            var mapRadius = 0;
+                // DETECT DYNAMIC MAP BOUNDARY
+            // Center = (grd, grd), Radius = grd * 0.98
+            var mapRadius = 21600;
             var mapCenterX = 0;
             var mapCenterY = 0;
             var boundarySource = 'def';
             
-            // Try pbx/pby (Polygon Boundary X/Y)
-            var pbxValid = false;
-            if (typeof window.pbx !== 'undefined' && typeof window.pby !== 'undefined' &&
-                window.pbx && window.pby && window.pbx.length > 5) {
-                
-                var minX = Infinity, maxX = -Infinity;
-                var minY = Infinity, maxY = -Infinity;
-                var validCount = 0;
-                
-                for(var i=0; i<window.pbx.length; i++) {
-                     var px = window.pbx[i]; 
-                     var py = window.pby[i];
-                     if(px!==0 || py!==0) {
-                        if(px<minX) minX=px; if(px>maxX) maxX=px;
-                        if(py<minY) minY=py; if(py>maxY) maxY=py;
-                        validCount++;
-                     }
-                }
-                
-                // VALIDATION: Lower threshold to 3 points (triangle is enough)
-                if (validCount >= 3) {
-                    var calcRadius = Math.max(maxX-minX, maxY-minY)/2;
-                    // VALIDATION: Radius must be reasonable (e.g. > 1000)
-                    if (calcRadius > 1000) {
-                        mapCenterX = (minX+maxX)/2;
-                        mapCenterY = (minY+maxY)/2;
-                        mapRadius = calcRadius;
-                        boundarySource = 'pbx';
-                        pbxValid = true;
-                    }
-                }
-            }
-            
-            if (!pbxValid) {
-                if (typeof window.grd !== 'undefined' && window.grd > 1000) {
-                    mapRadius = window.grd;
-                    mapCenterX = window.grd;
-                    mapCenterY = window.grd;
-                    boundarySource = 'grd';
-                } else {
-                    mapRadius = 21600;
-                    mapCenterX = 21600;
-                    mapCenterY = 21600;
-                    boundarySource = 'def';
-                }
+            if (typeof window.grd !== 'undefined' && window.grd > 1000) {
+                mapCenterX = window.grd;
+                mapCenterY = window.grd;
+                mapRadius = window.grd * 0.98;  // Confirmed by reference bots
+                boundarySource = 'grd';
+            } else {
+                mapCenterX = 21600;
+                mapCenterY = 21600;
+                mapRadius = 21600;
+                boundarySource = 'def';
             }
 
                 // Scan grid for wall pixels (expensive but accurate visualization)
@@ -871,64 +855,67 @@ class SlitherBrowser:
                     distToWall: Math.round(distToWall),
                     boundarySource: boundarySource,
                     viewRadius: Math.round(viewRadius),
-                    pbxCount: window.pbx ? window.pbx.length : 0
+                    distFromCenter: Math.round(distFromCenter)
                 };
                 
-                // DRAW WALL (New Method: Path with Hole)
-                // Draws the wall area by filling everything OUTSIDE the map circle
-                // We draw this ALWAYS, but only visible parts will show on canvas
-                
-                var centerGrid = toGrid(mapCenterX, mapCenterY);
-                var cx = centerGrid.x * scale;
-                var cy = centerGrid.y * scale;
-                var r = mapRadius * matrixScale * scale;
+                // DRAW WALL - Only when within 5000 world units
+                if (distToWall < 5000) {
+                    var centerGrid = toGrid(mapCenterX, mapCenterY);
+                    var wallCx = centerGrid.x * scale;
+                    var wallCy = centerGrid.y * scale;
+                    var r = mapRadius * matrixScale * scale;
 
-                ctx.save();
-                ctx.beginPath();
-                // 1. Outer rectangle (entire canvas + huge buffer)
-                ctx.rect(-100, -100, canvas.width+200, canvas.height+200);
-                // 2. Inner circle (map) - drawn COUNTER-CLOCKWISE to create a hole
-                ctx.arc(cx, cy, r, 0, 2 * Math.PI, true);
-                
-                // Fill using 'evenodd' rule to paint only the area between rect and circle
-                // Use bright magenta with transparency
-                ctx.fillStyle = 'rgba(255, 0, 255, 0.4)'; 
-                ctx.fill('evenodd');
-                
-                // Draw boundary line explicitly
-                ctx.strokeStyle = '#ff00ff';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-                ctx.stroke();
-                ctx.restore();
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(-100, -100, canvas.width+200, canvas.height+200);
+                    ctx.arc(wallCx, wallCy, r, 0, 2 * Math.PI, true);
+                    ctx.fillStyle = 'rgba(255, 0, 255, 0.4)'; 
+                    ctx.fill('evenodd');
+                    
+                    ctx.strokeStyle = '#ff00ff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(wallCx, wallCy, r, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    ctx.restore();
+                }
 
-                // RADAR: Always show direction and distance to wall
-                var vcx = myX - mapCenterX;
-                var vcy = myY - mapCenterY;
-                var distFromMapCenter = Math.sqrt(vcx*vcx + vcy*vcy);
-                
-                // Always draw radar if we have a valid map center
+                // RADAR: Show direction and distance to wall
                 if (mapRadius > 0) { 
-                    // Normalize vector towards wall
-                    // If we are at center, choose Up
+                    var vcx = myX - mapCenterX;
+                    var vcy = myY - mapCenterY;
+                    var distFromMapCenter = Math.sqrt(vcx*vcx + vcy*vcy);
+                    
                     var nx = 0, ny = -1;
                     if (distFromMapCenter > 1) {
                          nx = vcx / distFromMapCenter;
                          ny = vcy / distFromMapCenter;
                     }
                     
-                    // Draw guide line towards nearest wall
-                    var centerP = {x: gridSize/2, y: gridSize/2}; // Center of our view
-                    // Point on the edge of our view grid (for radar arrow)
+                    // Color based on danger level
+                    var radarColor = '#ff00ff';
+                    var radarAlpha = 0.4;
+                    if (distToWall < 1000) {
+                        radarColor = '#ff0000';  // RED when very close
+                        radarAlpha = 1.0;
+                    } else if (distToWall < 3000) {
+                        radarColor = '#ff00ff';  // Magenta when medium
+                        radarAlpha = 0.8;
+                    } else {
+                        radarAlpha = 0.3;  // Dim when far
+                    }
+                    
+                    var centerP = {x: gridSize/2, y: gridSize/2};
                     var arrowDist = (gridSize/2 - 8) * scale;
                     var ax = centerP.x * scale + nx * arrowDist;
                     var ay = centerP.y * scale + ny * arrowDist;
                     
-                    // Draw Arrow
+                    ctx.globalAlpha = radarAlpha;
+                    
+                    // Draw Arrow dot
                     ctx.beginPath();
                     ctx.arc(ax, ay, 5, 0, 2*Math.PI);
-                    ctx.fillStyle = '#ff00ff'; // Solid Magenta
+                    ctx.fillStyle = radarColor;
                     ctx.fill();
                     ctx.strokeStyle = 'white';
                     ctx.lineWidth = 1;
@@ -942,30 +929,15 @@ class SlitherBrowser:
                     ctx.fillStyle = 'white';
                     ctx.fill();
                     
-                    // Show text distance near the arrow
+                    // Distance text
                     ctx.fillStyle = 'white';
                     ctx.font = 'bold 12px monospace';
                     ctx.textAlign = 'center';
                     ctx.shadowColor = "black";
                     ctx.shadowBlur = 2;
-                    // Offset text slightly towards center to keep it in view
                     ctx.fillText(Math.round(distToWall), ax - nx*20, ay - ny*20);
                     ctx.shadowBlur = 0;
-                }
-
-                // Draw PBX vertices explicitly if available (to verify alignment)
-                if (window.pbx && window.pbx.length > 0) {
-                     ctx.fillStyle = '#ffffff'; // White dots for vertices
-                     for(var i=0; i<window.pbx.length; i++) {
-                         var px = window.pbx[i]; var py = window.pby[i];
-                         if (px!=0 || py!=0) {
-                             var p = toGrid(px, py);
-                             // Draw if within reasonable range of canvas
-                             if (p.x >= -20 && p.x < gridSize+20 && p.y >= -20 && p.y < gridSize+20) {
-                                 ctx.fillRect(p.x*scale-1.5, p.y*scale-1.5, 3, 3);
-                             }
-                         }
-                     }
+                    ctx.globalAlpha = 1.0;
                 }
 
                 // Grid lines

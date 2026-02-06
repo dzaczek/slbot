@@ -159,21 +159,14 @@ class DDQNAgent:
         state_batch = torch.tensor(np.array(batch_state), dtype=torch.float32).to(self.device) / 255.0
         action_batch = torch.tensor(batch_action, dtype=torch.long).unsqueeze(1).to(self.device)
         reward_batch = torch.tensor(batch_reward, dtype=torch.float32).to(self.device)
-        next_batch = torch.tensor(np.array(batch_next), dtype=torch.float32).to(self.device)
+        next_batch = torch.tensor(np.array(batch_next), dtype=torch.float32).to(self.device) / 255.0
         done_batch = torch.tensor(batch_done, dtype=torch.float32).to(self.device)
         weights_batch = torch.tensor(is_weights, dtype=torch.float32).to(self.device)
 
-        # Reward Normalization (Batch-wise)
-        # Update running stats
-        batch_mean = reward_batch.mean()
-        batch_std = reward_batch.std()
-        self.reward_mean = 0.99 * self.reward_mean + 0.01 * batch_mean.item()
-        self.reward_std = 0.99 * self.reward_std + 0.01 * (batch_std.item() + 1e-5)
-
-        # Normalize rewards for training
-        norm_rewards = (reward_batch - self.reward_mean) / (self.reward_std + 1e-5)
-        # Clamp for stability
-        norm_rewards = torch.clamp(norm_rewards, -10, 10)
+        # Reward clipping (simpler and more stable than normalization)
+        # Clamp rewards to [-1, 1] range to stabilize training
+        # Death penalties (-100, -10) -> -1, food rewards -> proportional
+        norm_rewards = torch.clamp(reward_batch / 100.0, -1.0, 1.0)
 
         # Q(s, a)
         q_values = self.policy_net(state_batch).gather(1, action_batch)

@@ -11,9 +11,9 @@ from browser_engine import SlitherBrowser
 class SlitherEnv:
     def __init__(self, headless=True, nickname="MatrixBot", matrix_size=84, view_plus=False):
         self.browser = SlitherBrowser(headless=headless, nickname=nickname)
-        self.map_radius = 21600  # Will be updated dynamically from game
-        self.map_center_x = 21600
-        self.map_center_y = 21600
+        self.map_radius = 0  # Legacy, not used for wall detection anymore
+        self.map_center_x = 0
+        self.map_center_y = 0
         self.matrix_size = matrix_size # Output grid size (default 84x84)
         self.view_plus = view_plus  # Enable visual overlay
         
@@ -24,7 +24,8 @@ class SlitherEnv:
         # Flag to print map vars only once
         self._map_vars_printed = False
 
-        # Wall tracking (only wall matters for death classification)
+        # Wall tracking - stores actual dist_to_wall from JS (pbx vertices)
+        self.last_dist_to_wall = 99999
         self.near_wall_frames = 0
         
         # Track previous length to detect food eating
@@ -36,10 +37,155 @@ class SlitherEnv:
         # Frame skip - repeat action for N frames
         self.frame_skip = 4
 
+        # === CURRICULUM REWARD PARAMETERS (set by trainer via set_curriculum_stage) ===
+        self.food_reward = 10.0       # Stage 1 default: high food reward
+        self.food_shaping = 0.01      # Reward for moving towards food
+        self.survival_reward = 0.05   # Per-step survival bonus
+        self.death_wall_penalty = -5  # Stage 1: low death penalty
+        self.death_snake_penalty = -5
+        self.straight_penalty = 0.0   # Stage 1: no straight penalty
+        self.length_bonus = 0.0       # Stage 3: per-step bonus for snake length
+
+    def set_curriculum_stage(self, stage_config):
+        """Set reward parameters from curriculum stage config dict."""
+        self.food_reward = stage_config.get('food_reward', 5.0)
+        self.food_shaping = stage_config.get('food_shaping', 0.005)
+        self.survival_reward = stage_config.get('survival', 0.1)
+        self.death_wall_penalty = stage_config.get('death_wall', -100)
+        self.death_snake_penalty = stage_config.get('death_snake', -10)
+        self.straight_penalty = stage_config.get('straight_penalty', 0.05)
+        self.length_bonus = stage_config.get('length_bonus', 0.0)
+        print(f"  ENV: food={self.food_reward} surv={self.survival_reward} "
+              f"wall={self.death_wall_penalty} snake={self.death_snake_penalty}")
+
+    def _update_from_game_data(self, data):
+        """Update wall distance and map info from game data."""
+        if not data:
+            return
+        
+        # dist_to_wall comes from JS (empirical: distance from grd-based center minus estimated radius)
+        dtw = data.get('dist_to_wall')
+        if dtw is not None:
+            self.last_dist_to_wall = dtw
+        
+        # Update map params from JS
+        mr = data.get('map_radius')
+        if mr and mr > 0:
+            self.map_radius = mr
+        cx = data.get('map_center_x')
+        cy = data.get('map_center_y')
+        if cx and cy:
+            self.map_center_x = cx
+            self.map_center_y = cy
+        
+        # Track wall proximity
+        if self.last_dist_to_wall < 2000:
+            self.near_wall_frames += 1
+        else:
+            self.near_wall_frames = max(0, self.near_wall_frames - 1)
+    
+    def _calc_dist_to_wall(self, x, y):
+        """
+        Returns the last known distance to wall from JS.
+        We no longer calculate this ourselves - JS has the real pbx vertex data.
+        """
+        return self.last_dist_to_wall
+    
+    def _is_outside_map(self, x, y):
+        """Returns True if position is outside the map boundary."""
+        return self.last_dist_to_wall <= 0
+    
+    def _is_near_wall(self, x, y, threshold=2000):
+        """Returns True if position is within threshold of wall."""
+        return self.last_dist_to_wall < threshold
+
+    # =====================================================
+    # DEATH CLASSIFICATION (Forensic approach)
+    # =====================================================
+
+    def _get_death_reward_and_cause(self, last_data=None):
+        """
+        Death classification: Forensic + Geometric hybrid.
+        
+        1. Enemy nearby (< 500 units) -> SnakeCollision (certain)
+        2. No enemy nearby BUT close to wall (dist_to_wall < 2000) -> Wall (certain)
+        3. No enemy nearby AND far from wall -> SnakeCollision (default)
+           (enemy likely appeared during frame_skip and wasn't in pre_action_data)
+        """
+        mx, my = 0, 0
+        if last_data and last_data.get('self'):
+            mx = last_data['self'].get('x', 0)
+            my = last_data['self'].get('y', 0)
+        
+        # Get geometric wall distance
+        dist_to_wall = last_data.get('dist_to_wall', 99999) if last_data else 99999
+        
+        # Check if any enemy was close to our head at the moment before death
+        enemies = last_data.get('enemies', []) if last_data else []
+        min_enemy_dist = float('inf')
+        
+        for e in enemies:
+            # Check enemy head
+            ex, ey = e.get('x', 0), e.get('y', 0)
+            dist = math.hypot(ex - mx, ey - my)
+            min_enemy_dist = min(min_enemy_dist, dist)
+            
+            # Check enemy body points
+            for pt in e.get('pts', []):
+                if len(pt) >= 2:
+                    px, py = pt[0], pt[1]
+                    dist = math.hypot(px - mx, py - my)
+                    min_enemy_dist = min(min_enemy_dist, dist)
+        
+        # Classification logic
+        COLLISION_RADIUS = 500  # Increased to account for frame_skip movement
+        WALL_PROXIMITY = 2000   # Must be geometrically near wall to classify as Wall
+        
+        if min_enemy_dist < COLLISION_RADIUS:
+            # Enemy was close -> definitely SnakeCollision
+            cause = "SnakeCollision"
+            penalty = self.death_snake_penalty
+        elif dist_to_wall < WALL_PROXIMITY:
+            # No enemy close BUT we're near the wall -> Wall death
+            cause = "Wall"
+            penalty = self.death_wall_penalty
+        else:
+            # No enemy in data AND far from wall -> likely snake that appeared during frame_skip
+            cause = "SnakeCollision"
+            penalty = self.death_snake_penalty
+        
+        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_dist:.0f} WallDist={dist_to_wall:.0f} -> {cause} ({penalty})")
+        
+        return penalty, cause
+
     def reset(self):
         """Resets the game and returns initial matrix state."""
         self.browser.force_restart()
         self.near_wall_frames = 0
+        
+        # One-time game variable scan
+        if not self._map_vars_printed:
+            scan = self.browser.scan_game_variables()
+            if scan:
+                print("\n" + "="*60)
+                print("GAME VARIABLE SCAN")
+                print("="*60)
+                if scan.get('snake_pos'):
+                    print(f"Snake pos: {scan['snake_pos']}")
+                print(f"\n--- Specific vars ---")
+                for k, v in sorted(scan.get('specific', {}).items()):
+                    print(f"  {k}: {v}")
+                print(f"\n--- Numeric vars (map-range) ---")
+                for k, v in sorted(scan.get('numeric', {}).items()):
+                    if isinstance(v, (int, float)) and v > 1000:
+                        print(f"  {k}: {v}")
+                print(f"\n--- Arrays ---")
+                for k, v in sorted(scan.get('arrays', {}).items()):
+                    print(f"  {k}: len={v.get('length')} first={v.get('first3')}")
+                print(f"\n--- Boundary-related functions ---")
+                for f in scan.get('boundary_funcs', []):
+                    print(f"  {f}()")
+                print("="*60 + "\n")
         
         # Inject view-plus overlay if enabled
         if self.view_plus:
@@ -63,52 +209,24 @@ class SlitherEnv:
             
         return matrix
 
-    def _get_death_reward_and_cause(self, last_data=None):
-        """
-        Slither.io death causes (only 2 possibilities):
-        1. Wall collision - hit the map boundary
-        2. Snake collision - our head hit another snake's body
-        """
-        # Check actual position at death time (most accurate)
-        if last_data and last_data.get('self'):
-            mx = last_data['self'].get('x', 0)
-            my = last_data['self'].get('y', 0)
-            dist_from_center = math.hypot(mx - self.map_center_x, my - self.map_center_y)
-            dist_to_wall = self.map_radius - dist_from_center
-            
-            # Debug log for death analysis
-            print(f"DEBUG DEATH: Pos=({mx:.1f}, {my:.1f}) DistToWall={dist_to_wall:.1f} MapR={self.map_radius}")
-            
-            # If very close to wall at death, it's wall collision
-            # Increased threshold from 300 to 1200 because wall visual boundary is fuzzy
-            if dist_to_wall < 1200:  
-                return -50, "Wall"
-        
-        # Fallback: use frame tracking
-        if self.near_wall_frames > 0:
-            return -50, "Wall"  # Preventable - should learn to avoid edges
-        else:
-            return -10, "SnakeCollision"  # Normal gameplay death
-
     def step(self, action):
         """
         Executes action and returns (next_state, reward, done, info).
         Actions:
         0: Keep current direction
-        1: Turn Left small (~22 deg)
-        2: Turn Right small (~22 deg)
-        3: Turn Left big (~60 deg)
-        4: Turn Right big (~60 deg)
+        1: Turn Left small (~40 deg)
+        2: Turn Right small (~40 deg)
+        3: Turn Left big (~103 deg)
+        4: Turn Right big (~103 deg)
         5: Boost (speed up, loses mass)
         """
         angle_change = 0
         boost = 0
 
-        # Increased turn angles for more responsive steering
         if action == 0: pass
-        elif action == 1: angle_change = -0.7  # ~40 deg (was 0.4)
+        elif action == 1: angle_change = -0.7  # ~40 deg
         elif action == 2: angle_change = 0.7   # ~40 deg
-        elif action == 3: angle_change = -1.8  # ~103 deg (was 1.0)
+        elif action == 3: angle_change = -1.8  # ~103 deg
         elif action == 4: angle_change = 1.8   # ~103 deg
         elif action == 5: boost = 1
 
@@ -117,25 +235,20 @@ class SlitherEnv:
         if not data:
             return self._matrix_zeros(), -5, True, {"cause": "BrowserError"}
 
+        # Update map params IMMEDIATELY from fresh game data
+        self._update_from_game_data(data)
+
         if data.get('dead'):
             reward, cause = self._get_death_reward_and_cause(data)
             mx = data['self'].get('x', 0) if data.get('self') else 0
             my = data['self'].get('y', 0) if data.get('self') else 0
-            return self._matrix_zeros(), reward, True, {"cause": cause, "pos": (mx, my)}
+            dtw = self._calc_dist_to_wall(mx, my)
+            return self._matrix_zeros(), reward, True, {"cause": cause, "pos": (mx, my), "wall_dist": dtw}
 
         my_snake = data.get('self', {})
         current_ang = my_snake.get('ang', 0)
         mx, my = my_snake.get('x', 0), my_snake.get('y', 0)
         current_len = my_snake.get('len', 0)
-
-        # Track wall proximity
-        dist_from_center = math.hypot(mx - self.map_center_x, my - self.map_center_y)
-        dist_to_wall = self.map_radius - dist_from_center
-        # Increased detection range for "near wall" state
-        if dist_to_wall < 1500: # Was 500
-            self.near_wall_frames += 1
-        else:
-            self.near_wall_frames = max(0, self.near_wall_frames - 1)
 
         # Save pre-action data for death detection
         pre_action_data = data
@@ -152,14 +265,13 @@ class SlitherEnv:
         target_ang = current_ang + angle_change
         for _ in range(self.frame_skip):
             self.browser.send_action(target_ang, boost)
-            # Small delay to let action take effect
             time.sleep(0.02)
 
         # Get new state after action
         data = self.browser.get_game_data()
         state = self._process_data_to_matrix(data)
         
-        # Update view-plus overlay with gsc and view_radius for debugging
+        # Update view-plus overlay
         if self.view_plus and data:
             gsc = data.get('gsc', 0)
             view_r = data.get('view_radius', 0)
@@ -169,9 +281,10 @@ class SlitherEnv:
         # Check if died after action
         if not data or data.get('dead'):
             reward, cause = self._get_death_reward_and_cause(pre_action_data)
-            mx = pre_action_data['self'].get('x', 0) if pre_action_data and pre_action_data.get('self') else 0
-            my = pre_action_data['self'].get('y', 0) if pre_action_data and pre_action_data.get('self') else 0
-            return state, reward, True, {"cause": cause, "pos": (mx, my)}
+            pmx = pre_action_data['self'].get('x', 0) if pre_action_data and pre_action_data.get('self') else 0
+            pmy = pre_action_data['self'].get('y', 0) if pre_action_data and pre_action_data.get('self') else 0
+            dtw = self._calc_dist_to_wall(pmx, pmy)
+            return state, reward, True, {"cause": cause, "pos": (pmx, pmy), "wall_dist": dtw}
 
         # === REWARD CALCULATION ===
         reward = 0
@@ -179,15 +292,24 @@ class SlitherEnv:
         new_len = new_snake.get('len', 0)
         new_x, new_y = new_snake.get('x', 0), new_snake.get('y', 0)
         
-        # 1. Survival reward (small positive for staying alive)
-        reward += 0.1
+        # Update wall tracking from post-action data
+        self._update_from_game_data(data)
+        new_dist_to_wall = data.get('dist_to_wall', 99999)
         
-        # 2. Food reward (big positive for eating)
+        # 1. Survival reward
+        reward += self.survival_reward
+        
+        # 2. Food reward (parametrized by curriculum stage)
+        food_eaten = 0
         if new_len > self.prev_length:
-            food_gained = new_len - self.prev_length
-            reward += food_gained * 5.0  # Strong reward for eating!
+            food_eaten = new_len - self.prev_length
+            reward += food_eaten * self.food_reward
         
-        # 3. SHAPING REWARD: Reward for moving TOWARDS food
+        # 3. Length bonus (Stage 3: reward for being a big snake)
+        if self.length_bonus > 0 and new_len > 0:
+            reward += self.length_bonus * new_len
+        
+        # 4. SHAPING REWARD: Reward for moving TOWARDS food
         new_foods = data.get('foods', [])
         if new_foods:
             new_food_dists = [math.hypot(f[0] - new_x, f[1] - new_y) for f in new_foods if len(f) >= 2]
@@ -196,35 +318,22 @@ class SlitherEnv:
             new_food_dist = None
             
         if current_food_dist is not None and new_food_dist is not None:
-            # Reward for getting closer to food
             dist_delta = current_food_dist - new_food_dist
-            # Scale: ~0.5 reward for moving 100 units closer
-            shaping_reward = dist_delta * 0.005
-            # Clamp to avoid extreme values
+            shaping_reward = dist_delta * self.food_shaping
             shaping_reward = max(-0.5, min(0.5, shaping_reward))
             reward += shaping_reward
         
-        # 4. Wall proximity penalty (encourage staying away from edges)
-        new_dist_from_center = math.hypot(new_x - self.map_center_x, new_y - self.map_center_y)
-        new_dist_to_wall = self.map_radius - new_dist_from_center
-        
-        if new_dist_to_wall < 1000:
-            # Reduced penalty to avoid massive negative scores for survival strategies
-            # Was 0.5, now 0.05 (half of survival reward)
-            reward -= 0.05  
-
-        
-        # 5. Small penalty for going straight too much (encourage exploration)
-        if action == 0:
-            reward -= 0.05  # Tiny penalty for not turning
+        # 5. Straight penalty (encourage turning/exploration)
+        if self.straight_penalty > 0 and action == 0:
+            reward -= self.straight_penalty
         
         # Update tracked values
         self.prev_length = new_len
         self.prev_food_dist = new_food_dist
 
-        # Include cause=None for alive steps (trainer will detect MaxSteps)
         return state, reward, False, {
-            "length": new_len, 
+            "length": new_len,
+            "food_eaten": food_eaten,
             "cause": None, 
             "pos": (new_x, new_y), 
             "wall_dist": new_dist_to_wall
@@ -263,14 +372,8 @@ class SlitherEnv:
             self.view_size = game_view_radius
             self.scale = self.matrix_size / (self.view_size * 2)
         
-        # UPDATE map_radius and center from actual game data!
-        game_map_radius = data.get('map_radius')
-        if game_map_radius and game_map_radius > 0:
-            self.map_radius = game_map_radius
-        
-        # Get map center (calculated from food positions)
-        self.map_center_x = data.get('map_center_x', self.map_radius)
-        self.map_center_y = data.get('map_center_y', self.map_radius)
+        # UPDATE map params from game data
+        self._update_from_game_data(data)
         
         # Print map variables ONCE for debugging
         debug_info = data.get('debug', {})
@@ -282,26 +385,16 @@ class SlitherEnv:
             for key, val in map_vars.items():
                 print(f"  {key}: {val}")
             print(f"\nUsing: source={debug_info.get('boundary_source')}")
-            print(f"       map_radius={debug_info.get('map_radius')}")
-            print(f"       center=({debug_info.get('map_cx')}, {debug_info.get('map_cy')})")
+            print(f"       dist_to_wall={debug_info.get('dist_to_wall')}")
             print("="*50 + "\n")
             self._map_vars_printed = True
 
         # Helper to map world coord to matrix coord
         def world_to_matrix(wx, wy):
-            # 1. Translate to ego-centric (relative to head)
             dx = wx - mx
             dy = wy - my
-
-            # 2. Scale and center
-            # World range: -view_size to +view_size
-            # Matrix range: 0 to matrix_size
-            # Formula: (dx / view_size) * (matrix_size/2) + (matrix_size/2)
-            #        = dx * scale + matrix_size/2
-            
             mat_x = int((dx * self.scale) + (self.matrix_size / 2))
             mat_y = int((dy * self.scale) + (self.matrix_size / 2))
-
             return mat_x, mat_y
 
         # 1. Food (Channel 0)
@@ -311,64 +404,51 @@ class SlitherEnv:
             fx, fy = f[0], f[1]
             mx_x, mx_y = world_to_matrix(fx, fy)
             if 0 <= mx_x < self.matrix_size and 0 <= mx_y < self.matrix_size:
-                # Size of food dot
-                matrix[0, mx_y, mx_x] = 1.0 # Simple dot
+                matrix[0, mx_y, mx_x] = 1.0
 
         # 2. Enemies (Channel 1)
         enemies = data.get('enemies', [])
         for e in enemies:
-            # Head
             ex, ey = e['x'], e['y']
             hx, hy = world_to_matrix(ex, ey)
             if 0 <= hx < self.matrix_size and 0 <= hy < self.matrix_size:
-                matrix[1, hy, hx] = 1.0 # Head
+                matrix[1, hy, hx] = 1.0
 
-            # Body
             for pt in e.get('pts', []):
                  px, py = pt[0], pt[1]
                  bx, by = world_to_matrix(px, py)
                  if 0 <= bx < self.matrix_size and 0 <= by < self.matrix_size:
-                     matrix[1, by, bx] = 0.5 # Body
+                     matrix[1, by, bx] = 0.5
 
-        # 3. Self & Walls (Channel 2)
-        # Self Head
+        # 3. Self (Channel 2)
         cx, cy = self.matrix_size // 2, self.matrix_size // 2
         matrix[2, cy, cx] = 1.0
 
-        # Self Body (now available via 'pts' in 'self')
         for pt in my_snake.get('pts', []):
             px, py = pt[0], pt[1]
             bx, by = world_to_matrix(px, py)
             if 0 <= bx < self.matrix_size and 0 <= by < self.matrix_size:
-                matrix[2, by, bx] = 0.5 # Body
+                matrix[2, by, bx] = 0.5
 
-        # Walls (Channel 1 - DANGER)
-        # Use dist_to_wall from game data (distance to nearest boundary point)
-        dist_to_wall = data.get('dist_to_wall', float('inf'))
+        # 4. Walls (Channel 1 - DANGER) 
+        # We draw wall based on grd circle, but this is approximate.
+        # The real wall learning comes from death penalties (forensic detection).
+        # Visual wall in matrix helps the bot see the boundary coming.
+        dist_to_wall = data.get('dist_to_wall', 99999)
         
-        # Only calculate walls if they could be visible (snake close to boundary)
-        if dist_to_wall < self.view_size * 2.5:
-            map_center_x = getattr(self, 'map_center_x', self.map_radius)
-            map_center_y = getattr(self, 'map_center_y', self.map_radius)
-            
+        if dist_to_wall < 5000 and self.map_radius > 0 and self.map_center_x > 0:
             y_grid, x_grid = np.ogrid[:self.matrix_size, :self.matrix_size]
             
-            # Convert matrix coords to world coords
             dx_world = (x_grid - (self.matrix_size / 2)) / self.scale
             dy_world = (y_grid - (self.matrix_size / 2)) / self.scale
             
             wx = mx + dx_world
             wy = my + dy_world
             
-            # For polygon boundary, we approximate with circle using detected radius
-            # But the dist_to_wall from JS is more accurate for the actual boundary
-            dist_sq = (wx - map_center_x)**2 + (wy - map_center_y)**2
+            dist_sq = (wx - self.map_center_x)**2 + (wy - self.map_center_y)**2
             radius_sq = self.map_radius**2
             
-            # Create wall mask - use circular approximation but with correct center/radius
             wall_mask = dist_sq > radius_sq
-            
-            # Draw walls as solid obstacles in ENEMY channel (Danger)
             matrix[1][wall_mask] = 1.0
 
         return matrix
