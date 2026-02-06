@@ -47,6 +47,15 @@ class DDQNAgent:
             lr=config.opt.lr
         )
 
+        # Learning Rate Scheduler (Autonomy)
+        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer,
+            mode='max',
+            factor=config.opt.scheduler_factor,
+            patience=config.opt.scheduler_patience,
+            verbose=True
+        )
+
         if config.buffer.prioritized:
             self.memory = PrioritizedReplayBuffer(
                 capacity=config.buffer.capacity,
@@ -68,6 +77,28 @@ class DDQNAgent:
     def get_epsilon(self):
         return self.config.opt.eps_end + (self.config.opt.eps_start - self.config.opt.eps_end) * \
             np.exp(-1. * self.steps_done / self.config.opt.eps_decay)
+
+    def step_scheduler(self, metric):
+        """Update LR based on metric (e.g. avg reward)."""
+        self.scheduler.step(metric)
+
+    def boost_exploration(self, target_eps=0.5):
+        """Resets steps_done to boost epsilon back to target_eps."""
+        start = self.config.opt.eps_start
+        end = self.config.opt.eps_end
+        decay = self.config.opt.eps_decay
+
+        # Clamp target to be valid
+        target_eps = max(end + 0.01, min(start, target_eps))
+
+        ratio = (target_eps - end) / (start - end)
+        if ratio <= 0:
+            new_steps = decay * 10
+        else:
+            new_steps = -decay * np.log(ratio)
+
+        print(f"  [Autonomy] Boosting Exploration: Eps {self.get_epsilon():.3f} -> {target_eps:.3f} (Reset steps to {int(new_steps)})")
+        self.steps_done = int(new_steps)
 
     def _stack_frames(self, frames):
         """

@@ -31,6 +31,11 @@ class OptimizationConfig:
     max_episodes: int = 5000000
     checkpoint_every: int = 50
 
+    # Autonomy / Stabilization
+    scheduler_patience: int = 50
+    scheduler_factor: float = 0.5
+    adaptive_eps_patience: int = 100
+
 @dataclass
 class ReplayBufferConfig:
     capacity: int = 100000
