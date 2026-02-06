@@ -1,86 +1,89 @@
-# Slither.io Gen2: Matrix-based Reinforcement Learning
+# Gen2: Matrix-Based Slither.io Bot
 
-## Overview
-Gen2 implements a high-performance Reinforcement Learning (RL) agent for Slither.io, utilizing a "Matrix" representation of the game state (visual grid) rather than raw coordinates. It addresses the non-stationary and partially observable nature of the game through advanced Deep Q-Learning techniques.
+A Deep Reinforcement Learning agent for Slither.io using a Dueling DQN architecture with Prioritized Experience Replay (PER).
 
-## Architecture & Algorithms
+## Architecture
 
-### 1. Dueling Deep Q-Network (D3QN)
-- **Concept:** Splits the neural network into two streams:
-  - **Value Stream $V(s)$:** Estimates the intrinsic quality of the state.
-  - **Advantage Stream $A(s, a)$:** Estimates the relative value of each action.
-- **Aggregation:** $Q(s, a) = V(s) + (A(s, a) - \text{mean}(A(s, a)))$.
-- **Benefit:** Faster convergence by learning state values regardless of action selection.
-- **Activation:** `LeakyReLU` (slope 0.01) to prevent "Dying ReLU" in sparse reward environments.
+### Model (`gen2/model.py`)
+- **Type**: Dueling Deep Q-Network (Dueling DQN).
+- **Input**: `(Batch, 12, 84, 84)`
+  - **Spatial**: 84x84 grid with 3 channels (Food, Danger/Enemies, Self).
+  - **Temporal**: Stack of 4 frames (handled by `VecFrameStack`), resulting in 12 input channels.
+- **CNN Backbone**:
+  - Conv2d: 32 filters, 8x8 kernel, stride 4.
+  - Conv2d: 64 filters, 4x4 kernel, stride 2.
+  - Conv2d: 64 filters, 3x3 kernel, stride 1.
+- **Dueling Heads**:
+  - **Advantage Stream**: FC 512 -> Action Space (6).
+  - **Value Stream**: FC 512 -> 1.
+  - **Aggregation**: `Q = V + (A - mean(A))`.
 
-### 2. Prioritized Experience Replay (PER)
-- **Concept:** Samples transitions based on their **TD Error** (surprise factor) rather than uniformly.
-- **Implementation:** SumTree data structure ($O(\log N)$ sampling).
-- **Bias Correction:** Uses Importance Sampling weights in the loss function to correct for non-uniform sampling.
-- **Benefit:** Agent learns significantly faster from rare, crucial events (e.g., death, eating).
+### Algorithm
+- **Policy**: Double DQN (DDQN) to reduce maximization bias.
+- **Replay Buffer**: Prioritized Experience Replay (PER) using a SumTree structure to sample high-error transitions more frequently.
+- **Optimization**: AdamW optimizer with Gradient Clipping (max_norm=10).
 
-### 3. Frame Stacking (POMDP Solution)
-- **Problem:** A single frame lacks velocity and trajectory information (Partially Observable Markov Decision Process).
-- **Solution:** Stacks the last **4 frames** as input channels.
-- **Input Shape:** $(12, 84, 84)$ (3 channels [Food, Enemy, Self] $\times$ 4 frames).
-- **Benefit:** Restores Markov property; allows detection of enemy speed and turn radius.
+## Environment (`gen2/slither_env.py`)
 
-### 4. Optimization & Stability
-- **Double DQN (DDQN):** Decouples action selection (Policy Net) from evaluation (Target Net) to reduce overestimation bias.
-- **Reward Normalization:** Batch-wise normalization (mean 0, std 1) prevents gradient explosion from large food rewards.
-- **Hardware Acceleration:** Auto-detects **CUDA** (NVIDIA), **MPS** (Apple Silicon), or **CPU**.
+The environment interfaces with the Slither.io game via Selenium and injected JavaScript.
 
-## Configuration (`config.py`)
+### Observation Space
+A 3-channel matrix (84x84) representing the agent's local view:
+1. **Channel 0 (Food)**: Pellet locations (value 1.0).
+2. **Channel 1 (Danger)**: Enemy snake bodies/heads (0.5/1.0) and Map Boundaries (1.0).
+3. **Channel 2 (Self)**: Own snake body/head (0.5/1.0).
 
-Configuration is strictly typed via `dataclasses`.
+*Note: The view radius is dynamic. The matrix scales to fit the game's zoom level.*
 
-- **Environment:**
-  - `frame_stack`: 4 (Standard).
-  - `resolution`: (84, 84).
-- **Optimization:**
-  - `lr`: $6.25 \times 10^{-5}$ (Precise rate for stability).
-  - `batch_size`: 64.
-  - `gamma`: 0.99 (Discount factor).
-- **Buffer:**
-  - `capacity`: 100,000 transitions.
-  - `prioritized`: True.
+### Action Space (Discrete: 6)
+0. **Straight**: Maintain current heading.
+1. **Turn Left (Small)**: ~40 degrees.
+2. **Turn Right (Small)**: ~40 degrees.
+3. **Turn Left (Big)**: ~103 degrees.
+4. **Turn Right (Big)**: ~103 degrees.
+5. **Boost**: Activate speed boost (consumes mass).
 
-## Optimization Scenarios & Troubleshooting
+### Reward System (Curriculum Learning)
+The agent progresses through stages defined in `gen2/trainer.py`:
+1. **Stage 1 (EAT)**: High reward for food (+10), penalty for death (-15). Goal: Learn to gather mass.
+2. **Stage 2 (SURVIVE)**: Increased death penalties (-100 wall, -20 enemy). Goal: Avoid collision.
+3. **Stage 3 (GROW)**: Long-term survival and length maximization.
 
-### Scenario A: Loss Does Not Decrease
-- **Diagnosis:** Learning rate too high or data distribution too noisy.
-- **Action:**
-  1. Reduce `lr` in `config.py` to $1e-5$.
-  2. Increase `batch_size` to 128 to smooth gradients.
+## Key Technical Features
 
-### Scenario B: Q-Values Explode (Exponential Growth)
-- **Diagnosis:** Gradient explosion or Reward Scaling issue.
-- **Action:**
-  1. Verify Reward Normalization is active.
-  2. Reduce `grad_clip` (default 10.0) to 1.0.
+### Sensor Logic (`gen2/browser_engine.py`)
+- **Map Boundary**: Uses precise Polygon Boundary X (`window.pbx`) data from the game server if available, falling back to the exact Game Radius (`window.grd`). This eliminates "phantom wall" deaths caused by inaccurate safety buffers.
+- **Snake Detection**:
+  - Iterates `window.slithers` with an expanded search radius (5x view) to populate the matrix with off-screen enemies.
+  - Supports up to 50 concurrent enemies (increased from legacy 15) to prevent "invisible snake" collisions in crowded areas.
+- **Performance**: Game rendering is disabled/optimized via JS injection to maximize FPS for the headless browser.
 
-### Scenario C: Agent Spins in Circles
-- **Diagnosis:** "Reward Hacking" or Catastrophic Forgetting.
-- **Action:**
-  1. Increase `frame_stack` to 8 to better capture long-term context.
-  2. Increase `gamma` to 0.995 to prioritize long-term survival over immediate movement.
-  3. Ensure `epsilon` decay is not too fast (check `eps_decay`).
-
-### Scenario D: Training is Too Slow
-- **Diagnosis:** CPU bottleneck in environment or small Batch Size.
-- **Action:**
-  1. Increase `num_agents` in `train(args)` to utilize all CPU cores.
-  2. Enable `MPS`/`CUDA` acceleration.
+### Visualization
+- **View Plus**: A client-side canvas overlay (`--view-plus`) renders the agent's perception grid (Food/Enemies/Wall) in real-time at 60fps on top of the game view.
 
 ## Usage
 
+### Prerequisites
+- Python 3.8+
+- `pip install torch selenium numpy pandas plotext`
+- Chrome/Chromium installed.
+
+### Training
+Run the vectorized trainer (default 1 agent):
 ```bash
-# Start Training (Single Agent)
 python gen2/trainer.py
+```
 
-# Start Training (8 Parallel Agents)
-python gen2/trainer.py --num_agents 8
+### Options
+- `--num_agents N`: Run `N` parallel browser instances.
+- `--view`: Show the browser window for the first agent (others headless).
+- `--view-plus`: Show browser + Debug Overlay (Perception Grid).
+- `--resume`: Load checkpoint from `gen2/checkpoint.pth`.
+- `--stage N`: Force start at specific curriculum stage (1, 2, or 3).
 
-# Resume from Checkpoint
-python gen2/trainer.py --resume
+### Monitoring
+Training stats are logged to `gen2/training_stats.csv`.
+Visualize progress:
+```bash
+python gen2/analyze_matrix.py
 ```

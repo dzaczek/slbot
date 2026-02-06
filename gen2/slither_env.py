@@ -41,8 +41,8 @@ class SlitherEnv:
         self.food_reward = 10.0       # Stage 1 default: high food reward
         self.food_shaping = 0.01      # Reward for moving towards food
         self.survival_reward = 0.05   # Per-step survival bonus
-        self.death_wall_penalty = -5  # Stage 1: low death penalty
-        self.death_snake_penalty = -5
+        self.death_wall_penalty = -15 # Increased default to prevent suicide eating
+        self.death_snake_penalty = -15
         self.straight_penalty = 0.0   # Stage 1: no straight penalty
         self.length_bonus = 0.0       # Stage 3: per-step bonus for snake length
 

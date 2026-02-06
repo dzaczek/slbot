@@ -36,13 +36,13 @@ class CurriculumManager:
             "food_reward": 10.0,
             "food_shaping": 0.01,
             "survival": 0.05,
-            "death_wall": -5,
-            "death_snake": -5,
+            "death_wall": -15,  # Increased penalty to prevent suicide-eating
+            "death_snake": -15,
             "straight_penalty": 0.0,
             "length_bonus": 0.0,
             "max_steps": 200,
             "promote_metric": "food_per_step",  # Must eat more than 1.5x steps
-            "promote_threshold": 0.15,           # 0.15 food/step = ~30 food in 200 steps
+            "promote_threshold": 0.05,           # Reduced threshold (10 food in 200 steps)
             "promote_window": 50,
         },
         2: {
