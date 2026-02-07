@@ -21,6 +21,7 @@ class ModelConfig:
 @dataclass
 class OptimizationConfig:
     lr: float = 6.25e-5
+    weight_decay: float = 1e-5
     batch_size: int = 64
     gamma: float = 0.99
     grad_clip: float = 10.0
@@ -30,6 +31,7 @@ class OptimizationConfig:
     target_update_freq: int = 2000
     max_episodes: int = 5000000
     checkpoint_every: int = 50
+    reward_scale: float = 100.0
 
     # Autonomy / Stabilization
     scheduler_patience: int = 50
