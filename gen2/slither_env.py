@@ -99,31 +99,41 @@ class SlitherEnv:
         """Returns True if position is within threshold of wall."""
         return self.last_dist_to_wall < threshold
 
-    def _draw_line(self, matrix, channel, x0, y0, x1, y1, value):
-        """Draws a line on the matrix using Bresenham's algorithm."""
-        x0, y0 = int(x0), int(y0)
-        x1, y1 = int(x1), int(y1)
+    def _draw_circle(self, matrix, channel, cx, cy, r, value):
+        """Draws a filled circle on the matrix."""
+        r_int = int(math.ceil(r))
+        x_min = max(0, int(cx - r_int))
+        x_max = min(self.matrix_size, int(cx + r_int + 1))
+        y_min = max(0, int(cy - r_int))
+        y_max = min(self.matrix_size, int(cy + r_int + 1))
 
-        dx = abs(x1 - x0)
-        dy = abs(y1 - y0)
-        sx = 1 if x0 < x1 else -1
-        sy = 1 if y0 < y1 else -1
-        err = dx - dy
+        r_sq = r * r
 
-        while True:
-            if 0 <= x0 < self.matrix_size and 0 <= y0 < self.matrix_size:
-                matrix[channel, y0, x0] = value
+        for y in range(y_min, y_max):
+            for x in range(x_min, x_max):
+                dx = x - cx
+                dy = y - cy
+                if dx*dx + dy*dy <= r_sq:
+                    matrix[channel, y, x] = value
 
-            if x0 == x1 and y0 == y1:
-                break
+    def _draw_thick_line(self, matrix, channel, x0, y0, x1, y1, width, value):
+        """Draws a thick line by interpolating circles along the segment."""
+        radius = width / 2.0
+        dist = math.hypot(x1 - x0, y1 - y0)
 
-            e2 = 2 * err
-            if e2 > -dy:
-                err -= dy
-                x0 += sx
-            if e2 < dx:
-                err += dx
-                y0 += sy
+        if dist == 0:
+            self._draw_circle(matrix, channel, x0, y0, radius, value)
+            return
+
+        # Interpolate circles
+        # Step size should be radius to ensure coverage
+        steps = int(dist / max(0.5, radius * 0.5)) + 1
+
+        for i in range(steps + 1):
+            t = i / max(1, steps)
+            x = x0 + t * (x1 - x0)
+            y = y0 + t * (y1 - y0)
+            self._draw_circle(matrix, channel, x, y, radius, value)
 
     # =====================================================
     # DEATH CLASSIFICATION (Forensic approach)
@@ -134,17 +144,25 @@ class SlitherEnv:
         Death classification: Forensic + Geometric hybrid.
         
         1. Enemy nearby (< 500 units) -> SnakeCollision (certain)
-        2. No enemy nearby BUT close to wall (dist_to_wall < 2000) -> Wall (certain)
-        3. No enemy nearby AND far from wall -> SnakeCollision (default)
-           (enemy likely appeared during frame_skip and wasn't in pre_action_data)
+        2. Strictly outside map radius -> Wall (certain)
+        3. dist_to_wall < WALL_PROXIMITY -> Wall (likely)
+        4. Otherwise -> SnakeCollision (default)
         """
         mx, my = 0, 0
         if last_data and last_data.get('self'):
             mx = last_data['self'].get('x', 0)
             my = last_data['self'].get('y', 0)
         
-        # Get geometric wall distance
-        dist_to_wall = last_data.get('dist_to_wall', 99999) if last_data else 99999
+        # Get geometric wall distance (from JS)
+        dist_to_wall_js = last_data.get('dist_to_wall', 99999) if last_data else 99999
+
+        # Python-side Strict Check
+        map_radius = self.map_radius if self.map_radius > 10000 else 21600
+        map_cx = self.map_center_x if self.map_center_x > 0 else 21600
+        map_cy = self.map_center_y if self.map_center_y > 0 else 21600
+
+        dist_from_center = math.hypot(mx - map_cx, my - map_cy)
+        dist_to_wall_py = map_radius - dist_from_center
         
         # Check if any enemy was close to our head at the moment before death
         enemies = last_data.get('enemies', []) if last_data else []
@@ -164,23 +182,27 @@ class SlitherEnv:
                     min_enemy_dist = min(min_enemy_dist, dist)
         
         # Classification logic
-        COLLISION_RADIUS = 500  # Increased to account for frame_skip movement
-        WALL_PROXIMITY = 2000   # Must be geometrically near wall to classify as Wall
+        COLLISION_RADIUS = 500  # Enemy collision range
+        WALL_PROXIMITY = 2000   # Near wall threshold
         
-        if min_enemy_dist < COLLISION_RADIUS:
-            # Enemy was close -> definitely SnakeCollision
+        # Priority 1: Strictly outside map -> WALL
+        if dist_to_wall_py < -100: # 100 unit buffer for floating point noise
+             cause = "Wall"
+             penalty = self.death_wall_penalty
+        # Priority 2: Clear enemy collision
+        elif min_enemy_dist < COLLISION_RADIUS:
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
-        elif dist_to_wall < WALL_PROXIMITY:
-            # No enemy close BUT we're near the wall -> Wall death
+        # Priority 3: JS says we are near wall
+        elif dist_to_wall_js < WALL_PROXIMITY:
             cause = "Wall"
             penalty = self.death_wall_penalty
         else:
-            # No enemy in data AND far from wall -> likely snake that appeared during frame_skip
+            # Default fallback
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
         
-        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_dist:.0f} WallDist={dist_to_wall:.0f} -> {cause} ({penalty})")
+        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_dist:.0f} WallDistJS={dist_to_wall_js:.0f} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
         
         return penalty, cause
 
@@ -438,45 +460,56 @@ class SlitherEnv:
             ex, ey = e['x'], e['y']
             hx, hy = world_to_matrix(ex, ey)
 
+            # Calculate snake width in matrix pixels
+            # Base width ~29 units.
+            sc = e.get('sc', 1.0)
+            width_world = sc * 29.0
+            width_matrix = width_world * self.scale
+
             pts = e.get('pts', [])
 
-            # Draw line from head to first body point
+            # Draw thick line from head to first body point
             if pts:
                 px, py = pts[0][0], pts[0][1]
                 bx, by = world_to_matrix(px, py)
-                self._draw_line(matrix, 1, hx, hy, bx, by, 0.5)
+                self._draw_thick_line(matrix, 1, hx, hy, bx, by, width_matrix, 0.5)
 
-            # Draw lines between body points
+            # Draw thick lines between body points
             for i in range(len(pts) - 1):
                  p1 = pts[i]
                  p2 = pts[i+1]
                  x1, y1 = world_to_matrix(p1[0], p1[1])
                  x2, y2 = world_to_matrix(p2[0], p2[1])
-                 self._draw_line(matrix, 1, x1, y1, x2, y2, 0.5)
+                 self._draw_thick_line(matrix, 1, x1, y1, x2, y2, width_matrix, 0.5)
 
             # Ensure Head is distinct (drawn last)
-            if 0 <= hx < self.matrix_size and 0 <= hy < self.matrix_size:
-                matrix[1, hy, hx] = 1.0
+            # Head radius slightly larger
+            head_radius = (width_matrix / 2.0) * 1.2
+            self._draw_circle(matrix, 1, hx, hy, head_radius, 1.0)
 
         # 3. Self (Channel 2)
         cx, cy = self.matrix_size // 2, self.matrix_size // 2
 
         my_pts = my_snake.get('pts', [])
+        my_sc = my_snake.get('sc', 1.0)
+        my_width_matrix = (my_sc * 29.0) * self.scale
 
         # Head to first point
         if my_pts:
              px, py = my_pts[0][0], my_pts[0][1]
              bx, by = world_to_matrix(px, py)
-             self._draw_line(matrix, 2, cx, cy, bx, by, 0.5)
+             self._draw_thick_line(matrix, 2, cx, cy, bx, by, my_width_matrix, 0.5)
 
         for i in range(len(my_pts) - 1):
             p1 = my_pts[i]
             p2 = my_pts[i+1]
             x1, y1 = world_to_matrix(p1[0], p1[1])
             x2, y2 = world_to_matrix(p2[0], p2[1])
-            self._draw_line(matrix, 2, x1, y1, x2, y2, 0.5)
+            self._draw_thick_line(matrix, 2, x1, y1, x2, y2, my_width_matrix, 0.5)
 
-        matrix[2, cy, cx] = 1.0
+        # Head
+        my_head_radius = (my_width_matrix / 2.0) * 1.2
+        self._draw_circle(matrix, 2, cx, cy, my_head_radius, 1.0)
 
         # 4. Walls (Channel 1 - DANGER) 
         # We draw wall based on grd circle, but this is approximate.
