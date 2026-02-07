@@ -271,8 +271,12 @@ class SlitherBrowser:
             var MAX_ENEMIES = {self.MAX_ENEMIES};
             var MAX_BODY_PTS = {self.MAX_BODY_PTS};
             
-            var playing = (window.slither !== undefined && window.slither !== null) && 
-                         (typeof window.dead_mtm === 'undefined' || window.dead_mtm === -1 || window.dead_mtm === null);
+            var hasSnake = (window.slither !== undefined && window.slither !== null &&
+                            typeof window.slither.xx === 'number' && typeof window.slither.yy === 'number');
+            var isDeadFlag = (window.slither && typeof window.slither.dead !== 'undefined') ? window.slither.dead : false;
+            var deadMtm = window.dead_mtm;
+            var deadMtmActive = !(deadMtm === undefined || deadMtm === null || deadMtm === -1 || deadMtm === 0);
+            var playing = hasSnake && !isDeadFlag && !deadMtmActive;
             var in_menu = document.querySelector('#nick, #playh .btnt') !== null;
             
             if (!playing) {{
@@ -329,13 +333,20 @@ class SlitherBrowser:
                 var foodList = [];
                 for (var i = 0; i < window.foods.length && foodList.length < MAX_FOODS * 2; i++) {{
                     var f = window.foods[i];
-                    if (f && f.rx) {{
-                        var dx = f.rx - myX;
-                        var dy = f.ry - myY;
+                    if (f) {{
+                        var fx = (typeof f.xx === 'number') ? f.xx :
+                                 (typeof f.x === 'number') ? f.x :
+                                 (typeof f.rx === 'number') ? f.rx : null;
+                        var fy = (typeof f.yy === 'number') ? f.yy :
+                                 (typeof f.y === 'number') ? f.y :
+                                 (typeof f.ry === 'number') ? f.ry : null;
+                        if (fx === null || fy === null) continue;
+                        var dx = fx - myX;
+                        var dy = fy - myY;
                         var dist = dx*dx + dy*dy;
                         // Only include foods within view
                         if (dist < viewRadSq) {{
-                            foodList.push([f.rx, f.ry, f.sz || 1, dist]);
+                            foodList.push([fx, fy, f.sz || 1, dist]);
                         }}
                     }}
                 }}
@@ -1104,4 +1115,3 @@ class SlitherBrowser:
             self.driver.execute_script(js_code)
         except:
             pass
-
