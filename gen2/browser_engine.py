@@ -23,8 +23,9 @@ class SlitherBrowser:
     MAX_ENEMIES = 50     # Max enemy snakes to process (Increased to fix invisible snakes)
     MAX_BODY_PTS = 150   # Max body points per enemy (increased for better visibility)
     
-    def __init__(self, headless=True, nickname="NEATBot"):
+    def __init__(self, headless=True, nickname="NEATBot", base_url="http://slither.io"):
         self.nickname = nickname
+        self.base_url = base_url
         self.options = Options()
         
         if headless:
@@ -56,7 +57,8 @@ class SlitherBrowser:
         # Initialize driver
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.set_page_load_timeout(30)
-        self.driver.get("http://slither.io")
+        log(f"[BROWSER] Connecting to {self.base_url}...")
+        self.driver.get(self.base_url)
         time.sleep(3)
 
     def _handle_login(self):
@@ -450,6 +452,8 @@ class SlitherBrowser:
             // DETECT MAP BOUNDARY
             var possibleMapVars = {{}};
             var boundarySource = 'none';
+            var boundaryType = 'circle';
+            var boundaryVertices = [];
             var distToWall = 99999;
             var distFromCenter = 99999;
             
@@ -457,34 +461,112 @@ class SlitherBrowser:
             var mapCenterY = 21600; // Default center
             var mapRadius = 21600;  // Default radius
             
-            if (typeof window.grd !== 'undefined' && window.grd > 1000) {{
-                mapCenterX = window.grd;
-                mapCenterY = window.grd;
-                mapRadius = window.grd * 0.98;
-                boundarySource = 'grd';
-                possibleMapVars['grd'] = window.grd;
-            }} else {{
-                boundarySource = 'default';
+            // Check for Polygon Boundary (pbx/pby)
+            var usePolygon = false;
+            var pbxCount = 0;
+
+            if (typeof window.pbx !== 'undefined' && window.pbx && window.pbx.length >= 3 &&
+                (typeof window.pby === 'undefined' || (window.pby && window.pby.length >= 3))) {{
+                 usePolygon = true;
+                 boundarySource = 'pbx';
+                 boundaryType = 'polygon';
+                 pbxCount = window.pbx.length;
+
+                 // Extract vertices (limited to avoid huge payload)
+                 var step = 1;
+                 if (window.pbx.length > 200) step = Math.ceil(window.pbx.length / 200);
+                 for (var i = 0; i < window.pbx.length; i+=step) {{
+                     var pyVal = (window.pby && window.pby[i] !== undefined) ? window.pby[i] : window.pbx[i];
+                     boundaryVertices.push([window.pbx[i], pyVal]);
+                 }}
+                 // Ensure we capture the start point for drawing
+                 if (boundaryVertices.length > 0) {{
+                     var last = boundaryVertices[boundaryVertices.length-1];
+                     var first = boundaryVertices[0];
+                     if (last[0] !== first[0] || last[1] !== first[1]) {{
+                        boundaryVertices.push(first);
+                     }}
+                 }}
             }}
 
-            distFromCenter = Math.sqrt(
-                Math.pow(my_snake.x - mapCenterX, 2) +
-                Math.pow(my_snake.y - mapCenterY, 2)
-            );
-            distToWall = mapRadius - distFromCenter;
+            if (!usePolygon) {{
+                if (typeof window.grd !== 'undefined' && window.grd > 1000) {{
+                    mapCenterX = window.grd;
+                    mapCenterY = window.grd;
+                    mapRadius = window.grd * 0.98;
+                    boundarySource = 'grd';
+                    boundaryType = 'circle';
+                    possibleMapVars['grd'] = window.grd;
+                }} else {{
+                    boundarySource = 'default';
+                    boundaryType = 'circle';
+                }}
+            }}
+
+            if (usePolygon) {{
+                 // Calculate Distance to Polygon
+                 distToWall = (function(x, y, pbx, pby) {{
+                     var minD = 999999;
+                     var inside = false;
+                     var len = pbx.length;
+
+                     // PIP (Ray Casting)
+                     var j = len - 1;
+                     for (var i = 0; i < len; i++) {{
+                         var xi = pbx[i], yi = (pby && pby[i] !== undefined) ? pby[i] : pbx[i];
+                         var xj = pbx[j], yj = (pby && pby[j] !== undefined) ? pby[j] : pbx[j];
+
+                         if ((yi > y) != (yj > y) &&
+                             (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {{
+                             inside = !inside;
+                         }}
+                         j = i;
+                     }}
+
+                     // Dist to edges
+                     j = len - 1;
+                     for (var i = 0; i < len; i++) {{
+                         var x1 = pbx[i], y1 = (pby && pby[i] !== undefined) ? pby[i] : pbx[i];
+                         var x2 = pbx[j], y2 = (pby && pby[j] !== undefined) ? pby[j] : pbx[j];
+
+                         var A = x - x1;
+                         var B = y - y1;
+                         var C = x2 - x1;
+                         var D = y2 - y1;
+
+                         var dot = A * C + B * D;
+                         var len_sq = C * C + D * D;
+                         var param = -1;
+                         if (len_sq != 0) param = dot / len_sq;
+
+                         var xx, yy;
+                         if (param < 0) {{ xx = x1; yy = y1; }}
+                         else if (param > 1) {{ xx = x2; yy = y2; }}
+                         else {{ xx = x1 + param * C; yy = y1 + param * D; }}
+
+                         var dx = x - xx;
+                         var dy = y - yy;
+                         var d = Math.sqrt(dx*dx + dy*dy);
+                         if (d < minD) minD = d;
+                         j = i;
+                     }}
+
+                     return inside ? minD : -minD;
+                 }})(my_snake.x, my_snake.y, window.pbx, window.pby);
+
+                 // Use distToWall for center calc placeholder
+                 distFromCenter = 0;
+            }} else {{
+                 distFromCenter = Math.sqrt(
+                    Math.pow(my_snake.x - mapCenterX, 2) +
+                    Math.pow(my_snake.y - mapCenterY, 2)
+                 );
+                 distToWall = mapRadius - distFromCenter;
+            }}
 
             possibleMapVars['map_center'] = Math.round(mapCenterX) + ',' + Math.round(mapCenterY);
             possibleMapVars['map_radius'] = Math.round(mapRadius);
             possibleMapVars['dist_from_center'] = Math.round(distFromCenter);
-            
-            // Also capture pbx info for debugging (NOT used for wall detection)
-            var pbxCount = 0;
-            if (typeof window.pbx !== 'undefined' && window.pbx) {{
-                for (var i = 0; i < window.pbx.length; i++) {{
-                    if (window.pbx[i] !== 0 || (window.pby && window.pby[i] !== 0)) pbxCount++;
-                }}
-            }}
-            
             possibleMapVars['pbx_count'] = pbxCount;
             possibleMapVars['FINAL_source'] = boundarySource;
             possibleMapVars['FINAL_dist_to_wall'] = Math.round(distToWall);
@@ -501,6 +583,8 @@ class SlitherBrowser:
                 map_radius: mapRadius,
                 map_center_x: mapCenterX,
                 map_center_y: mapCenterY,
+                boundary_type: boundaryType,
+                boundary_vertices: boundaryVertices,
                 debug: {{
                     total_slithers: totalSlithers,
                     visible_enemies: visible_enemies.length,
@@ -511,6 +595,7 @@ class SlitherBrowser:
                     snake_x: Math.round(my_snake.x),
                     snake_y: Math.round(my_snake.y),
                     boundary_source: boundarySource,
+                    boundary_type: boundaryType,
                     map_vars: possibleMapVars
                 }}
             }};
