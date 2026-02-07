@@ -1,5 +1,9 @@
 # Gen2: Matrix-Based Slither.io Bot
 
+> **Status: Under Repair**
+> The current implementation has known issues with death classification and map boundaries. A comprehensive repair plan has been established.
+> See [REPAIR_PLAN.md](REPAIR_PLAN.md) for details on the ongoing work.
+
 A Deep Reinforcement Learning agent for Slither.io using a Dueling DQN architecture with Prioritized Experience Replay (PER).
 
 ## Architecture
