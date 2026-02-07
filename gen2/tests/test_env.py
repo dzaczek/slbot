@@ -60,5 +60,41 @@ class TestSlitherEnv(unittest.TestCase):
         # x = 50. mx = 150. dx = -100. gx = -100 * 0.21 + 42 = 21.
         self.assertEqual(matrix[1, 21, 21], 1.0)
 
+    def test_update_from_game_data_ignores_nan(self):
+        self.env.last_dist_to_wall = 1234
+        self.env.map_radius = 21600
+        self.env.map_center_x = 21600
+        self.env.map_center_y = 21600
+
+        data = {
+            'dist_to_wall': float('nan'),
+            'map_radius': float('nan'),
+            'map_center_x': float('nan'),
+            'map_center_y': float('nan')
+        }
+
+        self.env._update_from_game_data(data)
+
+        self.assertEqual(self.env.last_dist_to_wall, 1234)
+        self.assertEqual(self.env.map_radius, 21600)
+        self.assertEqual(self.env.map_center_x, 21600)
+        self.assertEqual(self.env.map_center_y, 21600)
+
+    def test_invalid_frame_returns_last_matrix(self):
+        self.env.browser.send_action = MagicMock()
+        self.env.last_matrix = np.ones((3, self.env.matrix_size, self.env.matrix_size), dtype=np.float32)
+        self.env.browser.get_game_data = MagicMock(return_value={
+            'dead': False,
+            'valid': False,
+            'self': {'x': 0, 'y': 0, 'len': 0}
+        })
+
+        state, reward, done, info = self.env.step(0)
+
+        self.assertFalse(done)
+        self.assertEqual(reward, 0.0)
+        self.assertEqual(info.get('cause'), 'InvalidFrame')
+        self.assertTrue(np.array_equal(state, self.env.last_matrix))
+
 if __name__ == '__main__':
     unittest.main()

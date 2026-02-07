@@ -53,10 +53,39 @@ class SlitherEnv:
         self.death_snake_penalty = -15
         self.straight_penalty = 0.0   # Stage 1: no straight penalty
         self.length_bonus = 0.0       # Stage 3: per-step bonus for snake length
+
+        # Threat awareness
+        self.wall_alert_dist = 2000
+        self.enemy_alert_dist = 800
         self.wall_proximity_penalty = 0.0
-        self.wall_proximity_radius = 2000.0
         self.enemy_proximity_penalty = 0.0
-        self.enemy_proximity_radius = 1200.0
+
+        # Frame validation (from tsrgy0)
+        self.last_matrix = self._matrix_zeros()
+        self.last_valid_data = None
+        self.invalid_frame_count = 0
+        self.max_invalid_frames = 15
+
+    def _is_valid_frame(self, data):
+        """Checks if the frame data is valid and not corrupted."""
+        if not data or data.get('dead'):
+            return False
+        if data.get('valid') is False:
+            return False
+        snake = data.get('self') or {}
+        mx = snake.get('x')
+        my = snake.get('y')
+        if mx is None or my is None:
+            return False
+        if not math.isfinite(mx) or not math.isfinite(my):
+            return False
+        # Basic sanity check for coordinates (should be > 1000 usually unless right at corner 0,0 which is unlikely in game)
+        # But let's be careful not to filter valid starts.
+        # tsrgy0 used: if abs(mx) <= 1000 and abs(my) <= 1000: return False
+        # I will keep it as a heuristic for "loading/invalid" state.
+        if abs(mx) <= 1000 and abs(my) <= 1000:
+            return False
+        return True
 
     def set_curriculum_stage(self, stage_config):
         """Set reward parameters from curriculum stage config dict."""
@@ -67,10 +96,13 @@ class SlitherEnv:
         self.death_snake_penalty = stage_config.get('death_snake', -10)
         self.straight_penalty = stage_config.get('straight_penalty', 0.05)
         self.length_bonus = stage_config.get('length_bonus', 0.0)
+
+        # Update alert distances if provided, otherwise keep defaults
+        self.wall_alert_dist = stage_config.get('wall_alert_dist', 2000)
+        self.enemy_alert_dist = stage_config.get('enemy_alert_dist', 800)
         self.wall_proximity_penalty = stage_config.get('wall_proximity_penalty', 0.0)
-        self.wall_proximity_radius = stage_config.get('wall_proximity_radius', 2000.0)
         self.enemy_proximity_penalty = stage_config.get('enemy_proximity_penalty', 0.0)
-        self.enemy_proximity_radius = stage_config.get('enemy_proximity_radius', 1200.0)
+
         print(f"  ENV: food={self.food_reward} surv={self.survival_reward} "
               f"wall={self.death_wall_penalty} snake={self.death_snake_penalty}")
 
@@ -81,16 +113,17 @@ class SlitherEnv:
         
         # dist_to_wall comes from JS (empirical: distance from grd-based center minus estimated radius)
         dtw = data.get('dist_to_wall')
-        if dtw is not None:
+        # Robust check for NaN (from mgwlm6)
+        if dtw is not None and math.isfinite(dtw):
             self.last_dist_to_wall = dtw
         
-        # Update map params from JS
+        # Update map params from JS (from mgwlm6)
         mr = data.get('map_radius')
-        if mr and mr > 0:
+        if mr and math.isfinite(mr) and mr > 0:
             self.map_radius = mr
         cx = data.get('map_center_x')
         cy = data.get('map_center_y')
-        if cx and cy:
+        if cx and cy and math.isfinite(cx) and math.isfinite(cy):
             self.map_center_x = cx
             self.map_center_y = cy
 
@@ -109,6 +142,25 @@ class SlitherEnv:
         We no longer calculate this ourselves - JS has the real pbx vertex data.
         """
         return self.last_dist_to_wall
+
+    def _snake_width_world(self, snake):
+        sc = snake.get('sc', 1.0) if snake else 1.0
+        return sc * 29.0
+
+    def _head_radius_world(self, snake):
+        width = self._snake_width_world(snake)
+        return (width / 2.0) * 1.2
+
+    def _min_enemy_distance(self, enemies, mx, my):
+        min_enemy_dist = float('inf')
+        for e in enemies or []:
+            ex, ey = e.get('x', 0), e.get('y', 0)
+            min_enemy_dist = min(min_enemy_dist, math.hypot(ex - mx, ey - my))
+            for pt in e.get('pts', []):
+                if len(pt) >= 2:
+                    px, py = pt[0], pt[1]
+                    min_enemy_dist = min(min_enemy_dist, math.hypot(px - mx, py - my))
+        return min_enemy_dist
     
     def _is_outside_map(self, x, y):
         """Returns True if position is outside the map boundary."""
@@ -153,27 +205,6 @@ class SlitherEnv:
             x = x0 + t * (x1 - x0)
             y = y0 + t * (y1 - y0)
             self._draw_circle(matrix, channel, x, y, radius, value)
-
-    def _min_enemy_distance(self, enemies, mx, my):
-        if not enemies:
-            return None
-
-        min_enemy_dist = float('inf')
-
-        for e in enemies:
-            ex, ey = e.get('x', 0), e.get('y', 0)
-            dist = math.hypot(ex - mx, ey - my)
-            min_enemy_dist = min(min_enemy_dist, dist)
-
-            for pt in e.get('pts', []):
-                if len(pt) >= 2:
-                    px, py = pt[0], pt[1]
-                    dist = math.hypot(px - mx, py - my)
-                    min_enemy_dist = min(min_enemy_dist, dist)
-
-        if min_enemy_dist == float('inf'):
-            return None
-        return min_enemy_dist
 
     # =====================================================
     # DEATH CLASSIFICATION (Forensic approach)
@@ -259,6 +290,9 @@ class SlitherEnv:
         
         # Get geometric wall distance (from JS)
         dist_to_wall_js = last_data.get('dist_to_wall', 99999) if last_data else 99999
+        # Robust check for NaN (from mgwlm6)
+        if not math.isfinite(dist_to_wall_js):
+            dist_to_wall_js = 99999
 
         # Python-side Strict Check (Fallback)
         map_radius = self.map_radius if self.map_radius > 10000 else 21600
@@ -274,12 +308,12 @@ class SlitherEnv:
         # Check if any enemy was close to our head at the moment before death
         enemies = last_data.get('enemies', []) if last_data else []
         min_enemy_dist = self._min_enemy_distance(enemies, mx, my)
-        min_enemy_dist_display = min_enemy_dist if min_enemy_dist is not None else float('inf')
+        head_radius = self._head_radius_world(last_data.get('self') if last_data else None)
         
         # Classification logic
         # Tighter thresholds for more accurate classification
-        COLLISION_RADIUS = 600  # Slightly increased to catch near-misses interpreted as hits
-        WALL_PROXIMITY = 1500   # Reduced to be more specific to actual wall hits
+        COLLISION_BUFFER = 40
+        WALL_BUFFER = 40
         
         cause = "Unknown"
         penalty = self.death_snake_penalty
@@ -290,12 +324,12 @@ class SlitherEnv:
              penalty = self.death_wall_penalty
 
         # Priority 2: High confidence Enemy Collision
-        elif min_enemy_dist is not None and min_enemy_dist < COLLISION_RADIUS:
+        elif min_enemy_dist != float('inf') and min_enemy_dist <= (head_radius + COLLISION_BUFFER):
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
 
         # Priority 3: Proximity to wall (if no enemy hit detected)
-        elif dist_to_wall_js < WALL_PROXIMITY:
+        elif dist_to_wall_js <= (head_radius + WALL_BUFFER):
              cause = "Wall"
              penalty = self.death_wall_penalty
 
@@ -306,10 +340,11 @@ class SlitherEnv:
 
         # Priority 5: Default (Assumed Snake Collision if inside map)
         else:
-            cause = "SnakeCollision"
+            cause = "Unknown" if min_enemy_dist == float('inf') else "SnakeCollision"
             penalty = self.death_snake_penalty
         
-        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_dist_display:.0f} WallDistJS={dist_to_wall_js:.0f} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
+        min_enemy_display = min_enemy_dist if min_enemy_dist != float('inf') else -1
+        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_display:.0f} WallDistJS={dist_to_wall_js:.0f} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
         
         return penalty, cause
 
@@ -317,6 +352,7 @@ class SlitherEnv:
         """Resets the game and returns initial matrix state."""
         self.browser.force_restart()
         self.near_wall_frames = 0
+        self.invalid_frame_count = 0
         
         # One-time game variable scan
         if not self._map_vars_printed:
@@ -347,18 +383,22 @@ class SlitherEnv:
             self.browser.inject_view_plus_overlay()
         
         # Get initial state and set prev_length to actual starting length
+        # Loop 20 times (HEAD logic) for safety (but use validation now)
         data = None
         for _ in range(20):
             data = self.browser.get_game_data()
-            if data and not data.get('dead') and not data.get('in_menu'):
+            if self._is_valid_frame(data):
                 break
             time.sleep(0.2)
+
         if data and data.get('self'):
             self.prev_length = data['self'].get('len', 0)
         else:
             self.prev_length = 0
             
         matrix = self._process_data_to_matrix(data)
+        self.last_matrix = matrix
+        self.last_valid_data = data if self._is_valid_frame(data) else None
         
         # Update overlay with initial state (include gsc and view_radius for debugging)
         if self.view_plus and data:
@@ -392,9 +432,20 @@ class SlitherEnv:
 
         # Get current state before action
         data = self.browser.get_game_data()
-        if not data or data.get('in_menu'):
-            self.browser.force_restart()
+
+        # Robust check (Validation Logic from tsrgy0)
+        if not data:
             return self._matrix_zeros(), -5, True, {"cause": "BrowserError"}
+
+        if not data.get('dead') and not self._is_valid_frame(data):
+            self.invalid_frame_count += 1
+            if self.invalid_frame_count >= self.max_invalid_frames:
+                return self.last_matrix, -5, True, {"cause": "InvalidFrame"}
+            # Return last valid state
+            return self.last_matrix, 0.0, False, {"cause": "InvalidFrame"}
+
+        self.invalid_frame_count = 0
+        self.last_valid_data = data
 
         # Update map params IMMEDIATELY from fresh game data
         self._update_from_game_data(data)
@@ -404,15 +455,17 @@ class SlitherEnv:
             mx = data['self'].get('x', 0) if data.get('self') else 0
             my = data['self'].get('y', 0) if data.get('self') else 0
             dtw = self._calc_dist_to_wall(mx, my)
-            # Cannot generate useful debug image here as data is already dead (empty)
             min_enemy_dist = self._min_enemy_distance(data.get('enemies', []), mx, my)
+
+            # Use last valid data for death packet if current is empty?
+            # data is 'dead', so it might be empty.
+            # But we have last_valid_data
+
             return self._matrix_zeros(), reward, True, {
                 "cause": cause,
                 "pos": (mx, my),
                 "wall_dist": dtw,
-                "min_enemy_dist": min_enemy_dist,
-                "enemy_penalty": 0.0,
-                "wall_penalty": 0.0
+                "enemy_dist": min_enemy_dist if min_enemy_dist != float('inf') else -1,
             }
 
         my_snake = data.get('self', {})
@@ -439,7 +492,19 @@ class SlitherEnv:
 
         # Get new state after action
         data = self.browser.get_game_data()
+
+        # Validate again
+        if data and not data.get('dead') and not self._is_valid_frame(data):
+             self.invalid_frame_count += 1
+             if self.invalid_frame_count >= self.max_invalid_frames:
+                 return self.last_matrix, -5, True, {"cause": "InvalidFrame"}
+             return self.last_matrix, 0.0, False, {"cause": "InvalidFrame"}
+
         state = self._process_data_to_matrix(data)
+        self.last_matrix = state
+        if self._is_valid_frame(data):
+            self.last_valid_data = data
+            self.invalid_frame_count = 0
         
         # Update view-plus overlay
         if self.view_plus and data:
@@ -454,19 +519,17 @@ class SlitherEnv:
             pmx = pre_action_data['self'].get('x', 0) if pre_action_data and pre_action_data.get('self') else 0
             pmy = pre_action_data['self'].get('y', 0) if pre_action_data and pre_action_data.get('self') else 0
             dtw = self._calc_dist_to_wall(pmx, pmy)
+            min_enemy_dist = self._min_enemy_distance(pre_action_data.get('enemies', []), pmx, pmy)
 
             # Save debug image using LAST VALID STATE
             debug_matrix = self._process_data_to_matrix(pre_action_data)
             self.save_death_packet(debug_matrix, reward, cause, pre_action_data)
 
-            min_enemy_dist = self._min_enemy_distance(pre_action_data.get('enemies', []), pmx, pmy) if pre_action_data else None
             return state, reward, True, {
                 "cause": cause,
                 "pos": (pmx, pmy),
                 "wall_dist": dtw,
-                "min_enemy_dist": min_enemy_dist,
-                "enemy_penalty": 0.0,
-                "wall_penalty": 0.0
+                "enemy_dist": min_enemy_dist if min_enemy_dist != float('inf') else -1,
             }
 
         # === REWARD CALCULATION ===
@@ -478,6 +541,8 @@ class SlitherEnv:
         # Update wall tracking from post-action data
         self._update_from_game_data(data)
         new_dist_to_wall = data.get('dist_to_wall', 99999)
+        if not math.isfinite(new_dist_to_wall):
+            new_dist_to_wall = 99999
         min_enemy_dist = self._min_enemy_distance(data.get('enemies', []), new_x, new_y)
         
         # 1. Survival reward
@@ -511,18 +576,14 @@ class SlitherEnv:
         if self.straight_penalty > 0 and action == 0:
             reward -= self.straight_penalty
 
-        # 6. Threat shaping (wall/enemy proximity)
-        wall_penalty = 0.0
-        if self.wall_proximity_penalty < 0 and new_dist_to_wall < self.wall_proximity_radius:
-            wall_ratio = (self.wall_proximity_radius - new_dist_to_wall) / max(self.wall_proximity_radius, 1.0)
-            wall_penalty = self.wall_proximity_penalty * max(0.0, min(1.0, wall_ratio))
-            reward += wall_penalty
+        # 6. Threat proximity shaping (keep distance from wall/enemies)
+        if self.wall_proximity_penalty > 0 and new_dist_to_wall < self.wall_alert_dist:
+            wall_ratio = max(0.0, 1.0 - (new_dist_to_wall / max(self.wall_alert_dist, 1)))
+            reward -= self.wall_proximity_penalty * wall_ratio
 
-        enemy_penalty = 0.0
-        if self.enemy_proximity_penalty < 0 and min_enemy_dist is not None and min_enemy_dist < self.enemy_proximity_radius:
-            enemy_ratio = (self.enemy_proximity_radius - min_enemy_dist) / max(self.enemy_proximity_radius, 1.0)
-            enemy_penalty = self.enemy_proximity_penalty * max(0.0, min(1.0, enemy_ratio))
-            reward += enemy_penalty
+        if self.enemy_proximity_penalty > 0 and min_enemy_dist != float('inf') and min_enemy_dist < self.enemy_alert_dist:
+            enemy_ratio = max(0.0, 1.0 - (min_enemy_dist / max(self.enemy_alert_dist, 1)))
+            reward -= self.enemy_proximity_penalty * enemy_ratio
         
         # Update tracked values
         self.prev_length = new_len
@@ -531,12 +592,10 @@ class SlitherEnv:
         return state, reward, False, {
             "length": new_len,
             "food_eaten": food_eaten,
-            "cause": None, 
-            "pos": (new_x, new_y), 
+            "cause": None,
+            "pos": (new_x, new_y),
             "wall_dist": new_dist_to_wall,
-            "min_enemy_dist": min_enemy_dist,
-            "enemy_penalty": enemy_penalty,
-            "wall_penalty": wall_penalty
+            "enemy_dist": min_enemy_dist if min_enemy_dist != float('inf') else -1
         }
 
     def _get_state(self):
