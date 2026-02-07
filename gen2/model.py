@@ -8,18 +8,18 @@ class DuelingDQN(nn.Module):
     Separates value estimation (how good is this state?) from 
     advantage estimation (how much better is each action?).
     """
-    def __init__(self, input_channels, action_dim=6):
+    def __init__(self, input_channels, action_dim=6, input_size=(84, 84)):
         super(DuelingDQN, self).__init__()
 
-        # Input: (input_channels, 64, 64)
-        # Using 3 layers of convolutions as per Nature paper, adapted for 64x64
-        self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=8, stride=4) # -> 32 x 15 x 15
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)             # -> 64 x 6 x 6
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)             # -> 64 x 4 x 4
+        # Input: (input_channels, H, W)
+        # Using 3 layers of convolutions as per Nature paper
+        self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
 
-        # Calculate flat size dynamically
+        # Calculate flat size dynamically based on input_size
         with torch.no_grad():
-            dummy_input = torch.zeros(1, input_channels, 84, 84)
+            dummy_input = torch.zeros(1, input_channels, *input_size)
             x = self.conv1(dummy_input)
             x = self.conv2(x)
             x = self.conv3(x)
@@ -49,7 +49,7 @@ class DuelingDQN(nn.Module):
                     nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
-        # x shape: (B, C, 64, 64)
+        # x shape: (B, C, H, W)
         x = F.leaky_relu(self.conv1(x), 0.01)
         x = F.leaky_relu(self.conv2(x), 0.01)
         x = F.leaky_relu(self.conv3(x), 0.01)
