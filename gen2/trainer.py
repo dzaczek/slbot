@@ -281,7 +281,7 @@ class VecFrameStack:
     def set_stage(self, stage_config):
         self.venv.set_stage(stage_config)
 
-def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, view_plus=False):
+def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, view_plus=False, base_url="http://slither.io"):
     parent_remote.close()
     
     picard_names = [
@@ -291,7 +291,7 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
     chosen_name = f"{random.choice(picard_names)}_{worker_id}"
     
     try:
-        env = SlitherEnv(headless=headless, nickname=chosen_name, matrix_size=matrix_size, view_plus=view_plus)
+        env = SlitherEnv(headless=headless, nickname=chosen_name, matrix_size=matrix_size, view_plus=view_plus, base_url=base_url)
 
         while True:
             cmd, data = remote.recv()
@@ -319,7 +319,7 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
         remote.close()
 
 class SubprocVecEnv:
-    def __init__(self, num_agents, matrix_size, view_first=False, view_plus=False, nickname="dzaczekAI"):
+    def __init__(self, num_agents, matrix_size, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io"):
         self.num_agents = num_agents
         self.remotes, self.work_remotes = zip(*[mp.Pipe() for _ in range(num_agents)])
         self.ps = []
@@ -328,7 +328,7 @@ class SubprocVecEnv:
             is_headless = not (view_first and i == 0)
             # Enable view_plus only for the first agent when view mode is active
             agent_view_plus = view_plus and (i == 0) and not is_headless
-            p = mp.Process(target=worker, args=(self.work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, agent_view_plus))
+            p = mp.Process(target=worker, args=(self.work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, agent_view_plus, base_url))
             p.daemon = True
             p.start()
             self.ps.append(p)
@@ -396,7 +396,8 @@ def train(args):
         matrix_size=cfg.env.resolution[0],
         view_first=args.view or args.view_plus,
         view_plus=args.view_plus,
-        nickname="AI_Opt"
+        nickname="AI_Opt",
+        base_url=args.url
     )
     env = VecFrameStack(raw_env, k=cfg.env.frame_stack)
 
@@ -577,6 +578,7 @@ if __name__ == "__main__":
     parser.add_argument("--stage", type=int, default=0, help="Force start at specific stage (1-3)")
     parser.add_argument("--style-name", type=str, help="Learning style name (e.g. 'Aggressive')")
     parser.add_argument("--model-path", type=str, help="Path to model checkpoint to load")
+    parser.add_argument("--url", type=str, default="http://slither.io", help="Game URL (e.g. http://eslither.io)")
     args = parser.parse_args()
 
     mp.set_start_method('spawn', force=True)

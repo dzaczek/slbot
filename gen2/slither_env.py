@@ -9,11 +9,13 @@ import time
 from browser_engine import SlitherBrowser
 
 class SlitherEnv:
-    def __init__(self, headless=True, nickname="MatrixBot", matrix_size=84, view_plus=False):
-        self.browser = SlitherBrowser(headless=headless, nickname=nickname)
+    def __init__(self, headless=True, nickname="MatrixBot", matrix_size=84, view_plus=False, base_url="http://slither.io"):
+        self.browser = SlitherBrowser(headless=headless, nickname=nickname, base_url=base_url)
         self.map_radius = 0  # Legacy, not used for wall detection anymore
         self.map_center_x = 0
         self.map_center_y = 0
+        self.boundary_type = 'circle'
+        self.boundary_vertices = []
         self.matrix_size = matrix_size # Output grid size (default 84x84)
         self.view_plus = view_plus  # Enable visual overlay
         
@@ -77,6 +79,9 @@ class SlitherEnv:
         if cx and cy:
             self.map_center_x = cx
             self.map_center_y = cy
+
+        self.boundary_type = data.get('boundary_type', 'circle')
+        self.boundary_vertices = data.get('boundary_vertices', [])
         
         # Track wall proximity
         if self.last_dist_to_wall < 2000:
@@ -161,8 +166,11 @@ class SlitherEnv:
         map_cx = self.map_center_x if self.map_center_x > 0 else 21600
         map_cy = self.map_center_y if self.map_center_y > 0 else 21600
 
-        dist_from_center = math.hypot(mx - map_cx, my - map_cy)
-        dist_to_wall_py = map_radius - dist_from_center
+        # Trust JS dist_to_wall mostly, but verify geometric fallback
+        dist_to_wall_py = 99999
+        if self.boundary_type == 'circle':
+            dist_from_center = math.hypot(mx - map_cx, my - map_cy)
+            dist_to_wall_py = map_radius - dist_from_center
         
         # Check if any enemy was close to our head at the moment before death
         enemies = last_data.get('enemies', []) if last_data else []
@@ -185,18 +193,18 @@ class SlitherEnv:
         COLLISION_RADIUS = 500  # Enemy collision range
         WALL_PROXIMITY = 2000   # Near wall threshold
         
-        # Priority 1: Strictly outside map -> WALL
-        if dist_to_wall_py < -100: # 100 unit buffer for floating point noise
+        # Priority 1: JS says we are outside or very close to wall
+        if dist_to_wall_js < 0 or dist_to_wall_js < WALL_PROXIMITY:
              cause = "Wall"
              penalty = self.death_wall_penalty
-        # Priority 2: Clear enemy collision
+        # Priority 2: Strictly outside circular map (fallback)
+        elif self.boundary_type == 'circle' and dist_to_wall_py < -100:
+             cause = "Wall"
+             penalty = self.death_wall_penalty
+        # Priority 3: Clear enemy collision
         elif min_enemy_dist < COLLISION_RADIUS:
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
-        # Priority 3: JS says we are near wall
-        elif dist_to_wall_js < WALL_PROXIMITY:
-            cause = "Wall"
-            penalty = self.death_wall_penalty
         else:
             # Default fallback
             cause = "SnakeCollision"
@@ -517,20 +525,36 @@ class SlitherEnv:
         # Visual wall in matrix helps the bot see the boundary coming.
         dist_to_wall = data.get('dist_to_wall', 99999)
         
-        if dist_to_wall < 5000 and self.map_radius > 0 and self.map_center_x > 0:
-            y_grid, x_grid = np.ogrid[:self.matrix_size, :self.matrix_size]
+        if dist_to_wall < 5000:
+            if self.boundary_type == 'polygon' and len(self.boundary_vertices) >= 3:
+                # Draw Polygon Wall
+                # Iterate vertices and draw lines
+                verts = self.boundary_vertices
+                for i in range(len(verts)):
+                    p1 = verts[i]
+                    p2 = verts[(i + 1) % len(verts)]
+
+                    # Convert to matrix coords
+                    x1, y1 = world_to_matrix(p1[0], p1[1])
+                    x2, y2 = world_to_matrix(p2[0], p2[1])
+
+                    # Only draw if at least one point is somewhat near view
+                    self._draw_thick_line(matrix, 1, x1, y1, x2, y2, 2.0, 1.0) # Wall thickness 2.0
             
-            dx_world = (x_grid - (self.matrix_size / 2)) / self.scale
-            dy_world = (y_grid - (self.matrix_size / 2)) / self.scale
-            
-            wx = mx + dx_world
-            wy = my + dy_world
-            
-            dist_sq = (wx - self.map_center_x)**2 + (wy - self.map_center_y)**2
-            radius_sq = self.map_radius**2
-            
-            wall_mask = dist_sq > radius_sq
-            matrix[1][wall_mask] = 1.0
+            elif self.map_radius > 0 and self.map_center_x > 0:
+                y_grid, x_grid = np.ogrid[:self.matrix_size, :self.matrix_size]
+
+                dx_world = (x_grid - (self.matrix_size / 2)) / self.scale
+                dy_world = (y_grid - (self.matrix_size / 2)) / self.scale
+
+                wx = mx + dx_world
+                wy = my + dy_world
+
+                dist_sq = (wx - self.map_center_x)**2 + (wy - self.map_center_y)**2
+                radius_sq = self.map_radius**2
+
+                wall_mask = dist_sq > radius_sq
+                matrix[1][wall_mask] = 1.0
 
         return matrix
 
