@@ -311,6 +311,7 @@ class SlitherBrowser:
                 y: window.slither.yy,
                 ang: window.slither.ang,
                 sp: window.slither.sp,
+                sc: window.slither.sc,
                 len: window.slither.pts ? window.slither.pts.length : 0,
                 pts: my_pts
             }};
@@ -440,6 +441,7 @@ class SlitherBrowser:
                         y: s.yy || 0,
                         ang: s.ang || 0,
                         sp: s.sp || 0,
+                        sc: s.sc || 1,
                         pts: pts
                     }});
                 }}
