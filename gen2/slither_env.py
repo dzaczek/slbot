@@ -57,6 +57,26 @@ class SlitherEnv:
         self.wall_proximity_radius = 2000.0
         self.enemy_proximity_penalty = 0.0
         self.enemy_proximity_radius = 1200.0
+        self.last_matrix = self._matrix_zeros()
+        self.last_valid_data = None
+        self.invalid_frame_count = 0
+        self.max_invalid_frames = 15
+
+    def _is_valid_frame(self, data):
+        if not data or data.get('dead'):
+            return False
+        if data.get('valid') is False:
+            return False
+        snake = data.get('self') or {}
+        mx = snake.get('x')
+        my = snake.get('y')
+        if mx is None or my is None:
+            return False
+        if not math.isfinite(mx) or not math.isfinite(my):
+            return False
+        if abs(mx) <= 1000 and abs(my) <= 1000:
+            return False
+        return True
 
     def set_curriculum_stage(self, stage_config):
         """Set reward parameters from curriculum stage config dict."""
@@ -317,6 +337,7 @@ class SlitherEnv:
         """Resets the game and returns initial matrix state."""
         self.browser.force_restart()
         self.near_wall_frames = 0
+        self.invalid_frame_count = 0
         
         # One-time game variable scan
         if not self._map_vars_printed:
@@ -347,13 +368,20 @@ class SlitherEnv:
             self.browser.inject_view_plus_overlay()
         
         # Get initial state and set prev_length to actual starting length
-        data = self.browser.get_game_data()
+        data = None
+        for _ in range(20):
+            data = self.browser.get_game_data()
+            if self._is_valid_frame(data):
+                break
+            time.sleep(0.2)
         if data and data.get('self'):
             self.prev_length = data['self'].get('len', 0)
         else:
             self.prev_length = 0
             
         matrix = self._process_data_to_matrix(data)
+        self.last_matrix = matrix
+        self.last_valid_data = data if self._is_valid_frame(data) else None
         
         # Update overlay with initial state (include gsc and view_radius for debugging)
         if self.view_plus and data:
@@ -390,8 +418,16 @@ class SlitherEnv:
         if not data:
             return self._matrix_zeros(), -5, True, {"cause": "BrowserError"}
 
+        if not data.get('dead') and not self._is_valid_frame(data):
+            self.invalid_frame_count += 1
+            if self.invalid_frame_count >= self.max_invalid_frames:
+                return self.last_matrix, -5, True, {"cause": "InvalidFrame"}
+            return self.last_matrix, 0.0, False, {"cause": "InvalidFrame"}
+
         # Update map params IMMEDIATELY from fresh game data
         self._update_from_game_data(data)
+        self.invalid_frame_count = 0
+        self.last_valid_data = data
 
         if data.get('dead'):
             reward, cause = self._get_death_reward_and_cause(data)
@@ -433,7 +469,17 @@ class SlitherEnv:
 
         # Get new state after action
         data = self.browser.get_game_data()
+        if data and not data.get('dead') and not self._is_valid_frame(data):
+            self.invalid_frame_count += 1
+            if self.invalid_frame_count >= self.max_invalid_frames:
+                return self.last_matrix, -5, True, {"cause": "InvalidFrame"}
+            return self.last_matrix, 0.0, False, {"cause": "InvalidFrame"}
+
         state = self._process_data_to_matrix(data)
+        self.last_matrix = state
+        if self._is_valid_frame(data):
+            self.last_valid_data = data
+            self.invalid_frame_count = 0
         
         # Update view-plus overlay
         if self.view_plus and data:

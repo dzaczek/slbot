@@ -276,7 +276,7 @@ class SlitherBrowser:
             var in_menu = document.querySelector('#nick, #playh .btnt') !== null;
             
             if (!playing) {{
-                return {{ dead: true, in_menu: in_menu }};
+                return {{ dead: true, in_menu: in_menu, valid: false }};
             }}
 
             // Get actual view dimensions from game
@@ -317,6 +317,9 @@ class SlitherBrowser:
                 len: window.slither.pts ? window.slither.pts.length : 0,
                 pts: my_pts
             }};
+
+            var validPos = Number.isFinite(my_snake.x) && Number.isFinite(my_snake.y) &&
+                           Math.abs(my_snake.x) > 1000 && Math.abs(my_snake.y) > 1000;
 
             // Foods (limited for performance) - only within view radius
             var visible_foods = [];
@@ -573,6 +576,7 @@ class SlitherBrowser:
             
             return {{
                 dead: false,
+                valid: validPos,
                 self: my_snake,
                 foods: visible_foods,
                 enemies: visible_enemies,
@@ -1104,4 +1108,3 @@ class SlitherBrowser:
             self.driver.execute_script(js_code)
         except:
             pass
-
