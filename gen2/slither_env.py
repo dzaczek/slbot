@@ -347,7 +347,12 @@ class SlitherEnv:
             self.browser.inject_view_plus_overlay()
         
         # Get initial state and set prev_length to actual starting length
-        data = self.browser.get_game_data()
+        data = None
+        for _ in range(20):
+            data = self.browser.get_game_data()
+            if data and not data.get('dead') and not data.get('in_menu'):
+                break
+            time.sleep(0.2)
         if data and data.get('self'):
             self.prev_length = data['self'].get('len', 0)
         else:
@@ -387,7 +392,8 @@ class SlitherEnv:
 
         # Get current state before action
         data = self.browser.get_game_data()
-        if not data:
+        if not data or data.get('in_menu'):
+            self.browser.force_restart()
             return self._matrix_zeros(), -5, True, {"cause": "BrowserError"}
 
         # Update map params IMMEDIATELY from fresh game data
