@@ -53,6 +53,8 @@ The agent progresses through stages defined in `gen2/trainer.py`:
 2. **Stage 2 (SURVIVE)**: Increased death penalties (-100 wall, -20 enemy). Goal: Avoid collision.
 3. **Stage 3 (GROW)**: Long-term survival and length maximization.
 
+Threat awareness shaping is applied in later stages: the agent receives a small penalty when it gets too close to walls or enemy bodies/heads (configurable via `wall_alert_dist`, `enemy_alert_dist`, and proximity penalty values in `gen2/styles.py`).
+
 ## Key Technical Features
 
 ### Sensor Logic (`gen2/browser_engine.py`)
