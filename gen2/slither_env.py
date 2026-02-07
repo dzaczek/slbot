@@ -3,6 +3,9 @@ import math
 import sys
 import os
 import time
+import matplotlib.pyplot as plt
+# Ensure matplotlib uses a non-interactive backend for headless environments
+plt.switch_backend('Agg')
 
 # Add parent directory to path to import browser_engine
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -144,14 +147,40 @@ class SlitherEnv:
     # DEATH CLASSIFICATION (Forensic approach)
     # =====================================================
 
+    def save_debug_image(self, matrix, reward, cause, pos, wall_dist):
+        """Saves a debug image of the final state."""
+        try:
+            debug_dir = os.path.join(os.path.dirname(__file__), 'debug_screens')
+            os.makedirs(debug_dir, exist_ok=True)
+
+            timestamp = int(time.time())
+            filename = os.path.join(debug_dir, f"death_{timestamp}_{cause}.png")
+
+            fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+
+            titles = ["Food", "Enemies/Wall", "Self"]
+            for i in range(3):
+                axes[i].imshow(matrix[i], cmap='gray', origin='upper')
+                axes[i].set_title(titles[i])
+                axes[i].axis('off')
+
+            plt.suptitle(f"Cause: {cause} | Reward: {reward:.2f}\nPos: {pos} | Wall Dist: {wall_dist:.0f}")
+            plt.tight_layout()
+            plt.savefig(filename)
+            plt.close(fig)
+            print(f"Saved debug image to {filename}")
+        except Exception as e:
+            print(f"Failed to save debug image: {e}")
+
     def _get_death_reward_and_cause(self, last_data=None):
         """
         Death classification: Forensic + Geometric hybrid.
         
-        1. Enemy nearby (< 500 units) -> SnakeCollision (certain)
-        2. Strictly outside map radius -> Wall (certain)
-        3. dist_to_wall < WALL_PROXIMITY -> Wall (likely)
-        4. Otherwise -> SnakeCollision (default)
+        Priority Logic:
+        1. Strictly outside map (dist < 0) -> Wall
+        2. Enemy collision (dist < 500) -> SnakeCollision
+        3. Near wall (dist < 2000) -> Wall
+        4. Default -> SnakeCollision
         """
         mx, my = 0, 0
         if last_data and last_data.get('self'):
@@ -161,7 +190,7 @@ class SlitherEnv:
         # Get geometric wall distance (from JS)
         dist_to_wall_js = last_data.get('dist_to_wall', 99999) if last_data else 99999
 
-        # Python-side Strict Check
+        # Python-side Strict Check (Fallback)
         map_radius = self.map_radius if self.map_radius > 10000 else 21600
         map_cx = self.map_center_x if self.map_center_x > 0 else 21600
         map_cy = self.map_center_y if self.map_center_y > 0 else 21600
@@ -193,20 +222,26 @@ class SlitherEnv:
         COLLISION_RADIUS = 500  # Enemy collision range
         WALL_PROXIMITY = 2000   # Near wall threshold
         
-        # Priority 1: JS says we are outside or very close to wall
-        if dist_to_wall_js < 0 or dist_to_wall_js < WALL_PROXIMITY:
+        # Priority 1: Strictly outside map (certain wall death)
+        if dist_to_wall_js < 0:
              cause = "Wall"
              penalty = self.death_wall_penalty
-        # Priority 2: Strictly outside circular map (fallback)
-        elif self.boundary_type == 'circle' and dist_to_wall_py < -100:
-             cause = "Wall"
-             penalty = self.death_wall_penalty
-        # Priority 3: Clear enemy collision
+
+        # Priority 2: Clear enemy collision
         elif min_enemy_dist < COLLISION_RADIUS:
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
+
+        # Priority 3: Near wall (and no snake hit detected)
+        elif dist_to_wall_js < WALL_PROXIMITY:
+             cause = "Wall"
+             penalty = self.death_wall_penalty
+
+        # Priority 4: Fallback
+        elif self.boundary_type == 'circle' and dist_to_wall_py < -100:
+             cause = "Wall"
+             penalty = self.death_wall_penalty
         else:
-            # Default fallback
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
         
@@ -299,6 +334,7 @@ class SlitherEnv:
             mx = data['self'].get('x', 0) if data.get('self') else 0
             my = data['self'].get('y', 0) if data.get('self') else 0
             dtw = self._calc_dist_to_wall(mx, my)
+            # Cannot generate useful debug image here as data is already dead (empty)
             return self._matrix_zeros(), reward, True, {"cause": cause, "pos": (mx, my), "wall_dist": dtw}
 
         my_snake = data.get('self', {})
@@ -340,6 +376,11 @@ class SlitherEnv:
             pmx = pre_action_data['self'].get('x', 0) if pre_action_data and pre_action_data.get('self') else 0
             pmy = pre_action_data['self'].get('y', 0) if pre_action_data and pre_action_data.get('self') else 0
             dtw = self._calc_dist_to_wall(pmx, pmy)
+
+            # Save debug image using LAST VALID STATE
+            debug_matrix = self._process_data_to_matrix(pre_action_data)
+            self.save_debug_image(debug_matrix, reward, cause, (pmx, pmy), dtw)
+
             return state, reward, True, {"cause": cause, "pos": (pmx, pmy), "wall_dist": dtw}
 
         # === REWARD CALCULATION ===
