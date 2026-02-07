@@ -52,6 +52,7 @@ The agent progresses through stages defined in `gen2/trainer.py`:
 1. **Stage 1 (EAT)**: High reward for food (+10), penalty for death (-15). Goal: Learn to gather mass.
 2. **Stage 2 (SURVIVE)**: Increased death penalties (-100 wall, -20 enemy). Goal: Avoid collision.
 3. **Stage 3 (GROW)**: Long-term survival and length maximization.
+4. **Threat Shaping**: Optional proximity penalties for walls and nearby enemies to reinforce danger avoidance.
 
 ## Key Technical Features
 

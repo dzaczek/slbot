@@ -295,7 +295,14 @@ class VecFrameStack:
         """Force reset specific agent."""
         # This requires SubprocVecEnv to support reset_one, which we haven't implemented yet.
         # For now, we will ignore partial resets or implement them if needed.
-        pass
+        return self.reset_one(i)
+
+    def reset_one(self, i):
+        obs = self.venv.reset_one(i)
+        self.frames[i].clear()
+        for _ in range(self.k):
+            self.frames[i].append(obs)
+        return np.concatenate(list(self.frames[i]), axis=0)
 
     def close(self):
         self.venv.close()
@@ -327,6 +334,9 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
                 remote.send((next_state, reward, done, info))
 
             elif cmd == 'reset':
+                state = env.reset()
+                remote.send(state)
+            elif cmd == 'reset_one':
                 state = env.reset()
                 remote.send(state)
             elif cmd == 'set_stage':
@@ -362,6 +372,10 @@ class SubprocVecEnv:
         for remote in self.remotes:
             remote.send(('reset', None))
         return [remote.recv() for remote in self.remotes]
+
+    def reset_one(self, index):
+        self.remotes[index].send(('reset_one', None))
+        return self.remotes[index].recv()
 
     def step(self, actions):
         for remote, action in zip(self.remotes, actions):
@@ -479,6 +493,98 @@ def train(args):
     # Initial Reset
     states = env.reset()
 
+    def finalize_episode(agent_index, terminal_state, cause, force_done_flag):
+        nonlocal start_episode, max_steps_per_episode, best_avg_reward, episodes_since_improvement
+        total_steps_local = episode_steps[agent_index]
+        total_reward = episode_rewards[agent_index]
+        food_eaten = episode_food[agent_index]
+
+        # Store transition
+        agent.remember(states[agent_index], actions[agent_index], rewards[agent_index], terminal_state, True)
+
+        # Log
+        start_episode += 1
+        eps = agent.get_epsilon()
+        loss_val = getattr(train, '_last_loss', 0) or 0
+
+        current_beta = min(1.0, agent.memory.beta_start + agent.memory.frame * (1.0 - agent.memory.beta_start) / agent.memory.beta_frames)
+        lr = agent.optimizer.param_groups[0]['lr']
+
+        if force_done_flag:
+            cause_label = "MaxSteps"
+        else:
+            cause_label = cause or "Unknown"
+
+        # Update death stats
+        if cause_label in death_stats:
+            death_stats[cause_label] += 1
+        else:
+            death_stats["Unknown"] = death_stats.get("Unknown", 0) + 1
+
+        pos = infos[agent_index].get('pos', (0, 0))
+        wall_dist = infos[agent_index].get('wall_dist', -1)
+        enemy_dist = infos[agent_index].get('nearest_enemy_dist', None)
+        pos_str = f"Pos:({pos[0]:.0f},{pos[1]:.0f})"
+        wall_str = f" Wall:{wall_dist:.0f}" if wall_dist >= 0 else ""
+        enemy_str = f" Enemy:{enemy_dist:.0f}" if enemy_dist is not None else ""
+        stage_name = curriculum.get_config()['name']
+
+        food_ratio = food_eaten / max(total_steps_local, 1)
+
+        log_msg = (f"Ep {start_episode} | S{curriculum.current_stage}:{stage_name} | "
+                   f"Rw: {total_reward:.2f} | St: {total_steps_local} | "
+                   f"Fd: {food_eaten} ({food_ratio:.3f}/st) | "
+                   f"Eps: {eps:.3f} | L: {loss_val:.4f} | {cause_label} | {pos_str}{wall_str}{enemy_str}")
+
+        logger.info(log_msg)
+
+        # Print stats occasionally
+        if start_episode % 10 == 0:
+            logger.info(f"Death Stats: {death_stats}")
+
+        with open(stats_file, 'a') as f:
+            f.write(f"{start_episode},{total_steps_local},{total_reward:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause_label},{curriculum.current_stage},{food_eaten}\n")
+
+        # Autonomy Logic (Scheduler & Watchdog)
+        reward_window.append(total_reward)
+        if len(reward_window) >= 20:
+            avg_reward = sum(reward_window) / len(reward_window)
+
+            # Scheduler step
+            agent.step_scheduler(avg_reward)
+
+            # Watchdog for stagnation
+            if avg_reward > best_avg_reward:
+                best_avg_reward = avg_reward
+                episodes_since_improvement = 0
+            else:
+                episodes_since_improvement += 1
+
+            if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
+                logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Boosting exploration.")
+                agent.boost_exploration(target_eps=0.5)
+                episodes_since_improvement = 0
+                reward_window.clear()
+                best_avg_reward = -float('inf')
+
+        # Track metrics for curriculum promotion
+        curriculum.record_episode(food_eaten, total_steps_local)
+
+        # Check for stage promotion
+        if curriculum.check_promotion():
+            stage_cfg = curriculum.get_config()
+            max_steps_per_episode = curriculum.get_max_steps()
+            env.set_stage(stage_cfg)
+            # Save checkpoint on promotion
+            agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state())
+
+        if start_episode % cfg.opt.checkpoint_every == 0:
+            agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state())
+
+        episode_rewards[agent_index] = 0
+        episode_steps[agent_index] = 0
+        episode_food[agent_index] = 0
+
     try:
         while start_episode < cfg.opt.max_episodes:
             # LR Warmup
@@ -501,96 +607,22 @@ def train(args):
                 episode_steps[i] += 1
                 episode_food[i] += infos[i].get('food_eaten', 0)
 
-                force_done = False
-                if episode_steps[i] >= max_steps_per_episode:
-                    force_done = True
+                force_done = episode_steps[i] >= max_steps_per_episode
+                episode_done = dones[i] or force_done
 
-                if dones[i] or force_done:
+                if episode_done:
                     terminal_state = infos[i]['terminal_observation'] if dones[i] else next_states[i]
 
-                    # Store transition
-                    agent.remember(states[i], actions[i], rewards[i], terminal_state, True)
-
-                    # Log
-                    start_episode += 1
-                    eps = agent.get_epsilon()
-                    loss_val = getattr(train, '_last_loss', 0) or 0
-
-                    current_beta = min(1.0, agent.memory.beta_start + agent.memory.frame * (1.0 - agent.memory.beta_start) / agent.memory.beta_frames)
-                    lr = agent.optimizer.param_groups[0]['lr']
-                    
                     if force_done and not dones[i]:
-                        cause = "MaxSteps"
-                    else:
-                        cause = infos[i].get('cause', 'Unknown')
+                        reset_state = env.reset_one(i)
+                        next_states[i] = reset_state
 
-                    # Update death stats
-                    if cause in death_stats:
-                        death_stats[cause] += 1
-                    else:
-                        death_stats["Unknown"] = death_stats.get("Unknown", 0) + 1
-
-                    pos = infos[i].get('pos', (0,0))
-                    wall_dist = infos[i].get('wall_dist', -1)
-                    pos_str = f"Pos:({pos[0]:.0f},{pos[1]:.0f})"
-                    wall_str = f" Wall:{wall_dist:.0f}" if wall_dist >= 0 else ""
-                    stage_name = curriculum.get_config()['name']
-
-                    food_ratio = episode_food[i] / max(episode_steps[i], 1)
-
-                    log_msg = (f"Ep {start_episode} | S{curriculum.current_stage}:{stage_name} | "
-                               f"Rw: {episode_rewards[i]:.2f} | St: {episode_steps[i]} | "
-                               f"Fd: {episode_food[i]} ({food_ratio:.3f}/st) | "
-                               f"Eps: {eps:.3f} | L: {loss_val:.4f} | {cause} | {pos_str}{wall_str}")
-
-                    logger.info(log_msg)
-
-                    # Print stats occasionally
-                    if start_episode % 10 == 0:
-                         logger.info(f"Death Stats: {death_stats}")
-
-                    with open(stats_file, 'a') as f:
-                        f.write(f"{start_episode},{episode_steps[i]},{episode_rewards[i]:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause},{curriculum.current_stage},{episode_food[i]}\n")
-
-                    # Autonomy Logic (Scheduler & Watchdog)
-                    reward_window.append(episode_rewards[i])
-                    if len(reward_window) >= 20:
-                        avg_reward = sum(reward_window) / len(reward_window)
-
-                        # Scheduler step
-                        agent.step_scheduler(avg_reward)
-
-                        # Watchdog for stagnation
-                        if avg_reward > best_avg_reward:
-                            best_avg_reward = avg_reward
-                            episodes_since_improvement = 0
-                        else:
-                            episodes_since_improvement += 1
-
-                        if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
-                            logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Boosting exploration.")
-                            agent.boost_exploration(target_eps=0.5)
-                            episodes_since_improvement = 0
-                            reward_window.clear()
-                            best_avg_reward = -float('inf')
-
-                    # Track metrics for curriculum promotion
-                    curriculum.record_episode(episode_food[i], episode_steps[i])
-
-                    # Check for stage promotion
-                    if curriculum.check_promotion():
-                        stage_cfg = curriculum.get_config()
-                        max_steps_per_episode = curriculum.get_max_steps()
-                        env.set_stage(stage_cfg)
-                        # Save checkpoint on promotion
-                        agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state())
-
-                    if start_episode % cfg.opt.checkpoint_every == 0:
-                        agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state())
-
-                    episode_rewards[i] = 0
-                    episode_steps[i] = 0
-                    episode_food[i] = 0
+                    finalize_episode(
+                        agent_index=i,
+                        terminal_state=terminal_state,
+                        cause=infos[i].get('cause', 'Unknown'),
+                        force_done_flag=force_done and not dones[i]
+                    )
                 else:
                     agent.remember(states[i], actions[i], rewards[i], next_states[i], False)
 

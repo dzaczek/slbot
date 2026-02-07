@@ -53,6 +53,10 @@ class SlitherEnv:
         self.death_snake_penalty = -15
         self.straight_penalty = 0.0   # Stage 1: no straight penalty
         self.length_bonus = 0.0       # Stage 3: per-step bonus for snake length
+        self.wall_proximity_penalty = 0.0
+        self.wall_proximity_threshold = 2000
+        self.enemy_proximity_penalty = 0.0
+        self.enemy_proximity_threshold = 800
 
     def set_curriculum_stage(self, stage_config):
         """Set reward parameters from curriculum stage config dict."""
@@ -63,6 +67,10 @@ class SlitherEnv:
         self.death_snake_penalty = stage_config.get('death_snake', -10)
         self.straight_penalty = stage_config.get('straight_penalty', 0.05)
         self.length_bonus = stage_config.get('length_bonus', 0.0)
+        self.wall_proximity_penalty = stage_config.get('wall_proximity_penalty', 0.0)
+        self.wall_proximity_threshold = stage_config.get('wall_proximity_threshold', 2000)
+        self.enemy_proximity_penalty = stage_config.get('enemy_proximity_penalty', 0.0)
+        self.enemy_proximity_threshold = stage_config.get('enemy_proximity_threshold', 800)
         print(f"  ENV: food={self.food_reward} surv={self.survival_reward} "
               f"wall={self.death_wall_penalty} snake={self.death_snake_penalty}")
 
@@ -145,6 +153,22 @@ class SlitherEnv:
             x = x0 + t * (x1 - x0)
             y = y0 + t * (y1 - y0)
             self._draw_circle(matrix, channel, x, y, radius, value)
+
+    def _min_enemy_distance(self, data, x, y):
+        if not data:
+            return None
+        enemies = data.get('enemies', [])
+        if not enemies:
+            return None
+        min_dist = float('inf')
+        for enemy in enemies:
+            ex, ey = enemy.get('x', 0), enemy.get('y', 0)
+            min_dist = min(min_dist, math.hypot(ex - x, ey - y))
+            for pt in enemy.get('pts', []):
+                if len(pt) >= 2:
+                    px, py = pt[0], pt[1]
+                    min_dist = min(min_dist, math.hypot(px - x, py - y))
+        return min_dist if min_dist != float('inf') else None
 
     # =====================================================
     # DEATH CLASSIFICATION (Forensic approach)
@@ -439,6 +463,7 @@ class SlitherEnv:
         # Update wall tracking from post-action data
         self._update_from_game_data(data)
         new_dist_to_wall = data.get('dist_to_wall', 99999)
+        min_enemy_dist = self._min_enemy_distance(data, new_x, new_y)
         
         # 1. Survival reward
         reward += self.survival_reward
@@ -470,6 +495,16 @@ class SlitherEnv:
         # 5. Straight penalty (encourage turning/exploration)
         if self.straight_penalty > 0 and action == 0:
             reward -= self.straight_penalty
+
+        # 6. Threat proximity penalties (wall/enemy)
+        if self.wall_proximity_penalty > 0 and new_dist_to_wall < self.wall_proximity_threshold:
+            wall_scale = 1.0 - (new_dist_to_wall / max(self.wall_proximity_threshold, 1))
+            reward -= self.wall_proximity_penalty * max(0.0, wall_scale)
+
+        if self.enemy_proximity_penalty > 0 and min_enemy_dist is not None:
+            if min_enemy_dist < self.enemy_proximity_threshold:
+                enemy_scale = 1.0 - (min_enemy_dist / max(self.enemy_proximity_threshold, 1))
+                reward -= self.enemy_proximity_penalty * max(0.0, enemy_scale)
         
         # Update tracked values
         self.prev_length = new_len
@@ -480,7 +515,9 @@ class SlitherEnv:
             "food_eaten": food_eaten,
             "cause": None, 
             "pos": (new_x, new_y), 
-            "wall_dist": new_dist_to_wall
+            "wall_dist": new_dist_to_wall,
+            "nearest_enemy_dist": min_enemy_dist,
+            "near_wall": new_dist_to_wall < self.wall_proximity_threshold
         }
 
     def _get_state(self):
