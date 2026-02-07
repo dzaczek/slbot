@@ -462,7 +462,7 @@ class SlitherBrowser:
                 mapRadius = window.grd * 0.98;
                 boundarySource = 'grd';
                 possibleMapVars['grd'] = window.grd;
-            } else {
+            }} else {{
                 boundarySource = 'default';
             }}
 
