@@ -20,8 +20,30 @@ from agent import DDQNAgent
 from styles import STYLES
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+os.makedirs("logs", exist_ok=True)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Create handlers
+c_handler = logging.StreamHandler()
+f_handler_app = logging.FileHandler('logs/app.log')
+f_handler_train = logging.FileHandler('logs/train.log')
+
+c_handler.setLevel(logging.INFO)
+f_handler_app.setLevel(logging.INFO)
+f_handler_train.setLevel(logging.INFO)
+
+# Create formatters and add it to handlers
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+c_handler.setFormatter(formatter)
+f_handler_app.setFormatter(formatter)
+f_handler_train.setFormatter(formatter)
+
+# Add handlers to the logger
+if not logger.hasHandlers():
+    logger.addHandler(c_handler)
+    logger.addHandler(f_handler_app)
+    logger.addHandler(f_handler_train)
 
 
 def select_style_and_model(args):
@@ -372,6 +394,9 @@ def train(args):
     if args.num_agents > 0:
         cfg.env.num_agents = args.num_agents
     
+    if args.vision_size:
+        cfg.env.resolution = (args.vision_size, args.vision_size)
+
     # Paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
     checkpoint_path = os.path.join(base_dir, 'checkpoint.pth')
@@ -380,15 +405,15 @@ def train(args):
     # Initialize Curriculum/Style Manager
     curriculum = CurriculumManager(style_name=style_name, start_stage=args.stage if args.stage > 0 else 1)
 
-    print(f"Configuration:")
-    print(f"  Style: {style_name}")
-    print(f"  Mode: {curriculum.mode}")
-    print(f"  Agents: {cfg.env.num_agents}")
-    print(f"  Frame Stack: {cfg.env.frame_stack}")
-    print(f"  Resolution: {cfg.env.resolution}")
-    print(f"  Model: {cfg.model.architecture} ({cfg.model.activation})")
-    print(f"  LR: {cfg.opt.lr}")
-    print(f"  PER: {cfg.buffer.prioritized}")
+    logger.info(f"Configuration:")
+    logger.info(f"  Style: {style_name}")
+    logger.info(f"  Mode: {curriculum.mode}")
+    logger.info(f"  Agents: {cfg.env.num_agents}")
+    logger.info(f"  Frame Stack: {cfg.env.frame_stack}")
+    logger.info(f"  Resolution: {cfg.env.resolution}")
+    logger.info(f"  Model: {cfg.model.architecture} ({cfg.model.activation})")
+    logger.info(f"  LR: {cfg.opt.lr}")
+    logger.info(f"  PER: {cfg.buffer.prioritized}")
 
     # Initialize Env
     raw_env = SubprocVecEnv(
@@ -415,18 +440,18 @@ def train(args):
         if curriculum.mode == 'curriculum' and supervisor_state:
             curriculum.load_state(supervisor_state)
 
-        print(f"Resumed from episode {start_episode}")
+        logger.info(f"Resumed from episode {start_episode}")
         if curriculum.mode == 'curriculum':
-            print(f"  Stage: {curriculum.current_stage} ({curriculum.get_config()['name']})")
+            logger.info(f"  Stage: {curriculum.current_stage} ({curriculum.get_config()['name']})")
     elif load_path:
-        print(f"Warning: Model path {load_path} not found. Starting from scratch.")
+        logger.warning(f"Model path {load_path} not found. Starting from scratch.")
 
     # Apply current curriculum stage/style to environments
     stage_cfg = curriculum.get_config()
     env.set_stage(stage_cfg)
     max_steps_per_episode = curriculum.get_max_steps()
-    print(f"  Curriculum Stage: {curriculum.current_stage} ({stage_cfg['name']})")
-    print(f"  Max Steps: {max_steps_per_episode}")
+    logger.info(f"  Curriculum Stage: {curriculum.current_stage} ({stage_cfg['name']})")
+    logger.info(f"  Max Steps: {max_steps_per_episode}")
 
     # Initialize stats file
     if not os.path.exists(stats_file) or not args.resume:
@@ -447,6 +472,9 @@ def train(args):
     episode_rewards = [0] * cfg.env.num_agents
     episode_steps = [0] * cfg.env.num_agents
     episode_food = [0] * cfg.env.num_agents
+
+    # Death Counters
+    death_stats = {"Wall": 0, "SnakeCollision": 0, "Unknown": 0, "MaxSteps": 0}
 
     # Initial Reset
     states = env.reset()
@@ -496,6 +524,12 @@ def train(args):
                     else:
                         cause = infos[i].get('cause', 'Unknown')
 
+                    # Update death stats
+                    if cause in death_stats:
+                        death_stats[cause] += 1
+                    else:
+                        death_stats["Unknown"] = death_stats.get("Unknown", 0) + 1
+
                     pos = infos[i].get('pos', (0,0))
                     wall_dist = infos[i].get('wall_dist', -1)
                     pos_str = f"Pos:({pos[0]:.0f},{pos[1]:.0f})"
@@ -503,7 +537,17 @@ def train(args):
                     stage_name = curriculum.get_config()['name']
 
                     food_ratio = episode_food[i] / max(episode_steps[i], 1)
-                    print(f"Ep {start_episode} | S{curriculum.current_stage}:{stage_name} | Rw: {episode_rewards[i]:.2f} | St: {episode_steps[i]} | Fd: {episode_food[i]} ({food_ratio:.3f}/st) | Eps: {eps:.3f} | L: {loss_val:.4f} | {cause} | {pos_str}{wall_str}")
+
+                    log_msg = (f"Ep {start_episode} | S{curriculum.current_stage}:{stage_name} | "
+                               f"Rw: {episode_rewards[i]:.2f} | St: {episode_steps[i]} | "
+                               f"Fd: {episode_food[i]} ({food_ratio:.3f}/st) | "
+                               f"Eps: {eps:.3f} | L: {loss_val:.4f} | {cause} | {pos_str}{wall_str}")
+
+                    logger.info(log_msg)
+
+                    # Print stats occasionally
+                    if start_episode % 10 == 0:
+                         logger.info(f"Death Stats: {death_stats}")
 
                     with open(stats_file, 'a') as f:
                         f.write(f"{start_episode},{episode_steps[i]},{episode_rewards[i]:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause},{curriculum.current_stage},{episode_food[i]}\n")
@@ -524,7 +568,7 @@ def train(args):
                             episodes_since_improvement += 1
 
                         if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
-                            print(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Boosting exploration.")
+                            logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Boosting exploration.")
                             agent.boost_exploration(target_eps=0.5)
                             episodes_since_improvement = 0
                             reward_window.clear()
@@ -561,7 +605,7 @@ def train(args):
             # Target Update
             if total_steps % cfg.opt.target_update_freq == 0:
                 agent.update_target()
-                print(">> Target Network Updated")
+                logger.info(">> Target Network Updated")
 
     except KeyboardInterrupt:
         print("Interrupted. Saving...")
@@ -579,6 +623,7 @@ if __name__ == "__main__":
     parser.add_argument("--style-name", type=str, help="Learning style name (e.g. 'Aggressive')")
     parser.add_argument("--model-path", type=str, help="Path to model checkpoint to load")
     parser.add_argument("--url", type=str, default="http://slither.io", help="Game URL (e.g. http://eslither.io)")
+    parser.add_argument("--vision-size", type=int, default=84, help="Vision input size (64, 84, 128, etc.)")
     args = parser.parse_args()
 
     mp.set_start_method('spawn', force=True)

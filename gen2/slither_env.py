@@ -3,6 +3,7 @@ import math
 import sys
 import os
 import time
+import json
 import matplotlib.pyplot as plt
 # Ensure matplotlib uses a non-interactive backend for headless environments
 plt.switch_backend('Agg')
@@ -10,6 +11,8 @@ plt.switch_backend('Agg')
 # Add parent directory to path to import browser_engine
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from browser_engine import SlitherBrowser
+from coord_transform import world_to_grid
+from matplotlib.path import Path as MplPath
 
 class SlitherEnv:
     def __init__(self, headless=True, nickname="MatrixBot", matrix_size=84, view_plus=False, base_url="http://slither.io"):
@@ -147,30 +150,68 @@ class SlitherEnv:
     # DEATH CLASSIFICATION (Forensic approach)
     # =====================================================
 
-    def save_debug_image(self, matrix, reward, cause, pos, wall_dist):
-        """Saves a debug image of the final state."""
+    def save_death_packet(self, matrix, reward, cause, final_data):
+        """
+        Saves a comprehensive death event packet (JSON + Image).
+        Replaces legacy save_debug_image.
+        """
         try:
-            debug_dir = os.path.join(os.path.dirname(__file__), 'debug_screens')
+            timestamp = int(time.time())
+            date_str = time.strftime("%Y%m%d_%H%M%S")
+            debug_dir = os.path.join(os.path.dirname(__file__), 'events')
             os.makedirs(debug_dir, exist_ok=True)
 
-            timestamp = int(time.time())
-            filename = os.path.join(debug_dir, f"death_{timestamp}_{cause}.png")
+            # 1. Save Image
+            img_filename = f"event_{date_str}_{cause}.png"
+            img_path = os.path.join(debug_dir, img_filename)
 
             fig, axes = plt.subplots(1, 3, figsize=(12, 4))
-
             titles = ["Food", "Enemies/Wall", "Self"]
             for i in range(3):
                 axes[i].imshow(matrix[i], cmap='gray', origin='upper')
                 axes[i].set_title(titles[i])
                 axes[i].axis('off')
 
-            plt.suptitle(f"Cause: {cause} | Reward: {reward:.2f}\nPos: {pos} | Wall Dist: {wall_dist:.0f}")
+            snake = final_data.get('self', {})
+            pos_str = f"({snake.get('x',0):.0f}, {snake.get('y',0):.0f})"
+            wall_d = final_data.get('dist_to_wall', -1)
+
+            plt.suptitle(f"Cause: {cause} | Reward: {reward:.2f}\nPos: {pos_str} | Wall Dist: {wall_d:.0f}")
             plt.tight_layout()
-            plt.savefig(filename)
+            plt.savefig(img_path)
             plt.close(fig)
-            print(f"Saved debug image to {filename}")
+
+            # 2. Save JSON
+            json_filename = f"event_{date_str}_{cause}.json"
+            json_path = os.path.join(debug_dir, json_filename)
+
+            packet = {
+                "timestamp": timestamp,
+                "date": date_str,
+                "cause": cause,
+                "reward": reward,
+                "snake": {
+                    "x": snake.get('x'),
+                    "y": snake.get('y'),
+                    "len": snake.get('len'),
+                    "ang": snake.get('ang')
+                },
+                "env": {
+                    "dist_to_wall": wall_d,
+                    "map_radius": final_data.get('map_radius'),
+                    "view_radius": final_data.get('view_radius'),
+                    "boundary_type": self.boundary_type
+                },
+                "debug": final_data.get('debug', {})
+            }
+
+            with open(json_path, 'w') as f:
+                json.dump(packet, f, indent=2)
+
+            print(f"Saved Death Packet: {json_filename}")
+
         except Exception as e:
-            print(f"Failed to save debug image: {e}")
+            print(f"Failed to save death packet: {e}")
 
     def _get_death_reward_and_cause(self, last_data=None):
         """
@@ -219,28 +260,34 @@ class SlitherEnv:
                     min_enemy_dist = min(min_enemy_dist, dist)
         
         # Classification logic
-        COLLISION_RADIUS = 500  # Enemy collision range
-        WALL_PROXIMITY = 2000   # Near wall threshold
+        # Tighter thresholds for more accurate classification
+        COLLISION_RADIUS = 600  # Slightly increased to catch near-misses interpreted as hits
+        WALL_PROXIMITY = 1500   # Reduced to be more specific to actual wall hits
         
-        # Priority 1: Strictly outside map (certain wall death)
-        if dist_to_wall_js < 0:
+        cause = "Unknown"
+        penalty = self.death_snake_penalty
+
+        # Priority 1: Strictly outside map (Absolute Wall Death)
+        if dist_to_wall_js < -50:
              cause = "Wall"
              penalty = self.death_wall_penalty
 
-        # Priority 2: Clear enemy collision
+        # Priority 2: High confidence Enemy Collision
         elif min_enemy_dist < COLLISION_RADIUS:
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
 
-        # Priority 3: Near wall (and no snake hit detected)
+        # Priority 3: Proximity to wall (if no enemy hit detected)
         elif dist_to_wall_js < WALL_PROXIMITY:
              cause = "Wall"
              penalty = self.death_wall_penalty
 
-        # Priority 4: Fallback
-        elif self.boundary_type == 'circle' and dist_to_wall_py < -100:
+        # Priority 4: Geometric Fallback for Circle
+        elif self.boundary_type == 'circle' and dist_to_wall_py < 0:
              cause = "Wall"
              penalty = self.death_wall_penalty
+
+        # Priority 5: Default (Assumed Snake Collision if inside map)
         else:
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
@@ -379,7 +426,7 @@ class SlitherEnv:
 
             # Save debug image using LAST VALID STATE
             debug_matrix = self._process_data_to_matrix(pre_action_data)
-            self.save_debug_image(debug_matrix, reward, cause, (pmx, pmy), dtw)
+            self.save_death_packet(debug_matrix, reward, cause, pre_action_data)
 
             return state, reward, True, {"cause": cause, "pos": (pmx, pmy), "wall_dist": dtw}
 
@@ -486,20 +533,12 @@ class SlitherEnv:
             print("="*50 + "\n")
             self._map_vars_printed = True
 
-        # Helper to map world coord to matrix coord
-        def world_to_matrix(wx, wy):
-            dx = wx - mx
-            dy = wy - my
-            mat_x = int((dx * self.scale) + (self.matrix_size / 2))
-            mat_y = int((dy * self.scale) + (self.matrix_size / 2))
-            return mat_x, mat_y
-
         # 1. Food (Channel 0)
         foods = data.get('foods', [])
         for f in foods:
             if len(f) < 2: continue
             fx, fy = f[0], f[1]
-            mx_x, mx_y = world_to_matrix(fx, fy)
+            mx_x, mx_y = world_to_grid(fx, fy, mx, my, self.scale, self.matrix_size)
             if 0 <= mx_x < self.matrix_size and 0 <= mx_y < self.matrix_size:
                 matrix[0, mx_y, mx_x] = 1.0
 
@@ -507,28 +546,28 @@ class SlitherEnv:
         enemies = data.get('enemies', [])
         for e in enemies:
             ex, ey = e['x'], e['y']
-            hx, hy = world_to_matrix(ex, ey)
+            hx, hy = world_to_grid(ex, ey, mx, my, self.scale, self.matrix_size)
 
             # Calculate snake width in matrix pixels
             # Base width ~29 units.
             sc = e.get('sc', 1.0)
             width_world = sc * 29.0
-            width_matrix = width_world * self.scale
+            width_matrix = max(1.0, width_world * self.scale)
 
             pts = e.get('pts', [])
 
             # Draw thick line from head to first body point
             if pts:
                 px, py = pts[0][0], pts[0][1]
-                bx, by = world_to_matrix(px, py)
+                bx, by = world_to_grid(px, py, mx, my, self.scale, self.matrix_size)
                 self._draw_thick_line(matrix, 1, hx, hy, bx, by, width_matrix, 0.5)
 
             # Draw thick lines between body points
             for i in range(len(pts) - 1):
                  p1 = pts[i]
                  p2 = pts[i+1]
-                 x1, y1 = world_to_matrix(p1[0], p1[1])
-                 x2, y2 = world_to_matrix(p2[0], p2[1])
+                 x1, y1 = world_to_grid(p1[0], p1[1], mx, my, self.scale, self.matrix_size)
+                 x2, y2 = world_to_grid(p2[0], p2[1], mx, my, self.scale, self.matrix_size)
                  self._draw_thick_line(matrix, 1, x1, y1, x2, y2, width_matrix, 0.5)
 
             # Ensure Head is distinct (drawn last)
@@ -541,46 +580,52 @@ class SlitherEnv:
 
         my_pts = my_snake.get('pts', [])
         my_sc = my_snake.get('sc', 1.0)
-        my_width_matrix = (my_sc * 29.0) * self.scale
+        my_width_matrix = max(1.0, (my_sc * 29.0) * self.scale)
 
         # Head to first point
         if my_pts:
              px, py = my_pts[0][0], my_pts[0][1]
-             bx, by = world_to_matrix(px, py)
+             bx, by = world_to_grid(px, py, mx, my, self.scale, self.matrix_size)
              self._draw_thick_line(matrix, 2, cx, cy, bx, by, my_width_matrix, 0.5)
 
         for i in range(len(my_pts) - 1):
             p1 = my_pts[i]
             p2 = my_pts[i+1]
-            x1, y1 = world_to_matrix(p1[0], p1[1])
-            x2, y2 = world_to_matrix(p2[0], p2[1])
+            x1, y1 = world_to_grid(p1[0], p1[1], mx, my, self.scale, self.matrix_size)
+            x2, y2 = world_to_grid(p2[0], p2[1], mx, my, self.scale, self.matrix_size)
             self._draw_thick_line(matrix, 2, x1, y1, x2, y2, my_width_matrix, 0.5)
 
         # Head
         my_head_radius = (my_width_matrix / 2.0) * 1.2
         self._draw_circle(matrix, 2, cx, cy, my_head_radius, 1.0)
 
-        # 4. Walls (Channel 1 - DANGER) 
-        # We draw wall based on grd circle, but this is approximate.
-        # The real wall learning comes from death penalties (forensic detection).
-        # Visual wall in matrix helps the bot see the boundary coming.
+        # 4. Walls (Channel 1 - DANGER)
+        # Accurate Polygon / Circle Rendering
         dist_to_wall = data.get('dist_to_wall', 99999)
         
-        if dist_to_wall < 5000:
+        if dist_to_wall < 10000 or self.boundary_type == 'polygon':
             if self.boundary_type == 'polygon' and len(self.boundary_vertices) >= 3:
-                # Draw Polygon Wall
-                # Iterate vertices and draw lines
-                verts = self.boundary_vertices
-                for i in range(len(verts)):
-                    p1 = verts[i]
-                    p2 = verts[(i + 1) % len(verts)]
+                # Convert polygon vertices to grid coordinates
+                grid_verts = []
+                for v in self.boundary_vertices:
+                    gx, gy = world_to_grid(v[0], v[1], mx, my, self.scale, self.matrix_size)
+                    grid_verts.append((gx, gy))
 
-                    # Convert to matrix coords
-                    x1, y1 = world_to_matrix(p1[0], p1[1])
-                    x2, y2 = world_to_matrix(p2[0], p2[1])
+                # Create mask using Matplotlib Path
+                # We want to mask points OUTSIDE the polygon as 1.0 (Wall)
+                path = MplPath(grid_verts)
 
-                    # Only draw if at least one point is somewhat near view
-                    self._draw_thick_line(matrix, 1, x1, y1, x2, y2, 2.0, 1.0) # Wall thickness 2.0
+                # Create grid points (x, y)
+                y_idx, x_idx = np.mgrid[:self.matrix_size, :self.matrix_size]
+                points = np.vstack((x_idx.ravel(), y_idx.ravel())).T
+
+                # Check containment
+                # radius=0 means exact check.
+                is_inside = path.contains_points(points).reshape((self.matrix_size, self.matrix_size))
+
+                # Invert: Inside = Safe (0), Outside = Wall (1)
+                wall_mask = ~is_inside
+                matrix[1][wall_mask] = 1.0
             
             elif self.map_radius > 0 and self.map_center_x > 0:
                 y_grid, x_grid = np.ogrid[:self.matrix_size, :self.matrix_size]
@@ -592,7 +637,8 @@ class SlitherEnv:
                 wy = my + dy_world
 
                 dist_sq = (wx - self.map_center_x)**2 + (wy - self.map_center_y)**2
-                radius_sq = self.map_radius**2
+                # Safety margin: behave as if wall is slightly closer (radius - 100)
+                radius_sq = (self.map_radius - 100)**2
 
                 wall_mask = dist_sq > radius_sq
                 matrix[1][wall_mask] = 1.0
