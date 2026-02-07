@@ -42,9 +42,10 @@ class DDQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.optimizer = optim.Adam(
+        self.optimizer = optim.AdamW(
             self.policy_net.parameters(),
-            lr=config.opt.lr
+            lr=config.opt.lr,
+            weight_decay=config.opt.weight_decay
         )
 
         # Learning Rate Scheduler (Autonomy)
@@ -196,7 +197,8 @@ class DDQNAgent:
         # Reward clipping (simpler and more stable than normalization)
         # Clamp rewards to [-1, 1] range to stabilize training
         # Death penalties (-100, -10) -> -1, food rewards -> proportional
-        norm_rewards = torch.clamp(reward_batch / 100.0, -1.0, 1.0)
+        reward_scale = max(self.config.opt.reward_scale, 1.0)
+        norm_rewards = torch.clamp(reward_batch / reward_scale, -1.0, 1.0)
 
         # Q(s, a)
         q_values = self.policy_net(state_batch).gather(1, action_batch)

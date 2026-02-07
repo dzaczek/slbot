@@ -303,7 +303,7 @@ class VecFrameStack:
     def set_stage(self, stage_config):
         self.venv.set_stage(stage_config)
 
-def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, view_plus=False, base_url="http://slither.io"):
+def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, frame_skip, view_plus=False, base_url="http://slither.io"):
     parent_remote.close()
     
     picard_names = [
@@ -313,7 +313,14 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
     chosen_name = f"{random.choice(picard_names)}_{worker_id}"
     
     try:
-        env = SlitherEnv(headless=headless, nickname=chosen_name, matrix_size=matrix_size, view_plus=view_plus, base_url=base_url)
+        env = SlitherEnv(
+            headless=headless,
+            nickname=chosen_name,
+            matrix_size=matrix_size,
+            view_plus=view_plus,
+            base_url=base_url,
+            frame_skip=frame_skip
+        )
 
         while True:
             cmd, data = remote.recv()
@@ -341,7 +348,7 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
         remote.close()
 
 class SubprocVecEnv:
-    def __init__(self, num_agents, matrix_size, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io"):
+    def __init__(self, num_agents, matrix_size, frame_skip, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io"):
         self.num_agents = num_agents
         self.remotes, self.work_remotes = zip(*[mp.Pipe() for _ in range(num_agents)])
         self.ps = []
@@ -350,7 +357,10 @@ class SubprocVecEnv:
             is_headless = not (view_first and i == 0)
             # Enable view_plus only for the first agent when view mode is active
             agent_view_plus = view_plus and (i == 0) and not is_headless
-            p = mp.Process(target=worker, args=(self.work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, agent_view_plus, base_url))
+            p = mp.Process(
+                target=worker,
+                args=(self.work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, frame_skip, agent_view_plus, base_url)
+            )
             p.daemon = True
             p.start()
             self.ps.append(p)
@@ -419,6 +429,7 @@ def train(args):
     raw_env = SubprocVecEnv(
         num_agents=cfg.env.num_agents,
         matrix_size=cfg.env.resolution[0],
+        frame_skip=cfg.env.frame_skip,
         view_first=args.view or args.view_plus,
         view_plus=args.view_plus,
         nickname="AI_Opt",
@@ -456,7 +467,7 @@ def train(args):
     # Initialize stats file
     if not os.path.exists(stats_file) or not args.resume:
         with open(stats_file, 'w') as f:
-            f.write("Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food\n")
+            f.write("Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food,MinEnemyDist,WallDist,EnemyPenalty,WallPenalty\n")
 
     # LR Scheduler (Linear Warmup)
     warmup_steps = 10000
@@ -532,8 +543,13 @@ def train(args):
 
                     pos = infos[i].get('pos', (0,0))
                     wall_dist = infos[i].get('wall_dist', -1)
+                    min_enemy_dist = infos[i].get('min_enemy_dist', None)
+                    enemy_penalty = infos[i].get('enemy_penalty', 0.0)
+                    wall_penalty = infos[i].get('wall_penalty', 0.0)
                     pos_str = f"Pos:({pos[0]:.0f},{pos[1]:.0f})"
                     wall_str = f" Wall:{wall_dist:.0f}" if wall_dist >= 0 else ""
+                    enemy_str = f" Enemy:{min_enemy_dist:.0f}" if min_enemy_dist is not None else ""
+                    threat_str = f" Thr:{enemy_penalty:.2f}/{wall_penalty:.2f}"
                     stage_name = curriculum.get_config()['name']
 
                     food_ratio = episode_food[i] / max(episode_steps[i], 1)
@@ -541,7 +557,7 @@ def train(args):
                     log_msg = (f"Ep {start_episode} | S{curriculum.current_stage}:{stage_name} | "
                                f"Rw: {episode_rewards[i]:.2f} | St: {episode_steps[i]} | "
                                f"Fd: {episode_food[i]} ({food_ratio:.3f}/st) | "
-                               f"Eps: {eps:.3f} | L: {loss_val:.4f} | {cause} | {pos_str}{wall_str}")
+                               f"Eps: {eps:.3f} | L: {loss_val:.4f} | {cause} | {pos_str}{wall_str}{enemy_str}{threat_str}")
 
                     logger.info(log_msg)
 
@@ -550,7 +566,12 @@ def train(args):
                          logger.info(f"Death Stats: {death_stats}")
 
                     with open(stats_file, 'a') as f:
-                        f.write(f"{start_episode},{episode_steps[i]},{episode_rewards[i]:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause},{curriculum.current_stage},{episode_food[i]}\n")
+                        f.write(
+                            f"{start_episode},{episode_steps[i]},{episode_rewards[i]:.2f},{eps:.4f},{loss_val:.4f},"
+                            f"{current_beta:.2f},{lr:.6f},{cause},{curriculum.current_stage},{episode_food[i]},"
+                            f"{min_enemy_dist if min_enemy_dist is not None else ''},{wall_dist:.0f},"
+                            f"{enemy_penalty:.4f},{wall_penalty:.4f}\n"
+                        )
 
                     # Autonomy Logic (Scheduler & Watchdog)
                     reward_window.append(episode_rewards[i])
