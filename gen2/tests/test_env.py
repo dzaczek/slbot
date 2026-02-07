@@ -60,5 +60,25 @@ class TestSlitherEnv(unittest.TestCase):
         # x = 50. mx = 150. dx = -100. gx = -100 * 0.21 + 42 = 21.
         self.assertEqual(matrix[1, 21, 21], 1.0)
 
+    def test_update_from_game_data_ignores_nan(self):
+        self.env.last_dist_to_wall = 1234
+        self.env.map_radius = 21600
+        self.env.map_center_x = 21600
+        self.env.map_center_y = 21600
+
+        data = {
+            'dist_to_wall': float('nan'),
+            'map_radius': float('nan'),
+            'map_center_x': float('nan'),
+            'map_center_y': float('nan')
+        }
+
+        self.env._update_from_game_data(data)
+
+        self.assertEqual(self.env.last_dist_to_wall, 1234)
+        self.assertEqual(self.env.map_radius, 21600)
+        self.assertEqual(self.env.map_center_x, 21600)
+        self.assertEqual(self.env.map_center_y, 21600)
+
 if __name__ == '__main__':
     unittest.main()

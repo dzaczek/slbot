@@ -115,5 +115,23 @@ class TestDeathClassification(unittest.TestCase):
         print(f"Scenario 4 (Far Wall + Hit Snake): Cause={cause}, Penalty={penalty}")
         self.assertEqual(cause, "SnakeCollision")
 
+    def test_nan_wall_distance_defaults_to_snake_collision(self):
+        """
+        Scenario 5: dist_to_wall is NaN, enemy far away.
+        Should default to SnakeCollision (fallback) instead of Wall.
+        """
+        data = {
+            'dist_to_wall': float('nan'),
+            'self': {'x': 21600, 'y': 21600},
+            'enemies': [
+                {'x': 26000, 'y': 26000, 'pts': []}
+            ],
+            'boundary_type': 'circle'
+        }
+        self.env._update_from_game_data(data)
+        penalty, cause = self.env._get_death_reward_and_cause(data)
+        print(f"Scenario 5 (NaN Wall Dist): Cause={cause}, Penalty={penalty}")
+        self.assertEqual(cause, "SnakeCollision")
+
 if __name__ == '__main__':
     unittest.main()

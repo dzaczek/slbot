@@ -271,7 +271,8 @@ class SlitherBrowser:
             var MAX_ENEMIES = {self.MAX_ENEMIES};
             var MAX_BODY_PTS = {self.MAX_BODY_PTS};
             
-            var playing = (window.slither !== undefined && window.slither !== null) && 
+            var playerSnake = window.slither || window.snake || null;
+            var playing = (playerSnake !== null) && 
                          (typeof window.dead_mtm === 'undefined' || window.dead_mtm === -1 || window.dead_mtm === null);
             var in_menu = document.querySelector('#nick, #playh .btnt') !== null;
             
@@ -294,27 +295,33 @@ class SlitherBrowser:
 
             // My snake data
             var my_pts = [];
-            if (window.slither.pts) {{
-                var ptsLen = window.slither.pts.length;
+            if (playerSnake.pts) {{
+                var ptsLen = playerSnake.pts.length;
                 // Trim ghost tail dynamically (Increased)
-                var trimCount = Math.floor(ptsLen * 0.15) + Math.floor((window.slither.sp || 5.7) * 2.0);
+                var trimCount = Math.floor(ptsLen * 0.15) + Math.floor((playerSnake.sp || 5.7) * 2.0);
                 var startIndex = Math.min(ptsLen - 1, trimCount);
                 
                 var step = Math.max(1, Math.floor(ptsLen / MAX_BODY_PTS));
                 for (var j = startIndex; j < ptsLen && my_pts.length < MAX_BODY_PTS; j += step) {{
-                    var p = window.slither.pts[j];
+                    var p = playerSnake.pts[j];
                     if (p.xx !== undefined) my_pts.push([p.xx, p.yy]);
                     else if (p.x !== undefined) my_pts.push([p.x, p.y]);
                 }}
             }}
 
+            var snakeX = (playerSnake.xx !== undefined) ? playerSnake.xx : playerSnake.x;
+            var snakeY = (playerSnake.yy !== undefined) ? playerSnake.yy : playerSnake.y;
+            if (!isFinite(snakeX) || !isFinite(snakeY)) {{
+                return {{ dead: true, in_menu: in_menu }};
+            }}
+
             var my_snake = {{
-                x: window.slither.xx,
-                y: window.slither.yy,
-                ang: window.slither.ang,
-                sp: window.slither.sp,
-                sc: window.slither.sc,
-                len: window.slither.pts ? window.slither.pts.length : 0,
+                x: snakeX,
+                y: snakeY,
+                ang: playerSnake.ang || 0,
+                sp: playerSnake.sp || 0,
+                sc: playerSnake.sc || 1,
+                len: playerSnake.pts ? playerSnake.pts.length : 0,
                 pts: my_pts
             }};
 
@@ -465,18 +472,21 @@ class SlitherBrowser:
             var usePolygon = false;
             var pbxCount = 0;
 
-            if (typeof window.pbx !== 'undefined' && window.pbx && window.pbx.length >= 3 &&
-                (typeof window.pby === 'undefined' || (window.pby && window.pby.length >= 3))) {{
+            var hasPbx = Array.isArray(window.pbx) && window.pbx.length >= 3;
+            var hasPby = Array.isArray(window.pby) && window.pby.length >= 3;
+
+            if (hasPbx && hasPby) {{
                  usePolygon = true;
                  boundarySource = 'pbx';
                  boundaryType = 'polygon';
-                 pbxCount = window.pbx.length;
+                 var pbxLen = Math.min(window.pbx.length, window.pby.length);
+                 pbxCount = pbxLen;
 
                  // Extract vertices (limited to avoid huge payload)
                  var step = 1;
-                 if (window.pbx.length > 200) step = Math.ceil(window.pbx.length / 200);
-                 for (var i = 0; i < window.pbx.length; i+=step) {{
-                     var pyVal = (window.pby && window.pby[i] !== undefined) ? window.pby[i] : window.pbx[i];
+                 if (pbxLen > 200) step = Math.ceil(pbxLen / 200);
+                 for (var i = 0; i < pbxLen; i+=step) {{
+                     var pyVal = window.pby[i];
                      boundaryVertices.push([window.pbx[i], pyVal]);
                  }}
                  // Ensure we capture the start point for drawing
@@ -508,13 +518,13 @@ class SlitherBrowser:
                  distToWall = (function(x, y, pbx, pby) {{
                      var minD = 999999;
                      var inside = false;
-                     var len = pbx.length;
+                     var len = Math.min(pbx.length, pby.length);
 
                      // PIP (Ray Casting)
                      var j = len - 1;
                      for (var i = 0; i < len; i++) {{
-                         var xi = pbx[i], yi = (pby && pby[i] !== undefined) ? pby[i] : pbx[i];
-                         var xj = pbx[j], yj = (pby && pby[j] !== undefined) ? pby[j] : pbx[j];
+                         var xi = pbx[i], yi = pby[i];
+                         var xj = pbx[j], yj = pby[j];
 
                          if ((yi > y) != (yj > y) &&
                              (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {{
@@ -526,8 +536,8 @@ class SlitherBrowser:
                      // Dist to edges
                      j = len - 1;
                      for (var i = 0; i < len; i++) {{
-                         var x1 = pbx[i], y1 = (pby && pby[i] !== undefined) ? pby[i] : pbx[i];
-                         var x2 = pbx[j], y2 = (pby && pby[j] !== undefined) ? pby[j] : pbx[j];
+                         var x1 = pbx[i], y1 = pby[i];
+                         var x2 = pbx[j], y2 = pby[j];
 
                          var A = x - x1;
                          var B = y - y1;
@@ -562,6 +572,13 @@ class SlitherBrowser:
                     Math.pow(my_snake.y - mapCenterY, 2)
                  );
                  distToWall = mapRadius - distFromCenter;
+            }}
+
+            if (!isFinite(distToWall)) {{
+                distToWall = 99999;
+            }}
+            if (!isFinite(distFromCenter)) {{
+                distFromCenter = 99999;
             }}
 
             possibleMapVars['map_center'] = Math.round(mapCenterX) + ',' + Math.round(mapCenterY);
@@ -1104,4 +1121,3 @@ class SlitherBrowser:
             self.driver.execute_script(js_code)
         except:
             pass
-

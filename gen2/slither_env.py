@@ -81,16 +81,16 @@ class SlitherEnv:
         
         # dist_to_wall comes from JS (empirical: distance from grd-based center minus estimated radius)
         dtw = data.get('dist_to_wall')
-        if dtw is not None:
+        if dtw is not None and math.isfinite(dtw):
             self.last_dist_to_wall = dtw
         
         # Update map params from JS
         mr = data.get('map_radius')
-        if mr and mr > 0:
+        if mr and math.isfinite(mr) and mr > 0:
             self.map_radius = mr
         cx = data.get('map_center_x')
         cy = data.get('map_center_y')
-        if cx and cy:
+        if cx and cy and math.isfinite(cx) and math.isfinite(cy):
             self.map_center_x = cx
             self.map_center_y = cy
 
@@ -259,6 +259,8 @@ class SlitherEnv:
         
         # Get geometric wall distance (from JS)
         dist_to_wall_js = last_data.get('dist_to_wall', 99999) if last_data else 99999
+        if not math.isfinite(dist_to_wall_js):
+            dist_to_wall_js = 99999
 
         # Python-side Strict Check (Fallback)
         map_radius = self.map_radius if self.map_radius > 10000 else 21600
@@ -472,6 +474,8 @@ class SlitherEnv:
         # Update wall tracking from post-action data
         self._update_from_game_data(data)
         new_dist_to_wall = data.get('dist_to_wall', 99999)
+        if not math.isfinite(new_dist_to_wall):
+            new_dist_to_wall = 99999
         min_enemy_dist = self._min_enemy_distance(data.get('enemies', []), new_x, new_y)
         
         # 1. Survival reward
