@@ -452,27 +452,29 @@ class SlitherBrowser:
             var distToWall = 99999;
             var distFromCenter = 99999;
             
-            var mapCenterX = 0;
-            var mapCenterY = 0;
-            var mapRadius = 21600; // Safe default
+            var mapCenterX = 21600; // Default center
+            var mapCenterY = 21600; // Default center
+            var mapRadius = 21600;  // Default radius
             
             if (typeof window.grd !== 'undefined' && window.grd > 1000) {{
                 mapCenterX = window.grd;
                 mapCenterY = window.grd;
-                mapRadius = window.grd * 0.98;  // Confirmed by reference bots: radius = grd * 0.98
-                
-                distFromCenter = Math.sqrt(
-                    Math.pow(my_snake.x - mapCenterX, 2) + 
-                    Math.pow(my_snake.y - mapCenterY, 2)
-                );
-                distToWall = mapRadius - distFromCenter;
+                mapRadius = window.grd * 0.98;
                 boundarySource = 'grd';
-                
                 possibleMapVars['grd'] = window.grd;
-                possibleMapVars['map_center'] = Math.round(mapCenterX) + ',' + Math.round(mapCenterY);
-                possibleMapVars['map_radius'] = Math.round(mapRadius);
-                possibleMapVars['dist_from_center'] = Math.round(distFromCenter);
+            } else {
+                boundarySource = 'default';
             }}
+
+            distFromCenter = Math.sqrt(
+                Math.pow(my_snake.x - mapCenterX, 2) +
+                Math.pow(my_snake.y - mapCenterY, 2)
+            );
+            distToWall = mapRadius - distFromCenter;
+
+            possibleMapVars['map_center'] = Math.round(mapCenterX) + ',' + Math.round(mapCenterY);
+            possibleMapVars['map_radius'] = Math.round(mapRadius);
+            possibleMapVars['dist_from_center'] = Math.round(distFromCenter);
             
             // Also capture pbx info for debugging (NOT used for wall detection)
             var pbxCount = 0;

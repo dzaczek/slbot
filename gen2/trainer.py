@@ -17,65 +17,112 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from slither_env import SlitherEnv
 from config import Config
 from agent import DDQNAgent
+from styles import STYLES
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
+def select_style_and_model(args):
+    """
+    Interactive menu or CLI argument handling for selecting Style and Model.
+    """
+    # Determine Style
+    style_name = "Standard (Curriculum)"
+
+    if args.style_name:
+        # Check if valid
+        found = False
+        for s in STYLES:
+            if args.style_name.lower() in s.lower():
+                style_name = s
+                found = True
+                break
+        if not found:
+            print(f"Warning: Style '{args.style_name}' not found. Using default.")
+    elif sys.stdin.isatty():
+        # Interactive Menu
+        print("\n" + "="*40)
+        print(" SELECT LEARNING STYLE")
+        print("="*40)
+        style_keys = list(STYLES.keys())
+        for i, s in enumerate(style_keys):
+            desc = STYLES[s].get('description', '')
+            print(f"{i+1}. {s}")
+            print(f"   {desc}")
+
+        try:
+            choice = input(f"\nChoice (1-{len(style_keys)}, default 1): ").strip()
+            if choice:
+                idx = int(choice) - 1
+                if 0 <= idx < len(style_keys):
+                    style_name = style_keys[idx]
+        except:
+            pass
+
+    print(f"Selected Style: {style_name}")
+
+    # Determine Model
+    model_path = args.model_path
+
+    if not model_path and sys.stdin.isatty():
+        print("\n" + "="*40)
+        print(" SELECT MODEL CHECKPOINT")
+        print("="*40)
+
+        # Scan for .pth files
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        checkpoints = []
+
+        # Check current dir and gen2 dir
+        search_paths = [os.getcwd(), base_dir]
+        seen = set()
+
+        for p in search_paths:
+            if os.path.exists(p):
+                for f in os.listdir(p):
+                    if f.endswith('.pth'):
+                        full_path = os.path.join(p, f)
+                        if full_path not in seen:
+                            checkpoints.append(full_path)
+                            seen.add(full_path)
+
+        checkpoints.sort(key=os.path.getmtime, reverse=True) # Newest first
+
+        print("0. New Random Agent (Start from scratch)")
+        for i, cp in enumerate(checkpoints):
+            rel_path = os.path.relpath(cp, os.getcwd())
+            print(f"{i+1}. {rel_path}")
+
+        try:
+            choice = input(f"\nChoice (0-{len(checkpoints)}, default 0): ").strip()
+            if choice and choice != '0':
+                idx = int(choice) - 1
+                if 0 <= idx < len(checkpoints):
+                    model_path = checkpoints[idx]
+        except:
+            pass
+
+    if model_path:
+        print(f"Selected Model: {model_path}")
+    else:
+        print("Selected Model: New Random Agent")
+
+    return style_name, model_path
+
+
 class CurriculumManager:
     """
-    Multi-stage curriculum learning.
-    Stage 1: EAT   - Learn to eat food (high food reward, low death penalty)
-    Stage 2: SURVIVE - Learn to avoid walls and enemies (higher death penalty)
-    Stage 3: GROW  - Eat a lot and survive long (length bonus)
+    Manages rewards and curriculum progression based on the selected Style.
+    Supports both 'curriculum' (multi-stage) and 'static' (single-config) modes.
     """
-    STAGES = {
-        1: {
-            "name": "EAT",
-            "food_reward": 10.0,
-            "food_shaping": 0.01,
-            "survival": 0.05,
-            "death_wall": -15,  # Increased penalty to prevent suicide-eating
-            "death_snake": -15,
-            "straight_penalty": 0.0,
-            "length_bonus": 0.0,
-            "max_steps": 200,
-            "promote_metric": "food_per_step",  # Must eat more than 1.5x steps
-            "promote_threshold": 0.05,           # Reduced threshold (10 food in 200 steps)
-            "promote_window": 50,
-        },
-        2: {
-            "name": "SURVIVE",
-            "food_reward": 5.0,
-            "food_shaping": 0.005,
-            "survival": 0.2,
-            "death_wall": -100,
-            "death_snake": -20,
-            "straight_penalty": 0.05,
-            "length_bonus": 0.0,
-            "max_steps": 500,
-            "promote_metric": "avg_steps",
-            "promote_threshold": 150,
-            "promote_window": 50,
-        },
-        3: {
-            "name": "GROW",
-            "food_reward": 5.0,
-            "food_shaping": 0.005,
-            "survival": 0.2,
-            "death_wall": -100,
-            "death_snake": -20,
-            "straight_penalty": 0.05,
-            "length_bonus": 0.01,
-            "max_steps": 99999,
-            "promote_metric": None,
-            "promote_threshold": None,
-            "promote_window": 50,
-        },
-    }
 
-    def __init__(self, start_stage=1):
+    def __init__(self, style_name="Standard (Curriculum)", start_stage=1):
+        self.style_name = style_name
+        self.style_config = STYLES[style_name]
+        self.mode = self.style_config["type"] # "curriculum" or "static"
+
         self.current_stage = start_stage
         self.episode_food_history = deque(maxlen=100)
         self.episode_steps_history = deque(maxlen=100)
@@ -83,10 +130,16 @@ class CurriculumManager:
 
     def get_config(self):
         """Return current stage config dict."""
-        return self.STAGES[self.current_stage]
+        if self.mode == "static":
+            return self.style_config["config"]
+        else:
+            return self.style_config["stages"][self.current_stage]
 
     def get_max_steps(self):
-        return self.STAGES[self.current_stage]["max_steps"]
+        if self.mode == "static":
+            return self.style_config["config"]["max_steps"]
+        else:
+            return self.style_config["stages"][self.current_stage]["max_steps"]
 
     def record_episode(self, food_eaten, steps):
         """Record episode metrics for promotion check."""
@@ -97,7 +150,10 @@ class CurriculumManager:
 
     def check_promotion(self):
         """Check if we should advance to the next stage. Returns True if promoted."""
-        cfg = self.STAGES[self.current_stage]
+        if self.mode == "static":
+            return False
+
+        cfg = self.style_config["stages"][self.current_stage]
         metric = cfg["promote_metric"]
         threshold = cfg["promote_threshold"]
         window = cfg["promote_window"]
@@ -135,9 +191,10 @@ class CurriculumManager:
         return False
 
     def _promote(self):
-        old_name = self.STAGES[self.current_stage]["name"]
-        self.current_stage = min(self.current_stage + 1, max(self.STAGES.keys()))
-        new_name = self.STAGES[self.current_stage]["name"]
+        stages = self.style_config["stages"]
+        old_name = stages[self.current_stage]["name"]
+        self.current_stage = min(self.current_stage + 1, max(stages.keys()))
+        new_name = stages[self.current_stage]["name"]
         print(f"\n{'='*60}")
         print(f"  STAGE UP! {old_name} -> {new_name} (Stage {self.current_stage})")
         print(f"{'='*60}\n")
@@ -305,6 +362,9 @@ class SubprocVecEnv:
             remote.recv()  # Wait for ack
 
 def train(args):
+    # Select Style and Model
+    style_name, model_path = select_style_and_model(args)
+
     # Load Config
     cfg = Config()
     
@@ -317,10 +377,12 @@ def train(args):
     checkpoint_path = os.path.join(base_dir, 'checkpoint.pth')
     stats_file = os.path.join(base_dir, 'training_stats.csv')
 
-    # Initialize Curriculum
-    curriculum = CurriculumManager(start_stage=args.stage if args.stage > 0 else 1)
+    # Initialize Curriculum/Style Manager
+    curriculum = CurriculumManager(style_name=style_name, start_stage=args.stage if args.stage > 0 else 1)
 
     print(f"Configuration:")
+    print(f"  Style: {style_name}")
+    print(f"  Mode: {curriculum.mode}")
     print(f"  Agents: {cfg.env.num_agents}")
     print(f"  Frame Stack: {cfg.env.frame_stack}")
     print(f"  Resolution: {cfg.env.resolution}")
@@ -341,14 +403,24 @@ def train(args):
     # Initialize Agent
     agent = DDQNAgent(cfg)
 
-    # Resume
+    # Resume / Load Model
     start_episode = 0
-    if args.resume and os.path.exists(checkpoint_path):
-        start_episode, _, supervisor_state = agent.load_checkpoint(checkpoint_path)
-        curriculum.load_state(supervisor_state)
-        print(f"Resumed from episode {start_episode}, Stage {curriculum.current_stage} ({curriculum.get_config()['name']})")
+    load_path = model_path if model_path else (checkpoint_path if args.resume else None)
 
-    # Apply current curriculum stage to environments
+    if load_path and os.path.exists(load_path):
+        start_episode, _, supervisor_state = agent.load_checkpoint(load_path)
+
+        # Restore curriculum state only if we are in curriculum mode
+        if curriculum.mode == 'curriculum' and supervisor_state:
+            curriculum.load_state(supervisor_state)
+
+        print(f"Resumed from episode {start_episode}")
+        if curriculum.mode == 'curriculum':
+            print(f"  Stage: {curriculum.current_stage} ({curriculum.get_config()['name']})")
+    elif load_path:
+        print(f"Warning: Model path {load_path} not found. Starting from scratch.")
+
+    # Apply current curriculum stage/style to environments
     stage_cfg = curriculum.get_config()
     env.set_stage(stage_cfg)
     max_steps_per_episode = curriculum.get_max_steps()
@@ -503,6 +575,8 @@ if __name__ == "__main__":
     parser.add_argument("--view-plus", action="store_true", help="View first agent with bot vision overlay grid")
     parser.add_argument("--resume", action="store_true", help="Resume")
     parser.add_argument("--stage", type=int, default=0, help="Force start at specific stage (1-3)")
+    parser.add_argument("--style-name", type=str, help="Learning style name (e.g. 'Aggressive')")
+    parser.add_argument("--model-path", type=str, help="Path to model checkpoint to load")
     args = parser.parse_args()
 
     mp.set_start_method('spawn', force=True)
