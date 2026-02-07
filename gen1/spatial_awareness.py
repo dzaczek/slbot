@@ -44,6 +44,8 @@ class SpatialAwareness:
         Total: 72 + 48 + 72 + 3 = 195 inputs
         """
         MAX_DIST = self.view_distance
+        MAX_DIST_SQ = MAX_DIST * MAX_DIST
+        MIN_DIST_SQ = 1.0  # 1.0 * 1.0
         
         # Initialize all sector arrays
         # FOOD
@@ -76,11 +78,13 @@ class SpatialAwareness:
                 continue
             
             fx, fy = f[0], f[1]
-            dist = math.hypot(fx - mx, fy - my)
+            fdx, fdy = fx - mx, fy - my
+            dist_sq = fdx*fdx + fdy*fdy
             
-            if dist < MAX_DIST and dist > 1:
+            if MIN_DIST_SQ < dist_sq < MAX_DIST_SQ:
+                dist = math.sqrt(dist_sq)
                 # Ego-centric angle
-                abs_angle = math.atan2(fy - my, fx - mx)
+                abs_angle = math.atan2(fdy, fdx)
                 rel_angle = self._normalize_angle(abs_angle - my_angle)
                 sector = self._angle_to_sector(rel_angle)
                 
@@ -116,10 +120,12 @@ class SpatialAwareness:
             # -----------------------------------------
             # 2A. PROCESS ENEMY HEAD (most dangerous!)
             # -----------------------------------------
-            head_dist = math.hypot(enemy_x - mx, enemy_y - my)
+            hdx, hdy = enemy_x - mx, enemy_y - my
+            head_dist_sq = hdx*hdx + hdy*hdy
             
-            if head_dist < MAX_DIST and head_dist > 1:
-                abs_angle = math.atan2(enemy_y - my, enemy_x - mx)
+            if MIN_DIST_SQ < head_dist_sq < MAX_DIST_SQ:
+                head_dist = math.sqrt(head_dist_sq)
+                abs_angle = math.atan2(hdy, hdx)
                 rel_angle = self._normalize_angle(abs_angle - my_angle)
                 sector = self._angle_to_sector(rel_angle)
                 
@@ -166,12 +172,14 @@ class SpatialAwareness:
                 pred_y = enemy_y + math.sin(enemy_angle) * (enemy_speed * pred_frames)
                 
                 # Check distance of this FUTURE position to our CURRENT head
-                pred_dist = math.hypot(pred_x - mx, pred_y - my)
+                pdx, pdy = pred_x - mx, pred_y - my
+                pred_dist_sq = pdx*pdx + pdy*pdy
                 
                 # If their future position is very close to our head (cutoff attempt)
-                if pred_dist < 300: # Danger zone
+                if pred_dist_sq < 90000: # 300 * 300
+                    pred_dist = math.sqrt(pred_dist_sq)
                     # Calculate angle to this danger zone
-                    pred_abs_angle = math.atan2(pred_y - my, pred_x - mx)
+                    pred_abs_angle = math.atan2(pdy, pdx)
                     pred_rel_angle = self._normalize_angle(pred_abs_angle - my_angle)
                     pred_sector = self._angle_to_sector(pred_rel_angle)
                     
@@ -196,10 +204,12 @@ class SpatialAwareness:
                     continue
                 
                 px, py = p[0], p[1]
-                dist = math.hypot(px - mx, py - my)
+                bdx, bdy = px - mx, py - my
+                dist_sq = bdx*bdx + bdy*bdy
                 
-                if dist < MAX_DIST and dist > 1:
-                    abs_angle = math.atan2(py - my, px - mx)
+                if MIN_DIST_SQ < dist_sq < MAX_DIST_SQ:
+                    dist = math.sqrt(dist_sq)
+                    abs_angle = math.atan2(bdy, bdx)
                     rel_angle = self._normalize_angle(abs_angle - my_angle)
                     sector = self._angle_to_sector(rel_angle)
                     
@@ -219,22 +229,25 @@ class SpatialAwareness:
         # 3. PROCESS WALLS (CRITICAL - IMPROVED!)
         # ============================================
         center_x, center_y = self.map_radius, self.map_radius
-        dist_from_center = math.hypot(mx - center_x, my - center_y)
+        MAP_RADIUS_SQ = self.map_radius * self.map_radius
+        dcx, dcy = mx - center_x, my - center_y
+        dist_from_center = math.sqrt(dcx*dcx + dcy*dcy)
         dist_to_wall = self.map_radius - dist_from_center
         
         # Check wall danger in EACH sector independently
         for i in range(self.num_sectors):
             # Calculate the direction this sector points to
-            sector_angle = i * self.sector_angle
-            sector_abs_angle = my_angle + sector_angle # Sector 0 is ahead (relative angle 0)
+            s_angle = i * self.sector_angle
+            sector_abs_angle = my_angle + s_angle # Sector 0 is ahead (relative angle 0)
             
             # Check distance to wall in this direction
             test_x = mx + MAX_DIST * math.cos(sector_abs_angle)
             test_y = my + MAX_DIST * math.sin(sector_abs_angle)
-            test_dist_from_center = math.hypot(test_x - center_x, test_y - center_y)
+            tdx, tdy = test_x - center_x, test_y - center_y
+            test_dist_sq = tdx*tdx + tdy*tdy
             
             # If test point would be beyond wall
-            if test_dist_from_center > self.map_radius:
+            if test_dist_sq > MAP_RADIUS_SQ:
                 # Calculate actual distance to wall in this direction
                 # Use strict map radius (21600) instead of 0.95 buffer to fix sensor blindness
                 actual_dist_to_wall = self.map_radius - dist_from_center
@@ -327,20 +340,25 @@ class SpatialAwareness:
         best_score = 0
         best_angle = my_angle
         
+        MAX_DIST = self.view_distance
+        MAX_DIST_SQ = MAX_DIST * MAX_DIST
+
         for f in foods:
             if len(f) < 2:
                 continue
             
             fx, fy = f[0], f[1]
-            dist = math.hypot(fx - mx, fy - my)
+            fdx, fdy = fx - mx, fy - my
+            dist_sq = fdx*fdx + fdy*fdy
             
-            if dist < self.view_distance and dist > 1:
+            if 1 < dist_sq < MAX_DIST_SQ:
+                dist = math.sqrt(dist_sq)
                 size = f[2] if len(f) >= 3 else 1
                 score = size / (dist + 1)
                 
                 if score > best_score:
                     best_score = score
-                    best_angle = math.atan2(fy - my, fx - mx)
+                    best_angle = math.atan2(fdy, fdx)
         
         return best_angle, best_score
     
@@ -350,15 +368,17 @@ class SpatialAwareness:
         """
         mx, my = my_snake['x'], my_snake['y']
         
-        nearest_dist = float('inf')
+        nearest_dist_sq = float('inf')
         nearest_info = None
         
         for snake in other_snakes:
             ex, ey = snake.get('x', 0), snake.get('y', 0)
-            dist = math.hypot(ex - mx, ey - my)
+            dx, dy = ex - mx, ey - my
+            dist_sq = dx*dx + dy*dy
             
-            if dist < nearest_dist:
-                nearest_dist = dist
+            if dist_sq < nearest_dist_sq:
+                nearest_dist_sq = dist_sq
+                dist = math.sqrt(dist_sq)
                 nearest_info = {
                     'dist': dist,
                     'x': ex,
@@ -382,10 +402,11 @@ class SpatialAwareness:
                 if len(p) < 2:
                     continue
                 px, py = p[0], p[1]
-                dist = math.hypot(px - mx, py - my)
+                dx, dy = px - mx, py - my
+                dist_sq = dx*dx + dy*dy
                 
-                if dist < 600:  # Only nearby points
-                    ang = math.atan2(py - my, px - mx)
+                if dist_sq < 360000:  # 600 * 600
+                    ang = math.atan2(dy, dx)
                     angles.append(ang)
         
         if len(angles) < 8:
