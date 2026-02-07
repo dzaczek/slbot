@@ -58,6 +58,31 @@ class SlitherEnv:
         self.enemy_proximity_penalty = 0.0
         self.enemy_proximity_radius = 1200.0
 
+    def _is_valid_game_data(self, data):
+        if not data or data.get('dead'):
+            return False
+        snake = data.get('self')
+        if not snake:
+            return False
+        return snake.get('x') is not None and snake.get('y') is not None
+
+    def _wait_for_alive_data(self, timeout_s=8.0, poll_s=0.2):
+        """
+        Waits for a valid, alive game state.
+        Returns the last data payload (valid or not) to aid debugging.
+        """
+        deadline = time.time() + timeout_s
+        last_data = None
+        while time.time() < deadline:
+            data = self.browser.get_game_data()
+            last_data = data
+            if self._is_valid_game_data(data):
+                return data
+            if data and data.get('in_menu'):
+                self.browser.force_restart()
+            time.sleep(poll_s)
+        return last_data
+
     def set_curriculum_stage(self, stage_config):
         """Set reward parameters from curriculum stage config dict."""
         self.food_reward = stage_config.get('food_reward', 5.0)
@@ -86,12 +111,13 @@ class SlitherEnv:
         
         # Update map params from JS
         mr = data.get('map_radius')
-        if mr and mr > 0:
+        if mr is not None and mr > 0:
             self.map_radius = mr
         cx = data.get('map_center_x')
         cy = data.get('map_center_y')
-        if cx and cy:
+        if cx is not None:
             self.map_center_x = cx
+        if cy is not None:
             self.map_center_y = cy
 
         self.boundary_type = data.get('boundary_type', 'circle')
@@ -347,7 +373,7 @@ class SlitherEnv:
             self.browser.inject_view_plus_overlay()
         
         # Get initial state and set prev_length to actual starting length
-        data = self.browser.get_game_data()
+        data = self._wait_for_alive_data()
         if data and data.get('self'):
             self.prev_length = data['self'].get('len', 0)
         else:
@@ -387,7 +413,9 @@ class SlitherEnv:
 
         # Get current state before action
         data = self.browser.get_game_data()
-        if not data:
+        if not self._is_valid_game_data(data):
+            data = self._wait_for_alive_data(timeout_s=2.0, poll_s=0.1)
+        if not self._is_valid_game_data(data):
             return self._matrix_zeros(), -5, True, {"cause": "BrowserError"}
 
         # Update map params IMMEDIATELY from fresh game data
