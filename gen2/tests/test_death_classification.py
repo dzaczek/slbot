@@ -66,9 +66,11 @@ class TestDeathClassification(unittest.TestCase):
         Scenario 2: Near wall (1000) AND NO snake collision (enemy far away).
         Should return Wall.
         """
+        # Move snake very close to wall: x=43190, y=21600 (Center 21600, 21600)
+        # Dist = 21590. Wall Dist = 10. Threshold is approx 17 + 40 = 57.
         data = {
-            'dist_to_wall': 1000,
-            'self': {'x': 20000, 'y': 20000},
+            'dist_to_wall': 10,
+            'self': {'x': 43190, 'y': 21600},
             'enemies': [
                 {'x': 25000, 'y': 25000, 'pts': []} # Far away
             ],

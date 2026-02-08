@@ -39,9 +39,11 @@ class TestSlitherEnv(unittest.TestCase):
 
         matrix = self.env._process_data_to_matrix(data)
 
-        # Center (42, 42) is snake head (safe).
-        # At (42, 42), distance is 21500 < 21600. Inside. Safe.
-        self.assertEqual(matrix[1, 42, 42], 0.0)
+        # Center (42, 42) is snake head.
+        # At (42, 42), distance is 21500.
+        # Wall threshold = 21600 - 500 = 21100.
+        # 21500 > 21100, so it IS Wall (Warning Zone).
+        self.assertEqual(matrix[1, 42, 42], 1.0)
 
         # Check Wall rendering
         # View radius 500. Scale = 84 / 1000 = 0.084.
