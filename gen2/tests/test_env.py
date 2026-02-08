@@ -20,45 +20,37 @@ class TestSlitherEnv(unittest.TestCase):
         # Mock get_game_data to avoid browser calls
         self.env.browser.get_game_data = MagicMock(return_value={})
 
-    def test_polygon_rendering(self):
-        # Create a polygon boundary
+    def test_radial_rendering(self):
+        # Create a snake near the map boundary (21600)
+        # Radius 21600. Center (21600, 21600).
+        # Safe position: (21600, 21600) -> dist 0.
+        # Near wall: x = 21600 + 21500 = 43100. y = 21600. Dist = 21500. Wall dist = 100.
+
         data = {
-            'boundary_type': 'polygon',
-            'boundary_vertices': [[100, 100], [200, 100], [200, 200], [100, 200]],
-            'map_radius': 0,
-            'map_center_x': 0,
-            'map_center_y': 0,
-            'dist_to_wall': 500,
-            'view_radius': 200, # Large view to see the polygon
-            'self': {'x': 150, 'y': 150, 'len': 10}, # Inside polygon
+            'boundary_type': 'circle', # Irrelevant, forced anyway
+            'map_radius': 21600,
+            'map_center_x': 21600,
+            'map_center_y': 21600,
+            'dist_to_wall': 100, # Fake JS value, should be ignored/recalc
+            'view_radius': 500,
+            'self': {'x': 43100, 'y': 21600, 'len': 10},
             'gsc': 1.0
         }
 
-        # Manually trigger process
-        # matrix_size=84. view_size=200. scale = 84 / 400 = 0.21
-        # Polygon coords: (100, 100) -> (200, 200)
-        # Center is (150, 150).
-        # (100, 100) relative to center (-50, -50).
-        # Matrix coords: (-50 * 0.21) + 42 = -10.5 + 42 = 31.5 -> 31
-
         matrix = self.env._process_data_to_matrix(data)
 
-        # Check if wall channel (1) has values.
-        # Inside polygon (center) should be 0. Outside should be 1.
-        # But polygon is [100, 200] range. View is radius 200 -> [ -50, 350 ].
-        # So polygon is entirely within view.
-        # Inside polygon should be 0.
-
-        # Check center (150, 150) -> matrix center (42, 42)
-        # matrix[1] is wall channel
+        # Center (42, 42) is snake head (safe).
+        # At (42, 42), distance is 21500 < 21600. Inside. Safe.
         self.assertEqual(matrix[1, 42, 42], 0.0)
 
-        # Check outside polygon (e.g. 50, 50)
-        # Relative (-100, -100).
-        # Matrix: (-100 * 0.21) + 42 = -21 + 42 = 21.
-        # Note: scale is exactly 84 / 400 = 0.21.
-        # x = 50. mx = 150. dx = -100. gx = -100 * 0.21 + 42 = 21.
-        self.assertEqual(matrix[1, 21, 21], 1.0)
+        # Check Wall rendering
+        # View radius 500. Scale = 84 / 1000 = 0.084.
+        # Wall is at x=43200 (dist 21600).
+        # Snake at x=43100.
+        # dx_wall = 100.
+        # gx = 42 + 100 * 0.084 = 50.4 -> 50.
+        # So at gx=52, we should be strictly outside.
+        self.assertEqual(matrix[1, 42, 55], 1.0)
 
     def test_update_from_game_data_ignores_nan(self):
         self.env.last_dist_to_wall = 1234
