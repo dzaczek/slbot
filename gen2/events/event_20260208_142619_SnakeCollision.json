@@ -1,0 +1,38 @@
+{
+  "timestamp": 1770557179,
+  "date": "20260208_142619",
+  "cause": "SnakeCollision",
+  "reward": -30,
+  "snake": {
+    "x": 26024.299518350424,
+    "y": 34708.86175949857,
+    "len": 26,
+    "ang": 0
+  },
+  "env": {
+    "dist_to_wall": -669.6007033742646,
+    "map_radius": 21600,
+    "view_radius": 388.89128954842715,
+    "boundary_type": "circle"
+  },
+  "debug": {
+    "boundary_source": "pbx",
+    "boundary_type": "polygon",
+    "dist_from_center": 0,
+    "dist_to_wall": -670,
+    "map_vars": {
+      "FINAL_dist_to_wall": -670,
+      "FINAL_source": "pbx",
+      "dist_from_center": 0,
+      "map_center": "21600,21600",
+      "map_radius": 21600,
+      "pbx_count": 32767
+    },
+    "snake_x": 26024,
+    "snake_y": 34709,
+    "total_foods": 460,
+    "total_slithers": 9,
+    "visible_enemies": 8,
+    "visible_foods": 44
+  }
+}
