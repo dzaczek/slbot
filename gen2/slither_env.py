@@ -17,10 +17,15 @@ from matplotlib.path import Path as MplPath
 class SlitherEnv:
     def __init__(self, headless=True, nickname="MatrixBot", matrix_size=84, view_plus=False, base_url="http://slither.io", frame_skip=4):
         self.browser = SlitherBrowser(headless=headless, nickname=nickname, base_url=base_url)
-        self.map_radius = 0  # Legacy, not used for wall detection anymore
-        self.map_center_x = 0
-        self.map_center_y = 0
-        self.boundary_type = 'circle'
+        # Fixed Map Constants (Standard Slither.io)
+        self.MAP_RADIUS = 21600
+        self.MAP_CENTER_X = 21600
+        self.MAP_CENTER_Y = 21600
+
+        self.map_radius = self.MAP_RADIUS
+        self.map_center_x = self.MAP_CENTER_X
+        self.map_center_y = self.MAP_CENTER_Y
+        self.boundary_type = 'circle' # Force circle
         self.boundary_vertices = []
         self.matrix_size = matrix_size # Output grid size (default 84x84)
         self.view_plus = view_plus  # Enable visual overlay
@@ -111,25 +116,32 @@ class SlitherEnv:
         if not data:
             return
         
-        # dist_to_wall comes from JS (empirical: distance from grd-based center minus estimated radius)
-        dtw = data.get('dist_to_wall')
-        # Robust check for NaN (from mgwlm6)
-        if dtw is not None and math.isfinite(dtw):
-            self.last_dist_to_wall = dtw
+        # We ignore JS dist_to_wall to fix false positives with polygon logic
+        # and enforce Python radial logic.
         
-        # Update map params from JS (from mgwlm6)
+        # Update map params if they look reasonable, else stick to defaults
         mr = data.get('map_radius')
-        if mr and math.isfinite(mr) and mr > 0:
-            self.map_radius = mr
+        if mr and math.isfinite(mr) and mr > 10000:
+             self.map_radius = mr
+
         cx = data.get('map_center_x')
         cy = data.get('map_center_y')
-        if cx and cy and math.isfinite(cx) and math.isfinite(cy):
-            self.map_center_x = cx
-            self.map_center_y = cy
+        if cx and cy and math.isfinite(cx) and math.isfinite(cy) and cx > 10000:
+             self.map_center_x = cx
+             self.map_center_y = cy
 
-        self.boundary_type = data.get('boundary_type', 'circle')
+        # Force Circle logic regardless of what JS says
+        self.boundary_type = 'circle'
         self.boundary_vertices = data.get('boundary_vertices', [])
         
+        # Recalculate dist_to_wall using Python Radial Logic
+        mx = data.get('self', {}).get('x', 0)
+        my = data.get('self', {}).get('y', 0)
+
+        # Only update if we have valid coordinates
+        if abs(mx) > 100 and abs(my) > 100:
+            self.last_dist_to_wall = self._calc_dist_to_wall(mx, my)
+
         # Track wall proximity
         if self.last_dist_to_wall < 2000:
             self.near_wall_frames += 1
@@ -138,10 +150,11 @@ class SlitherEnv:
     
     def _calc_dist_to_wall(self, x, y):
         """
-        Returns the last known distance to wall from JS.
-        We no longer calculate this ourselves - JS has the real pbx vertex data.
+        Calculates distance to wall using pure radial logic.
+        Standard Slither.io map is a circle.
         """
-        return self.last_dist_to_wall
+        dist_from_center = math.hypot(x - self.map_center_x, y - self.map_center_y)
+        return self.map_radius - dist_from_center
 
     def _snake_width_world(self, snake):
         sc = snake.get('sc', 1.0) if snake else 1.0
@@ -288,23 +301,10 @@ class SlitherEnv:
             mx = last_data['self'].get('x', 0)
             my = last_data['self'].get('y', 0)
         
-        # Get geometric wall distance (from JS)
-        dist_to_wall_js = last_data.get('dist_to_wall', 99999) if last_data else 99999
-        # Robust check for NaN (from mgwlm6)
-        if not math.isfinite(dist_to_wall_js):
-            dist_to_wall_js = 99999
+        # Python-side Strict Check (PRIMARY)
+        # We calculate wall distance ourselves to be sure
+        dist_to_wall_py = self._calc_dist_to_wall(mx, my)
 
-        # Python-side Strict Check (Fallback)
-        map_radius = self.map_radius if self.map_radius > 10000 else 21600
-        map_cx = self.map_center_x if self.map_center_x > 0 else 21600
-        map_cy = self.map_center_y if self.map_center_y > 0 else 21600
-
-        # Trust JS dist_to_wall mostly, but verify geometric fallback
-        dist_to_wall_py = 99999
-        if self.boundary_type == 'circle':
-            dist_from_center = math.hypot(mx - map_cx, my - map_cy)
-            dist_to_wall_py = map_radius - dist_from_center
-        
         # Check if any enemy was close to our head at the moment before death
         enemies = last_data.get('enemies', []) if last_data else []
         min_enemy_dist = self._min_enemy_distance(enemies, mx, my)
@@ -319,7 +319,7 @@ class SlitherEnv:
         penalty = self.death_snake_penalty
 
         # Priority 1: Strictly outside map (Absolute Wall Death)
-        if dist_to_wall_js < -50:
+        if dist_to_wall_py < -50:
              cause = "Wall"
              penalty = self.death_wall_penalty
 
@@ -329,22 +329,17 @@ class SlitherEnv:
             penalty = self.death_snake_penalty
 
         # Priority 3: Proximity to wall (if no enemy hit detected)
-        elif dist_to_wall_js <= (head_radius + WALL_BUFFER):
+        elif dist_to_wall_py <= (head_radius + WALL_BUFFER):
              cause = "Wall"
              penalty = self.death_wall_penalty
 
-        # Priority 4: Geometric Fallback for Circle
-        elif self.boundary_type == 'circle' and dist_to_wall_py < 0:
-             cause = "Wall"
-             penalty = self.death_wall_penalty
-
-        # Priority 5: Default (Assumed Snake Collision if inside map)
+        # Priority 4: Default (Assumed Snake Collision if inside map)
         else:
             cause = "Unknown" if min_enemy_dist == float('inf') else "SnakeCollision"
             penalty = self.death_snake_penalty
         
         min_enemy_display = min_enemy_dist if min_enemy_dist != float('inf') else -1
-        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_display:.0f} WallDistJS={dist_to_wall_js:.0f} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
+        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_display:.0f} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
         
         return penalty, cause
 
@@ -383,13 +378,26 @@ class SlitherEnv:
             self.browser.inject_view_plus_overlay()
         
         # Get initial state and set prev_length to actual starting length
-        # Loop 20 times (HEAD logic) for safety (but use validation now)
+        # We enforce strict coordinate validation to avoid (0,0) starts
         data = None
-        for _ in range(20):
+        start_time = time.time()
+        while time.time() - start_time < 10.0: # 10 second timeout
             data = self.browser.get_game_data()
             if self._is_valid_frame(data):
-                break
+                mx = data.get('self', {}).get('x', 0)
+                my = data.get('self', {}).get('y', 0)
+                # Double check to be absolutely sure
+                if abs(mx) > 100 and abs(my) > 100:
+                    break
             time.sleep(0.2)
+
+        # If still invalid, we might want to try force_restart again or just warn
+        if not data or not self._is_valid_frame(data):
+            print("WARNING: reset() failed to get valid coordinates after 10s. Trying again...")
+            self.browser.force_restart()
+            time.sleep(2.0)
+            # Try one more time quickly
+            data = self.browser.get_game_data()
 
         if data and data.get('self'):
             self.prev_length = data['self'].get('len', 0)
@@ -628,7 +636,11 @@ class SlitherEnv:
         # UPDATE view_size from actual game data!
         game_view_radius = data.get('view_radius')
         if game_view_radius and game_view_radius > 0:
-            self.view_size = game_view_radius
+            # Enforce minimum view radius to ensure bot sees enough context
+            self.view_size = max(float(game_view_radius), 500.0)
+            self.scale = self.matrix_size / (self.view_size * 2)
+        else:
+            self.view_size = 500.0
             self.scale = self.matrix_size / (self.view_size * 2)
         
         # UPDATE map params from game data
@@ -659,36 +671,50 @@ class SlitherEnv:
 
         # 2. Enemies (Channel 1)
         enemies = data.get('enemies', [])
+
+        # Explicit scaling logic as requested
+        # Center of grid
+        cx_grid = self.matrix_size / 2
+        cy_grid = self.matrix_size / 2
+
         for e in enemies:
             ex, ey = e['x'], e['y']
-            hx, hy = world_to_grid(ex, ey, mx, my, self.scale, self.matrix_size)
+
+            # Relative position
+            dx = ex - mx
+            dy = ey - my
+
+            # Grid coordinates (no rotation, north-up)
+            hx = cx_grid + dx * self.scale
+            hy = cx_grid + dy * self.scale
 
             # Calculate snake width in matrix pixels
-            # Base width ~29 units.
             sc = e.get('sc', 1.0)
             width_world = sc * 29.0
             width_matrix = max(1.0, width_world * self.scale)
 
+            # Draw Head
+            head_radius = (width_matrix / 2.0) * 1.2
+
+            # Only draw if roughly on screen (optimization)
+            if -50 < hx < self.matrix_size + 50 and -50 < hy < self.matrix_size + 50:
+                 self._draw_circle(matrix, 1, hx, hy, head_radius, 1.0)
+
             pts = e.get('pts', [])
 
-            # Draw thick line from head to first body point
-            if pts:
-                px, py = pts[0][0], pts[0][1]
-                bx, by = world_to_grid(px, py, mx, my, self.scale, self.matrix_size)
-                self._draw_thick_line(matrix, 1, hx, hy, bx, by, width_matrix, 0.5)
+            # Draw Body
+            prev_x, prev_y = hx, hy
 
-            # Draw thick lines between body points
-            for i in range(len(pts) - 1):
-                 p1 = pts[i]
-                 p2 = pts[i+1]
-                 x1, y1 = world_to_grid(p1[0], p1[1], mx, my, self.scale, self.matrix_size)
-                 x2, y2 = world_to_grid(p2[0], p2[1], mx, my, self.scale, self.matrix_size)
-                 self._draw_thick_line(matrix, 1, x1, y1, x2, y2, width_matrix, 0.5)
+            for pt in pts:
+                px_world, py_world = pt[0], pt[1]
+                dx_p = px_world - mx
+                dy_p = py_world - my
 
-            # Ensure Head is distinct (drawn last)
-            # Head radius slightly larger
-            head_radius = (width_matrix / 2.0) * 1.2
-            self._draw_circle(matrix, 1, hx, hy, head_radius, 1.0)
+                px_grid = cx_grid + dx_p * self.scale
+                py_grid = cx_grid + dy_p * self.scale
+
+                self._draw_thick_line(matrix, 1, prev_x, prev_y, px_grid, py_grid, width_matrix, 0.5)
+                prev_x, prev_y = px_grid, py_grid
 
         # 3. Self (Channel 2)
         cx, cy = self.matrix_size // 2, self.matrix_size // 2
@@ -715,48 +741,36 @@ class SlitherEnv:
         self._draw_circle(matrix, 2, cx, cy, my_head_radius, 1.0)
 
         # 4. Walls (Channel 1 - DANGER)
-        # Accurate Polygon / Circle Rendering
-        dist_to_wall = data.get('dist_to_wall', 99999)
+        # Radial / Circular Wall Rendering (Force Python Logic)
         
-        if dist_to_wall < 10000 or self.boundary_type == 'polygon':
-            if self.boundary_type == 'polygon' and len(self.boundary_vertices) >= 3:
-                # Convert polygon vertices to grid coordinates
-                grid_verts = []
-                for v in self.boundary_vertices:
-                    gx, gy = world_to_grid(v[0], v[1], mx, my, self.scale, self.matrix_size)
-                    grid_verts.append((gx, gy))
+        # We always check wall distance in Python now
+        dist_to_wall_py = self._calc_dist_to_wall(mx, my)
 
-                # Create mask using Matplotlib Path
-                # We want to mask points OUTSIDE the polygon as 1.0 (Wall)
-                path = MplPath(grid_verts)
+        # Only draw if wall is potentially visible on the grid
+        # Max view distance ~ view_size.
+        # If dist > view_size, we probably don't see it.
+        if dist_to_wall_py < self.view_size * 1.5:
+             # Standard Circular Wall
+             y_grid, x_grid = np.ogrid[:self.matrix_size, :self.matrix_size]
 
-                # Create grid points (x, y)
-                y_idx, x_idx = np.mgrid[:self.matrix_size, :self.matrix_size]
-                points = np.vstack((x_idx.ravel(), y_idx.ravel())).T
+             # Convert grid coords to relative world coords
+             dx_world = (x_grid - (self.matrix_size / 2)) / self.scale
+             dy_world = (y_grid - (self.matrix_size / 2)) / self.scale
 
-                # Check containment
-                # radius=0 means exact check.
-                is_inside = path.contains_points(points).reshape((self.matrix_size, self.matrix_size))
+             # Absolute world coords
+             wx = mx + dx_world
+             wy = my + dy_world
 
-                # Invert: Inside = Safe (0), Outside = Wall (1)
-                wall_mask = ~is_inside
-                matrix[1][wall_mask] = 1.0
-            
-            elif self.map_radius > 0 and self.map_center_x > 0:
-                y_grid, x_grid = np.ogrid[:self.matrix_size, :self.matrix_size]
+             # Check distance from map center
+             dist_sq = (wx - self.map_center_x)**2 + (wy - self.map_center_y)**2
 
-                dx_world = (x_grid - (self.matrix_size / 2)) / self.scale
-                dy_world = (y_grid - (self.matrix_size / 2)) / self.scale
+             # Safety margin: behave as if wall is slightly closer (radius - 100)
+             # This ensures we don't accidentally go out.
+             # Note: map_radius is 21600.
+             radius_sq = (self.map_radius - 100)**2
 
-                wx = mx + dx_world
-                wy = my + dy_world
-
-                dist_sq = (wx - self.map_center_x)**2 + (wy - self.map_center_y)**2
-                # Safety margin: behave as if wall is slightly closer (radius - 100)
-                radius_sq = (self.map_radius - 100)**2
-
-                wall_mask = dist_sq > radius_sq
-                matrix[1][wall_mask] = 1.0
+             wall_mask = dist_sq > radius_sq
+             matrix[1][wall_mask] = 1.0
 
         return matrix
 
