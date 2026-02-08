@@ -87,8 +87,11 @@ def calculate_statistics(df):
 #  📝 REPORT GENERATION
 # ==========================================
 
-def generate_markdown_report(df, full_stats, recent_stats, output_path):
-    """Generates a detailed Markdown report."""
+def generate_markdown_report(df, stats_by_window, output_path):
+    """Generates a detailed Markdown report with multi-period analysis."""
+
+    full_stats = stats_by_window['Total']
+    recent_stats = stats_by_window.get(50, full_stats) # Default to full if 50 not available
     
     with open(output_path, 'w', encoding='utf-8') as f:
         # Header
@@ -124,9 +127,40 @@ def generate_markdown_report(df, full_stats, recent_stats, output_path):
                 f.write(f"| **{label}** | {curr:.2f} | {trend_str} | {best:.2f} | {worst:.2f} |\n")
         f.write("\n")
 
-        # 2. Detailed Statistics
+        # 2. Multi-Period Analysis Table
+        f.write("## 📅 Multi-Period Analysis\n")
+        f.write("Comparative performance over different time windows.\n\n")
+
+        # Get all available windows sorted
+        windows = [k for k in stats_by_window.keys() if isinstance(k, int)]
+        windows.sort()
+        all_cols = windows + ['Total']
+
+        # Metrics to display in this table
+        table_metrics = ['Reward', 'Steps', 'Food', 'Loss']
+
+        # Build Header
+        header = "| Metric |" + "".join([f" Last {w} |" for w in windows]) + " Total |\n"
+        separator = "| :--- |" + "".join([":---: |" for _ in windows]) + ":---: |\n"
+        f.write(header)
+        f.write(separator)
+
+        for metric in table_metrics:
+            if metric not in full_stats: continue
+
+            row = f"| **{metric}** |"
+            for w in windows:
+                val = stats_by_window[w][metric]['mean']
+                row += f" {val:.2f} |"
+
+            total_val = stats_by_window['Total'][metric]['mean']
+            row += f" {total_val:.2f} |\n"
+            f.write(row)
+        f.write("\n")
+
+        # 3. Detailed Statistics (Recent vs Full)
         f.write("## 📈 Detailed Statistics\n")
-        f.write("### Recent vs Full History\n")
+        f.write(f"### Recent (Last {recent_stats['count']}) vs Full History\n")
         f.write("| Metric | Recent Mean | Recent Std Dev | All-Time Mean | All-Time Std Dev |\n")
         f.write("| :--- | :---: | :---: | :---: | :---: |\n")
 
@@ -137,22 +171,22 @@ def generate_markdown_report(df, full_stats, recent_stats, output_path):
             f.write(f"| {key} | {rec.get('mean', 0):.4f} | {rec.get('std', 0):.4f} | {full.get('mean', 0):.4f} | {full.get('std', 0):.4f} |\n")
         f.write("\n")
 
-        # 3. Death Analysis
+        # 4. Death Analysis
         f.write("## 💀 Death Analysis\n")
         if 'Cause' in full_stats:
             f.write("| Cause | Recent Count | Recent % | All-Time % |\n")
             f.write("| :--- | :---: | :---: | :---: |\n")
-            
+
             all_causes = set(full_stats['Cause'].keys()) | set(recent_stats.get('Cause', {}).keys())
 
-            for cause in sorted(all_causes):
+            for cause, count in sorted(full_stats['Cause'].items(), key=lambda x: x[1], reverse=True): # Sort by total frequency
                 rec_count = recent_stats.get('Cause', {}).get(cause, 0)
                 rec_pct = recent_stats.get('Cause_Pct', {}).get(cause, 0)
                 full_pct = full_stats.get('Cause_Pct', {}).get(cause, 0)
                 f.write(f"| {cause} | {rec_count} | {rec_pct:.1f}% | {full_pct:.1f}% |\n")
         f.write("\n")
 
-        # 4. Training Parameters
+        # 5. Training Parameters
         f.write("## ⚙️ Training Health\n")
         f.write(f"- **Current Epsilon:** {full_stats['Epsilon']['last']:.4f}\n")
         f.write(f"- **Current Learning Rate:** {full_stats['LR']['last']:.6f}\n")
@@ -160,7 +194,7 @@ def generate_markdown_report(df, full_stats, recent_stats, output_path):
             f.write(f"- **Current Beta (PER):** {full_stats['Beta']['last']:.4f}\n")
         f.write("\n")
 
-        # 5. Visuals
+        # 6. Visuals
         f.write("## 🖼️ Charts\n")
         f.write("![Training Plot](training_plot.png)\n")
         f.write("\n")
@@ -359,19 +393,29 @@ def analyze():
         print(colored("⚠ Not enough data.", Colors.YELLOW))
         return
         
-    # Calculate Stats
-    full_stats = calculate_statistics(df)
+    # Calculate Stats for multiple windows
+    stats_by_window = {}
 
-    recent_window = min(50, len(df))
-    recent_df = df.tail(recent_window)
-    recent_stats = calculate_statistics(recent_df)
+    # 1. Total
+    stats_by_window['Total'] = calculate_statistics(df)
 
-    # 1. Console Dashboard
-    print_dashboard(df, full_stats, recent_stats)
+    # 2. Specific Windows
+    windows = [50, 100, 500, 1000, 5000, 10000]
+    for w in windows:
+        if len(df) >= w:
+            window_df = df.tail(w)
+            stats_by_window[w] = calculate_statistics(window_df)
+
+    # For reporting, we default 'recent' to the smallest available window or 50
+    recent_window_size = 50 if 50 in stats_by_window else len(df)
+    recent_stats = stats_by_window.get(recent_window_size, stats_by_window['Total'])
     
+    # 1. Console Dashboard
+    print_dashboard(df, stats_by_window['Total'], recent_stats)
+
     # 2. Markdown Report
     md_path = os.path.join(script_dir, 'analysis_report.md')
-    generate_markdown_report(df, full_stats, recent_stats, md_path)
+    generate_markdown_report(df, stats_by_window, md_path)
 
     # 3. Charts
     plot_charts(df, script_dir)
