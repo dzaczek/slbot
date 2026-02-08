@@ -71,11 +71,9 @@ class SlitherEnv:
         self.invalid_frame_count = 0
         self.max_invalid_frames = 15
 
-    def _is_valid_frame(self, data):
-        """Checks if the frame data is valid and not corrupted."""
-        if not data or data.get('dead'):
-            return False
-        if data.get('valid') is False:
+    def _has_valid_coordinates(self, data):
+        """Checks if the frame contains plausible coordinates (ignores dead status)."""
+        if not data:
             return False
         snake = data.get('self') or {}
         mx = snake.get('x')
@@ -84,13 +82,19 @@ class SlitherEnv:
             return False
         if not math.isfinite(mx) or not math.isfinite(my):
             return False
-        # Basic sanity check for coordinates (should be > 1000 usually unless right at corner 0,0 which is unlikely in game)
-        # But let's be careful not to filter valid starts.
-        # tsrgy0 used: if abs(mx) <= 1000 and abs(my) <= 1000: return False
-        # I will keep it as a heuristic for "loading/invalid" state.
+        # Basic sanity check for coordinates (reject 0,0 initialization glitch)
+        # Map center is (21600, 21600), so (0,0) is far outside.
         if abs(mx) <= 1000 and abs(my) <= 1000:
             return False
         return True
+
+    def _is_valid_frame(self, data):
+        """Checks if the frame data is valid for training (alive and good coords)."""
+        if not data or data.get('dead'):
+            return False
+        if data.get('valid') is False:
+            return False
+        return self._has_valid_coordinates(data)
 
     def set_curriculum_stage(self, stage_config):
         """Set reward parameters from curriculum stage config dict."""
@@ -445,7 +449,10 @@ class SlitherEnv:
         if not data:
             return self._matrix_zeros(), -5, True, {"cause": "BrowserError"}
 
-        if not data.get('dead') and not self._is_valid_frame(data):
+        # Check for valid coordinates regardless of dead status
+        has_valid_coords = self._has_valid_coordinates(data)
+
+        if not data.get('dead') and not has_valid_coords:
             self.invalid_frame_count += 1
             if self.invalid_frame_count >= self.max_invalid_frames:
                 return self.last_matrix, -5, True, {"cause": "InvalidFrame"}
@@ -453,17 +460,28 @@ class SlitherEnv:
             return self.last_matrix, 0.0, False, {"cause": "InvalidFrame"}
 
         self.invalid_frame_count = 0
-        self.last_valid_data = data
+
+        # Only update last_valid_data if coordinates are plausible
+        if has_valid_coords:
+            self.last_valid_data = data
 
         # Update map params IMMEDIATELY from fresh game data
         self._update_from_game_data(data)
 
         if data.get('dead'):
-            reward, cause = self._get_death_reward_and_cause(data)
-            mx = data['self'].get('x', 0) if data.get('self') else 0
-            my = data['self'].get('y', 0) if data.get('self') else 0
+            # If death frame has invalid coords (0,0 bug), use last valid data
+            final_data = data
+            if not has_valid_coords and self.last_valid_data:
+                final_data = self.last_valid_data
+                # print(f"DEBUG: Using last_valid_data for death classification (Current: {data.get('self', {}).get('x')})")
+
+            reward, cause = self._get_death_reward_and_cause(final_data)
+
+            snake = final_data.get('self', {})
+            mx = snake.get('x', 0)
+            my = snake.get('y', 0)
             dtw = self._calc_dist_to_wall(mx, my)
-            min_enemy_dist = self._min_enemy_distance(data.get('enemies', []), mx, my)
+            min_enemy_dist = self._min_enemy_distance(final_data.get('enemies', []), mx, my)
 
             # Use last valid data for death packet if current is empty?
             # data is 'dead', so it might be empty.
@@ -764,10 +782,10 @@ class SlitherEnv:
              # Check distance from map center
              dist_sq = (wx - self.map_center_x)**2 + (wy - self.map_center_y)**2
 
-             # Safety margin: behave as if wall is slightly closer (radius - 100)
+             # Safety margin: behave as if wall is slightly closer (radius - 500)
              # This ensures we don't accidentally go out.
              # Note: map_radius is 21600.
-             radius_sq = (self.map_radius - 100)**2
+             radius_sq = (self.map_radius - 500)**2
 
              wall_mask = dist_sq > radius_sq
              matrix[1][wall_mask] = 1.0
