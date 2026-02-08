@@ -34,7 +34,7 @@ success() {
 }
 
 # Interval in seconds (5 minutes = 300 seconds)
-INTERVAL=300
+INTERVAL=900
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
@@ -49,26 +49,26 @@ iteration=0
 
 while true; do
     iteration=$((iteration + 1))
-    
+
     echo ""
     log "═══════════════════════════════════════════════════════"
     log "📊 Iteration #${iteration} starting..."
     log "═══════════════════════════════════════════════════════"
-    
+
     # Step 1: Run analyze_matrix.py
     log "Running analyze_matrix.py..."
-    
+
     if python3 analyze_matrix.py 2>&1; then
         success "Analysis completed"
     else
         error "Analysis failed, but continuing..."
     fi
-    
+
     # Step 2: Check if there are changes to commit
     log "Checking for changes..."
-    
+
     cd "$SCRIPT_DIR/.."  # Go to repo root
-    
+
     # Add the generated files
     changes_found=false
     for file in "${FILES_TO_COMMIT[@]}"; do
@@ -83,17 +83,17 @@ while true; do
             fi
         fi
     done
-    
+
     # Step 3: Commit and push if there are changes
     if $changes_found; then
         log "Committing changes..."
-        
+
         # Create commit message with timestamp
         commit_msg="auto: update training reports $(date '+%Y-%m-%d %H:%M')"
-        
+
         if git commit -m "$commit_msg" 2>&1; then
             success "Committed: $commit_msg"
-            
+
             # Push to origin
             log "Pushing to origin/main..."
             if git push origin main 2>&1; then
@@ -107,12 +107,12 @@ while true; do
     else
         log "No changes to commit"
     fi
-    
+
     cd "$SCRIPT_DIR"  # Return to gen2 directory
-    
+
     # Step 4: Wait for next iteration
     log "Next update in ${INTERVAL} seconds ($(date -d "+${INTERVAL} seconds" '+%H:%M:%S' 2>/dev/null || date -v+${INTERVAL}S '+%H:%M:%S'))"
     log "═══════════════════════════════════════════════════════"
-    
+
     sleep $INTERVAL
 done
