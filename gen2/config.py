@@ -37,6 +37,18 @@ class OptimizationConfig:
     scheduler_patience: int = 50
     scheduler_factor: float = 0.5
     adaptive_eps_patience: int = 100
+    super_pattern_enabled: bool = True
+    super_pattern_window: int = 50
+    super_pattern_wall_ratio: float = 0.55
+    super_pattern_snake_ratio: float = 0.55
+    super_pattern_food_ratio_low: float = 0.07
+    super_pattern_food_ratio_high: float = 0.12
+    super_pattern_penalty_step: float = 0.02
+    super_pattern_reward_step: float = 0.5
+    super_pattern_wall_penalty_cap: float = 0.3
+    super_pattern_enemy_penalty_cap: float = 0.3
+    super_pattern_straight_penalty_cap: float = 0.1
+    super_pattern_food_reward_cap: float = 20.0
 
 @dataclass
 class ReplayBufferConfig:
