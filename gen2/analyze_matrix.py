@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Slither.io MatrixBot Training Analyzer
-Generates beautiful console reports and charts from training data.
+Generates beautiful console reports, Markdown analysis, and charts from training data.
 """
 
 import pandas as pd
@@ -12,7 +12,10 @@ import os
 import sys
 from datetime import datetime
 
-# Colors for console output
+# ==========================================
+#  🎨 UI / UX CONSTANTS & HELPERS
+# ==========================================
+
 class Colors:
     HEADER = '\033[95m'
     BLUE = '\033[94m'
@@ -27,466 +30,365 @@ class Colors:
 def colored(text, color):
     return f"{color}{text}{Colors.ENDC}"
 
-def print_header(text):
-    width = 60
-    print()
-    print(colored("╔" + "═" * (width-2) + "╗", Colors.CYAN))
-    print(colored("║" + text.center(width-2) + "║", Colors.CYAN + Colors.BOLD))
-    print(colored("╚" + "═" * (width-2) + "╝", Colors.CYAN))
+def get_trend_icon(value, baseline, rising_is_good=True):
+    diff = value - baseline
+    if diff == 0: return "➡️", Colors.DIM
 
-def print_section(text):
-    print()
-    print(colored(f"┌─ {text} " + "─" * (55 - len(text)), Colors.BLUE))
+    if rising_is_good:
+        if diff > 0: return "↗️", Colors.GREEN
+        else: return "↘️", Colors.RED
+    else:
+        if diff < 0: return "↘️", Colors.GREEN
+        else: return "↗️", Colors.RED
 
-def print_stat(label, value, color=Colors.ENDC):
-    print(f"│ {label:<25} {colored(str(value), color)}")
+def format_number(n):
+    if abs(n) >= 1000: return f"{n:,.0f}"
+    if abs(n) >= 10: return f"{n:.1f}"
+    return f"{n:.4f}"
 
-def print_table_row(cols, widths, color=Colors.ENDC):
-    row = "│"
-    for col, width in zip(cols, widths):
-        row += f" {str(col):<{width}} │"
-    print(colored(row, color))
+# ==========================================
+#  📊 STATISTICS CALCULATION
+# ==========================================
+
+def calculate_statistics(df):
+    """Calculates comprehensive statistics for a given DataFrame."""
+    stats = {}
+    
+    # Numeric columns to analyze (Dynamic)
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    # Exclude non-metric columns if necessary (like Episode, though it's useful for range)
+    # kept Episode in for now as it doesn't hurt, but let's prioritize metrics
+    priority_cols = ['Reward', 'Steps', 'Epsilon', 'Loss', 'Beta', 'LR', 'Food', 'Stage']
+    
+    # Sort columns: priority first, then others alphabetically
+    numeric_cols.sort(key=lambda x: (0 if x in priority_cols else 1, x))
+    
+    for col in numeric_cols:
+        if col == 'Episode': continue # Skip Episode stats
+        series = df[col]
+        stats[col] = {
+            'mean': series.mean(),
+            'median': series.median(),
+            'std': series.std(),
+            'min': series.min(),
+            'max': series.max(),
+            'last': series.iloc[-1]
+        }
+
+    # Categorical: Cause
+    if 'Cause' in df.columns:
+        stats['Cause'] = df['Cause'].value_counts().to_dict()
+        stats['Cause_Pct'] = (df['Cause'].value_counts(normalize=True) * 100).to_dict()
+
+    stats['count'] = len(df)
+    return stats
+
+# ==========================================
+#  📝 REPORT GENERATION
+# ==========================================
+
+def generate_markdown_report(df, full_stats, recent_stats, output_path):
+    """Generates a detailed Markdown report."""
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        # Header
+        f.write(f"# 🐍 Slither.io MatrixBot Training Report\n")
+        f.write(f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n")
+        f.write(f"**Total Episodes:** {full_stats['count']}  \n")
+        f.write(f"**Recent Analysis Window:** Last {recent_stats['count']} episodes\n\n")
+        
+        # 1. Executive Summary
+        f.write("## 📊 Executive Summary (Recent Performance)\n")
+        f.write("| Metric | Average | Trend (vs All-Time) | Best | Worst |\n")
+        f.write("| :--- | :---: | :---: | :---: | :---: |\n")
+        
+        metrics_to_show = [
+            ('Reward', 'Reward', True),
+            ('Survival (Steps)', 'Steps', True),
+            ('Food Eaten', 'Food', True),
+            ('Loss', 'Loss', False)
+        ]
+        
+        for label, key, rising_good in metrics_to_show:
+            if key in recent_stats:
+                curr = recent_stats[key]['mean']
+                base = full_stats[key]['mean']
+                diff = curr - base
+                icon = "↗️" if (diff > 0 and rising_good) or (diff < 0 and not rising_good) else "↘️"
+                if abs(diff) < 0.001: icon = "➡️"
+                
+                trend_str = f"{icon} {diff:+.2f}"
+                best = recent_stats[key]['max']
+                worst = recent_stats[key]['min']
+                
+                f.write(f"| **{label}** | {curr:.2f} | {trend_str} | {best:.2f} | {worst:.2f} |\n")
+        f.write("\n")
+
+        # 2. Detailed Statistics
+        f.write("## 📈 Detailed Statistics\n")
+        f.write("### Recent vs Full History\n")
+        f.write("| Metric | Recent Mean | Recent Std Dev | All-Time Mean | All-Time Std Dev |\n")
+        f.write("| :--- | :---: | :---: | :---: | :---: |\n")
+
+        for key in full_stats:
+            if key in ['Cause', 'Cause_Pct', 'count']: continue
+            rec = recent_stats.get(key, {})
+            full = full_stats.get(key, {})
+            f.write(f"| {key} | {rec.get('mean', 0):.4f} | {rec.get('std', 0):.4f} | {full.get('mean', 0):.4f} | {full.get('std', 0):.4f} |\n")
+        f.write("\n")
+
+        # 3. Death Analysis
+        f.write("## 💀 Death Analysis\n")
+        if 'Cause' in full_stats:
+            f.write("| Cause | Recent Count | Recent % | All-Time % |\n")
+            f.write("| :--- | :---: | :---: | :---: |\n")
+            
+            all_causes = set(full_stats['Cause'].keys()) | set(recent_stats.get('Cause', {}).keys())
+
+            for cause in sorted(all_causes):
+                rec_count = recent_stats.get('Cause', {}).get(cause, 0)
+                rec_pct = recent_stats.get('Cause_Pct', {}).get(cause, 0)
+                full_pct = full_stats.get('Cause_Pct', {}).get(cause, 0)
+                f.write(f"| {cause} | {rec_count} | {rec_pct:.1f}% | {full_pct:.1f}% |\n")
+        f.write("\n")
+
+        # 4. Training Parameters
+        f.write("## ⚙️ Training Health\n")
+        f.write(f"- **Current Epsilon:** {full_stats['Epsilon']['last']:.4f}\n")
+        f.write(f"- **Current Learning Rate:** {full_stats['LR']['last']:.6f}\n")
+        if 'Beta' in full_stats:
+            f.write(f"- **Current Beta (PER):** {full_stats['Beta']['last']:.4f}\n")
+        f.write("\n")
+
+        # 5. Visuals
+        f.write("## 🖼️ Charts\n")
+        f.write("![Training Plot](training_plot.png)\n")
+        f.write("\n")
+        f.write("![Detailed Analysis](training_detailed.png)\n")
+
+    print(colored(f"✅ Markdown report generated: {output_path}", Colors.GREEN))
+
+# ==========================================
+#  📺 CONSOLE DASHBOARD
+# ==========================================
+
+def print_dashboard(df, full_stats, recent_stats):
+    """Prints a 'Gustowny' (Tasteful) UI Dashboard to the console."""
+    
+    width = 70
+    line = "─" * width
+    thick_line = "═" * width
+    
+    print("\n" + colored(thick_line, Colors.CYAN))
+    print(colored(f"🐍  SLITHER.IO MATRIXBOT ANALYTICS DASHBOARD  🐍".center(width), Colors.CYAN + Colors.BOLD))
+    print(colored(thick_line, Colors.CYAN))
+    
+    # --- RECENT PERFORMANCE ---
+    print(colored(f"\n[ RECENT PERFORMANCE (Last {recent_stats['count']} Episodes) ]", Colors.YELLOW + Colors.BOLD))
+    print(colored(line, Colors.DIM))
+    
+    # Reward & Food Row
+    r_mean = recent_stats['Reward']['mean']
+    r_trend, r_color = get_trend_icon(r_mean, full_stats['Reward']['mean'], True)
+    
+    f_mean = recent_stats.get('Food', {}).get('mean', 0)
+    f_trend, f_color = get_trend_icon(f_mean, full_stats.get('Food', {}).get('mean', 0), True)
+    
+    print(f" {colored('Reward:', Colors.BOLD):<15} {r_mean:>8.2f} {r_trend}  (All-Time: {full_stats['Reward']['mean']:.2f})")
+    print(f" {colored('Food:', Colors.BOLD):<15} {f_mean:>8.2f} {f_trend}  (All-Time: {full_stats.get('Food', {}).get('mean', 0):.2f})")
+    
+    # Steps Row
+    s_mean = recent_stats['Steps']['mean']
+    s_trend, s_color = get_trend_icon(s_mean, full_stats['Steps']['mean'], True)
+    print(f" {colored('Survival:', Colors.BOLD):<15} {s_mean:>8.1f}s {s_trend} (All-Time: {full_stats['Steps']['mean']:.1f}s)")
+
+    # --- TRAINING HEALTH ---
+    print(colored(f"\n[ TRAINING HEALTH ]", Colors.BLUE + Colors.BOLD))
+    print(colored(line, Colors.DIM))
+    
+    # Loss & LR
+    if 'Loss' in recent_stats:
+        l_mean = recent_stats['Loss']['mean']
+        l_trend, _ = get_trend_icon(l_mean, full_stats['Loss']['mean'], False) # Lower is good
+        print(f" {colored('Avg Loss:', Colors.BOLD):<15} {l_mean:>8.4f} {l_trend}")
+        
+    print(f" {colored('Epsilon:', Colors.BOLD):<15} {full_stats['Epsilon']['last']:>8.4f} (Exploration)")
+    print(f" {colored('Learn Rate:', Colors.BOLD):<15} {full_stats['LR']['last']:>8.6f}")
+    
+    if 'Beta' in full_stats:
+        print(f" {colored('Beta (PER):', Colors.BOLD):<15} {full_stats['Beta']['last']:>8.4f}")
+
+    # --- DEATH CAUSES ---
+    if 'Cause' in recent_stats:
+        print(colored(f"\n[ RECENT DEATH CAUSES ]", Colors.RED + Colors.BOLD))
+        print(colored(line, Colors.DIM))
+        
+        causes = recent_stats['Cause']
+        total = recent_stats['count']
+        
+        # Sort by count desc
+        sorted_causes = sorted(causes.items(), key=lambda x: x[1], reverse=True)
+        
+        for cause, count in sorted_causes:
+            pct = (count / total) * 100
+            bar_len = int(pct / 4)
+            bar = "█" * bar_len + "░" * (25 - bar_len)
+
+            c_color = Colors.RED if cause == "Wall" else Colors.YELLOW if cause == "SnakeCollision" else Colors.DIM
+            print(f" {cause:<15} {count:>3} ({pct:>5.1f}%) {colored(bar, c_color)}")
+
+    print("\n" + colored(line, Colors.DIM))
+
+
+# ==========================================
+#  📉 PLOTTING
+# ==========================================
+
+def plot_charts(df, script_dir):
+    """Generates comprehensive charts."""
+    print(colored("📊 Generating charts...", Colors.CYAN))
+    
+    plt.style.use('dark_background')
+    
+    # --- CHART 1: OVERVIEW (Reward, Steps, Epsilon, Loss) ---
+    fig = plt.figure(figsize=(16, 10))
+    fig.suptitle('Slither.io MatrixBot Training Overview', fontsize=16, fontweight='bold', color='white')
+
+    # 1. Reward
+    ax1 = plt.subplot(2, 2, 1)
+    ax1.plot(df['Episode'], df['Reward'], alpha=0.3, color='gray', label='Raw')
+    ax1.plot(df['Episode'], df['Reward'].rolling(50, min_periods=1).mean(), color='#00ff88', linewidth=2, label='SMA 50')
+    ax1.set_title('Reward History')
+    ax1.grid(True, alpha=0.2)
+    ax1.legend()
+    
+    # 2. Steps (Survival)
+    ax2 = plt.subplot(2, 2, 2)
+    ax2.plot(df['Episode'], df['Steps'].rolling(20, min_periods=1).mean(), color='#00ccff', label='Steps (SMA 20)')
+    if 'Food' in df.columns:
+         ax2_twin = ax2.twinx()
+         ax2_twin.plot(df['Episode'], df['Food'].rolling(50, min_periods=1).mean(), color='#ffaa00', alpha=0.7, label='Food (SMA 50)')
+         ax2_twin.set_ylabel('Food', color='#ffaa00')
+    ax2.set_title('Survival & Food')
+    ax2.grid(True, alpha=0.2)
+    ax2.legend(loc='upper left')
+    
+    # 3. Loss
+    ax3 = plt.subplot(2, 2, 3)
+    if 'Loss' in df.columns:
+        ax3.plot(df['Episode'], df['Loss'].rolling(50, min_periods=1).mean(), color='#ff4444', label='Loss (SMA 50)')
+        ax3.set_title('Training Loss')
+    else:
+        ax3.text(0.5, 0.5, 'No Loss Data', ha='center', va='center')
+    ax3.grid(True, alpha=0.2)
+    
+    # 4. Epsilon & Beta
+    ax4 = plt.subplot(2, 2, 4)
+    ax4.plot(df['Episode'], df['Epsilon'], color='#ff6600', label='Epsilon')
+    if 'Beta' in df.columns:
+        ax4_twin = ax4.twinx()
+        ax4_twin.plot(df['Episode'], df['Beta'], color='#cc00ff', label='Beta')
+        ax4_twin.set_ylabel('Beta', color='#cc00ff')
+    ax4.set_title('Hyperparameters')
+    ax4.grid(True, alpha=0.2)
+    ax4.legend(loc='upper left')
+    
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(os.path.join(script_dir, 'training_plot.png'), dpi=100, facecolor='#1a1a2e')
+    
+    # --- CHART 2: DETAILED ANALYSIS ---
+    fig2 = plt.figure(figsize=(16, 8))
+    
+    # 1. Reward Distribution
+    ax5 = plt.subplot(1, 2, 1)
+    ax5.hist(df['Reward'], bins=50, color='#4488ff', alpha=0.7)
+    ax5.axvline(df['Reward'].mean(), color='white', linestyle='--', label=f'Mean: {df["Reward"].mean():.1f}')
+    ax5.set_title('Reward Distribution (All-Time)')
+    ax5.legend()
+
+    # 2. Death Causes
+    ax6 = plt.subplot(1, 2, 2)
+    if 'Cause' in df.columns:
+        causes = df['Cause'].value_counts()
+        ax6.pie(causes, labels=causes.index, autopct='%1.1f%%', startangle=90)
+        ax6.set_title('Death Causes')
+    else:
+        ax6.text(0.5, 0.5, 'No Cause Data', ha='center')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(script_dir, 'training_detailed.png'), dpi=100, facecolor='#1a1a2e')
+
+    print(colored("✅ Charts saved.", Colors.GREEN))
+
+
+# ==========================================
+#  🚀 MAIN ENTRY POINT
+# ==========================================
 
 def analyze():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Try training_stats.csv first (user preference), then matrix_stats.csv
+
+    # Locate CSV
     possible_files = ['training_stats.csv', 'matrix_stats.csv']
     csv_path = None
-    
-    # Check command line argument first
-    if len(sys.argv) > 1:
-        arg_path = sys.argv[1]
-        if os.path.exists(arg_path):
-            csv_path = arg_path
-        elif os.path.exists(os.path.join(script_dir, arg_path)):
-            csv_path = os.path.join(script_dir, arg_path)
-            
-    # If no arg or invalid, check default files
-    if not csv_path:
-        for fname in possible_files:
-            p = os.path.join(script_dir, fname)
+
+    if len(sys.argv) > 1 and os.path.exists(sys.argv[1]):
+        csv_path = sys.argv[1]
+    else:
+        for f in possible_files:
+            p = os.path.join(script_dir, f)
             if os.path.exists(p):
                 csv_path = p
                 break
-    
+
     if not csv_path:
         print(colored("❌ No stats file found!", Colors.RED))
-        print(f"   Expected one of: {possible_files}")
-        print("   Run 'python gen2/trainer.py' first.")
         return
-    
-    print(colored(f"📂 Analyzing: {os.path.basename(csv_path)}", Colors.CYAN))
 
+    # Load Data
     try:
         df = pd.read_csv(csv_path)
-        # Normalize column names if needed
+        # Normalize columns
         if 'LR' in df.columns and 'LearningRate' not in df.columns:
             df['LearningRate'] = df['LR']
     except Exception as e:
         print(colored(f"❌ Error reading CSV: {e}", Colors.RED))
         return
-    
+        
     if len(df) < 2:
-        print(colored("⚠ Not enough data yet (need at least 2 episodes)", Colors.YELLOW))
+        print(colored("⚠ Not enough data.", Colors.YELLOW))
         return
-    
-    # === Calculate metrics ===
-    df['SMA10'] = df['Reward'].rolling(window=10, min_periods=1).mean()
-    df['SMA50'] = df['Reward'].rolling(window=50, min_periods=1).mean()
-    df['SMA100'] = df['Reward'].rolling(window=100, min_periods=1).mean()
-    
-    # === CONSOLE REPORT ===
-    print_header("🐍 SLITHER.IO MATRIXBOT TRAINING REPORT")
-    
-    # General Stats
-    print_section("📊 GENERAL STATISTICS")
-    print_stat("Total Episodes:", f"{len(df):,}")
-    print_stat("Total Steps:", f"{df['Steps'].sum():,}")
-    print_stat("Current Epsilon:", f"{df['Epsilon'].iloc[-1]:.4f}")
-    
-    if 'MemorySize' in df.columns:
-        print_stat("Memory Size:", f"{df['MemorySize'].iloc[-1]:,}")
-    if 'LearningRate' in df.columns:
-        print_stat("Learning Rate:", f"{df['LearningRate'].iloc[-1]:.6f}")
-    
-    # Reward Stats
-    print_section("🏆 REWARD STATISTICS")
-    print_stat("Best Reward:", f"{df['Reward'].max():.2f}", Colors.GREEN)
-    print_stat("Worst Reward:", f"{df['Reward'].min():.2f}", Colors.RED)
-    print_stat("Average Reward:", f"{df['Reward'].mean():.2f}")
-    print_stat("Std Deviation:", f"{df['Reward'].std():.2f}")
-    print_stat("Last 10 Avg:", f"{df['Reward'].tail(10).mean():.2f}", Colors.CYAN)
-    print_stat("Last 50 Avg:", f"{df['Reward'].tail(50).mean():.2f}", Colors.CYAN)
-    print_stat("Last 100 Avg:", f"{df['Reward'].tail(100).mean():.2f}", Colors.CYAN)
-    
-    # Steps Stats
-    print_section("👣 STEPS PER EPISODE")
-    print_stat("Average Steps:", f"{df['Steps'].mean():.1f}")
-    print_stat("Max Steps:", f"{df['Steps'].max()}")
-    print_stat("Min Steps:", f"{df['Steps'].min()}")
-    print_stat("Last 10 Avg Steps:", f"{df['Steps'].tail(10).mean():.1f}")
-    
-    # Death Causes
-    if 'Cause' in df.columns:
-        print_section("💀 DEATH CAUSES")
-        cause_counts = df['Cause'].value_counts()
-        total = len(df)
-        for cause, count in cause_counts.items():
-            pct = count / total * 100
-            bar_len = int(pct / 5)
-            bar = "█" * bar_len + "░" * (20 - bar_len)
-            color = Colors.RED if cause == "Wall" else Colors.YELLOW if cause == "SnakeCollision" else Colors.DIM
-            print_stat(f"{cause}:", f"{count:>5} ({pct:>5.1f}%) {bar}", color)
-    
-    # Progress Analysis
-    print_section("📈 LEARNING PROGRESS")
-    
-    n_episodes = len(df)
-    window = min(100, max(5, n_episodes // 5))  # Adaptive window: 20% of data or min 5, max 100
-    
-    if n_episodes >= 2 * window:
-        first_avg = df['Reward'].head(window).mean()
-        last_avg = df['Reward'].tail(window).mean()
-        improvement = last_avg - first_avg
         
-        print_stat(f"First {window} Avg:", f"{first_avg:.2f}")
-        print_stat(f"Last {window} Avg:", f"{last_avg:.2f}")
-        
-        if improvement > 0:
-            pct_gain = (improvement / abs(first_avg)) * 100 if first_avg != 0 else 0
-            print_stat("Improvement:", f"+{improvement:.2f} ({pct_gain:+.1f}%)", Colors.GREEN)
-        else:
-            print_stat("Change:", f"{improvement:.2f}", Colors.RED)
-    else:
-        print_stat("Note:", "Need more data for progress analysis", Colors.DIM)
+    # Calculate Stats
+    full_stats = calculate_statistics(df)
+
+    recent_window = min(50, len(df))
+    recent_df = df.tail(recent_window)
+    recent_stats = calculate_statistics(recent_df)
+
+    # 1. Console Dashboard
+    print_dashboard(df, full_stats, recent_stats)
     
-    # Trend (recent episodes)
-    trend_window = min(50, n_episodes)
-    if n_episodes >= 10:
-        recent = df.tail(trend_window)
-        slope = np.polyfit(range(len(recent)), recent['Reward'].values, 1)[0]
-        trend = "📈 Improving" if slope > 0.1 else "📉 Declining" if slope < -0.1 else "➡️ Stable"
-        trend_color = Colors.GREEN if slope > 0.1 else Colors.RED if slope < -0.1 else Colors.YELLOW
-        print_stat(f"Trend (last {trend_window}):", trend, trend_color)
-    
-    # Epsilon Progress
-    print_section("🎲 EXPLORATION (EPSILON)")
-    eps_start = df['Epsilon'].iloc[0]
-    eps_current = df['Epsilon'].iloc[-1]
-    eps_progress = (1 - eps_current / eps_start) * 100
-    print_stat("Starting Epsilon:", f"{eps_start:.4f}")
-    print_stat("Current Epsilon:", f"{eps_current:.4f}")
-    print_stat("Decay Progress:", f"{eps_progress:.1f}%")
-    
-    # Top 10 Episodes
-    print_section("🥇 TOP 10 BEST EPISODES")
-    top10 = df.nlargest(10, 'Reward')[['Episode', 'Steps', 'Reward']].reset_index(drop=True)
-    
-    widths = [10, 10, 12]
-    print("├" + "─" * 12 + "┬" + "─" * 12 + "┬" + "─" * 14 + "┤")
-    print_table_row(["Episode", "Steps", "Reward"], widths, Colors.BOLD)
-    print("├" + "─" * 12 + "┼" + "─" * 12 + "┼" + "─" * 14 + "┤")
-    for _, row in top10.iterrows():
-        print_table_row([int(row['Episode']), int(row['Steps']), f"{row['Reward']:.2f}"], widths, Colors.GREEN)
-    print("└" + "─" * 12 + "┴" + "─" * 12 + "┴" + "─" * 14 + "┘")
-    
-    # === MOVING AVERAGE WITH STANDARD DEVIATION (Console) ===
-    print_section("📉 MOVING AVERAGE ± STD DEV")
-    
-    if len(df) >= 10:
-        # Divide into chunks for text display
-        window = max(5, len(df) // 5)  # Dynamic window size
-        n_points = min(10, len(df) // window)
-        
-        if n_points > 0:
-            print("│")
-            print("│  Episode Range      │   Avg Reward   │   Std Dev   │  Range (±1σ)")
-            print("├" + "─" * 22 + "┼" + "─" * 16 + "┼" + "─" * 13 + "┼" + "─" * 20)
-            
-            for i in range(n_points):
-                # Calculate start/end indices to cover the whole range effectively
-                # or just chunks from end
-                start_idx = len(df) - (n_points - i) * window
-                end_idx = start_idx + window
-                
-                if start_idx < 0: continue
-                
-                chunk = df.iloc[start_idx:end_idx]
-                if len(chunk) == 0: continue
-                
-                avg = chunk['Reward'].mean()
-                std = chunk['Reward'].std()
-                ep_start = int(chunk['Episode'].iloc[0])
-                ep_end = int(chunk['Episode'].iloc[-1])
-                
-                # Color based on average
-                if avg > 0:
-                    color = Colors.GREEN
-                elif avg > -20:
-                    color = Colors.YELLOW
-                else:
-                    color = Colors.RED
-                
-                range_str = f"[{avg-std:>7.1f} to {avg+std:>7.1f}]"
-                print(colored(f"│  {ep_start:>5} - {ep_end:<5}     │  {avg:>10.2f}    │  {std:>8.2f}   │  {range_str}", color))
-            
-            print("└" + "─" * 22 + "┴" + "─" * 16 + "┴" + "─" * 13 + "┴" + "─" * 20)
-    else:
-        print("│  (Need at least 10 episodes for this analysis)")
-    
-    # === REWARD HISTOGRAM (Console ASCII) ===
-    print_section("📊 REWARD DISTRIBUTION (ASCII Histogram)")
-    
-    rewards = df['Reward'].values
-    
-    # Create bins
-    n_bins = 15
-    hist_min = df['Reward'].min()
-    hist_max = df['Reward'].max()
-    bin_width = (hist_max - hist_min) / n_bins
-    
-    # Compute histogram
-    hist_counts = []
-    bin_edges = []
-    for i in range(n_bins):
-        bin_start = hist_min + i * bin_width
-        bin_end = bin_start + bin_width
-        bin_edges.append((bin_start, bin_end))
-        count = ((rewards >= bin_start) & (rewards < bin_end)).sum()
-        hist_counts.append(count)
-    
-    # Handle last bin edge
-    hist_counts[-1] += (rewards == hist_max).sum()
-    
-    max_count = max(hist_counts) if hist_counts else 1
-    bar_max_width = 35
-    
-    print("│")
-    print("│     Reward Range     │ Count │ Distribution")
-    print("├" + "─" * 22 + "┼" + "─" * 7 + "┼" + "─" * (bar_max_width + 2))
-    
-    for i, ((bin_start, bin_end), count) in enumerate(zip(bin_edges, hist_counts)):
-        bar_len = int((count / max_count) * bar_max_width) if max_count > 0 else 0
-        bar = "█" * bar_len
-        
-        # Color based on reward value
-        mid = (bin_start + bin_end) / 2
-        if mid > 0:
-            color = Colors.GREEN
-        elif mid > -50:
-            color = Colors.YELLOW
-        else:
-            color = Colors.RED
-        
-        range_str = f"{bin_start:>7.1f} to {bin_end:>7.1f}"
-        print(colored(f"│ {range_str} │ {count:>5} │ {bar}", color))
-    
-    print("└" + "─" * 22 + "┴" + "─" * 7 + "┴" + "─" * (bar_max_width + 2))
-    
-    # Percentiles
-    print("│")
-    print("│  " + colored("Percentiles:", Colors.BOLD))
-    p10 = np.percentile(rewards, 10)
-    p25 = np.percentile(rewards, 25)
-    p50 = np.percentile(rewards, 50)
-    p75 = np.percentile(rewards, 75)
-    p90 = np.percentile(rewards, 90)
-    print(f"│    10%: {p10:>8.2f}   25%: {p25:>8.2f}   50% (median): {p50:>8.2f}")
-    print(f"│    75%: {p75:>8.2f}   90%: {p90:>8.2f}")
-    print("│")
-    
-    # === SPARKLINE TREND (ASCII mini-chart) ===
-    print_section("📈 REWARD TREND (Sparkline)")
-    
-    # Sample data for sparkline (take ~60 points across all episodes)
-    n_points = min(60, len(df))
-    step = max(1, len(df) // n_points)
-    sampled = df['SMA50'].iloc[::step].values[-60:]  # Last 60 sampled points
-    
-    if len(sampled) > 5:
-        # Normalize to 0-7 range for sparkline characters
-        spark_chars = "▁▂▃▄▅▆▇█"
-        min_val = sampled.min()
-        max_val = sampled.max()
-        
-        if max_val > min_val:
-            normalized = (sampled - min_val) / (max_val - min_val)
-            sparkline = ""
-            for val in normalized:
-                idx = min(7, int(val * 8))
-                sparkline += spark_chars[idx]
-        else:
-            sparkline = "▄" * len(sampled)
-        
-        print("│")
-        print(f"│  Min: {min_val:>8.2f}  Max: {max_val:>8.2f}")
-        print("│")
-        print("│  " + colored(sparkline, Colors.CYAN))
-        print("│  " + Colors.DIM + "└" + "─" * (len(sparkline) - 2) + "┘" + Colors.ENDC)
-        print("│  " + Colors.DIM + f"oldest{' ' * (len(sparkline) - 12)}newest" + Colors.ENDC)
-        print("│")
-        
-        # Trend arrow
-        if len(sampled) >= 10:
-            recent_trend = sampled[-10:].mean() - sampled[:10].mean()
-            if recent_trend > 5:
-                trend_icon = colored("⬆️  IMPROVING", Colors.GREEN)
-            elif recent_trend < -5:
-                trend_icon = colored("⬇️  DECLINING", Colors.RED)
-            else:
-                trend_icon = colored("➡️  STABLE", Colors.YELLOW)
-            print(f"│  Overall Trend: {trend_icon}")
-    
-    print()
-    print(colored("=" * 60, Colors.DIM))
-    
-    # === GENERATE CHARTS ===
-    print()
-    print(colored("📊 Generating charts...", Colors.CYAN))
-    
-    # Set style
-    plt.style.use('dark_background')
-    fig = plt.figure(figsize=(16, 12))
-    fig.suptitle('Slither.io MatrixBot Training Analysis', fontsize=16, fontweight='bold', color='white')
-    
-    # 1. Main Reward Plot (large)
-    ax1 = plt.subplot(2, 2, 1)
-    ax1.fill_between(df['Episode'], df['Reward'], alpha=0.3, color='gray', label='Reward')
-    ax1.plot(df['Episode'], df['SMA10'], color='#00ff88', linewidth=1, label='SMA 10', alpha=0.7)
-    ax1.plot(df['Episode'], df['SMA50'], color='#ff6600', linewidth=2, label='SMA 50')
-    if len(df) >= 100:
-        ax1.plot(df['Episode'], df['SMA100'], color='#ff0066', linewidth=2, label='SMA 100')
-    ax1.axhline(y=0, color='white', linestyle='--', alpha=0.3)
-    ax1.set_xlabel('Episode', color='white')
-    ax1.set_ylabel('Reward', color='white')
-    ax1.set_title('Reward Over Time', fontsize=12, fontweight='bold')
-    ax1.legend(loc='upper left', fontsize=8)
-    ax1.grid(True, alpha=0.2)
-    
-    # 2. Steps per Episode
-    ax2 = plt.subplot(2, 2, 2)
-    steps_sma = df['Steps'].rolling(window=20, min_periods=1).mean()
-    ax2.fill_between(df['Episode'], df['Steps'], alpha=0.3, color='#4488ff')
-    ax2.plot(df['Episode'], steps_sma, color='#00ccff', linewidth=2, label='SMA 20')
-    ax2.set_xlabel('Episode', color='white')
-    ax2.set_ylabel('Steps', color='white')
-    ax2.set_title('Steps per Episode (Survival Time)', fontsize=12, fontweight='bold')
-    ax2.legend(loc='upper left', fontsize=8)
-    ax2.grid(True, alpha=0.2)
-    
-    # 3. Death Causes Pie Chart
-    ax3 = plt.subplot(2, 2, 3)
-    if 'Cause' in df.columns:
-        cause_counts = df['Cause'].value_counts()
-        colors_pie = ['#ff4444', '#ffaa00', '#4488ff', '#44ff44', '#ff44ff']
-        explode = [0.05] * len(cause_counts)
-        wedges, texts, autotexts = ax3.pie(
-            cause_counts.values, 
-            labels=cause_counts.index,
-            autopct='%1.1f%%',
-            colors=colors_pie[:len(cause_counts)],
-            explode=explode,
-            shadow=True,
-            startangle=90
-        )
-        for autotext in autotexts:
-            autotext.set_color('white')
-            autotext.set_fontweight('bold')
-        ax3.set_title('Death Causes', fontsize=12, fontweight='bold')
-    else:
-        ax3.text(0.5, 0.5, 'No cause data available', ha='center', va='center', color='gray')
-        ax3.set_title('Death Causes (No Data)', fontsize=12)
-    
-    # 4. Epsilon Decay + Learning Progress
-    ax4 = plt.subplot(2, 2, 4)
-    ax4.plot(df['Episode'], df['Epsilon'], color='#ff6600', linewidth=2, label='Epsilon')
-    ax4.fill_between(df['Episode'], df['Epsilon'], alpha=0.3, color='#ff6600')
-    ax4.set_xlabel('Episode', color='white')
-    ax4.set_ylabel('Epsilon', color='#ff6600')
-    ax4.tick_params(axis='y', labelcolor='#ff6600')
-    ax4.set_title('Exploration (Epsilon) Decay', fontsize=12, fontweight='bold')
-    ax4.grid(True, alpha=0.2)
-    
-    # If we have AvgReward50, add it as secondary axis
-    if 'AvgReward50' in df.columns:
-        ax4b = ax4.twinx()
-        ax4b.plot(df['Episode'], df['AvgReward50'], color='#00ff88', linewidth=2, alpha=0.7, label='Avg Reward (50)')
-        ax4b.set_ylabel('Avg Reward (50 ep)', color='#00ff88')
-        ax4b.tick_params(axis='y', labelcolor='#00ff88')
-    
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    
-    # Save
-    output_file = os.path.join(script_dir, 'training_plot.png')
-    plt.savefig(output_file, dpi=150, facecolor='#1a1a2e', edgecolor='none')
-    print(colored(f"✅ Chart saved: {output_file}", Colors.GREEN))
-    
-    # === Additional detailed chart ===
-    if len(df) >= 20:  # Generate after 20 episodes
-        fig2 = plt.figure(figsize=(14, 6))
-        fig2.suptitle('Detailed Learning Progress', fontsize=14, fontweight='bold', color='white')
-        
-        # Adaptive window size based on data available
-        window_size = min(50, max(5, len(df) // 3))
-        sma_adaptive = df['Reward'].rolling(window=window_size, min_periods=1).mean()
-        rolling_std = df['Reward'].rolling(window=window_size, min_periods=1).std()
-        
-        # Rolling statistics
-        ax5 = plt.subplot(1, 2, 1)
-        ax5.plot(df['Episode'], sma_adaptive, color='#00ff88', linewidth=2, label=f'Avg Reward ({window_size} ep)')
-        
-        # Add confidence band
-        ax5.fill_between(df['Episode'], 
-                         sma_adaptive - rolling_std, 
-                         sma_adaptive + rolling_std, 
-                         alpha=0.2, color='#00ff88', label='±1 Std Dev')
-        ax5.axhline(y=0, color='white', linestyle='--', alpha=0.3)
-        ax5.set_xlabel('Episode')
-        ax5.set_ylabel('Reward')
-        ax5.set_title('Moving Average with Variance')
-        ax5.legend(loc='upper left')
-        ax5.grid(True, alpha=0.2)
-        
-        # Histogram of rewards - adaptive bins
-        n_bins = min(50, max(10, len(df) // 2))
-        ax6 = plt.subplot(1, 2, 2)
-        ax6.hist(df['Reward'], bins=n_bins, color='#4488ff', alpha=0.7, edgecolor='white')
-        ax6.axvline(df['Reward'].mean(), color='#ff6600', linestyle='--', linewidth=2, label=f'Mean: {df["Reward"].mean():.1f}')
-        ax6.axvline(df['Reward'].median(), color='#00ff88', linestyle='--', linewidth=2, label=f'Median: {df["Reward"].median():.1f}')
-        ax6.set_xlabel('Reward')
-        ax6.set_ylabel('Frequency')
-        ax6.set_title('Reward Distribution')
-        ax6.legend()
-        ax6.grid(True, alpha=0.2)
-        
-        plt.tight_layout(rect=[0, 0.03, 1, 0.93])
-        
-        output_file2 = os.path.join(script_dir, 'training_detailed.png')
-        plt.savefig(output_file2, dpi=150, facecolor='#1a1a2e', edgecolor='none')
-        print(colored(f"✅ Detailed chart saved: {output_file2}", Colors.GREEN))
-    
-    # === CONSOLE PLOT (if plotext available) ===
+    # 2. Markdown Report
+    md_path = os.path.join(script_dir, 'analysis_report.md')
+    generate_markdown_report(df, full_stats, recent_stats, md_path)
+
+    # 3. Charts
+    plot_charts(df, script_dir)
+
+    # 4. Console Sparklines (Optional Plotext)
     try:
         import plotext as pltx
-        print()
-        print(colored("📺 Console Preview:", Colors.CYAN))
+        print(colored("\n[ RECENT REWARD TREND ]", Colors.CYAN + Colors.BOLD))
         pltx.clear_figure()
         pltx.theme('dark')
-        pltx.plot(df['Episode'].tolist(), df['SMA50'].tolist(), label='Avg Reward (50)')
-        pltx.scatter(df['Episode'].tolist()[::10], df['Reward'].tolist()[::10], label='Reward (sampled)', marker='dot')
-        pltx.title("Training Progress")
-        pltx.xlabel("Episodes")
-        pltx.ylabel("Reward")
-        pltx.canvas_color("black")
-        pltx.axes_color("black")
-        pltx.ticks_color("white")
-        pltx.plotsize(80, 20)
+        # Use simple list for x-axis to avoid plotext date/time issues if index is huge
+        y_data = df['Reward'].tail(100).tolist()
+        pltx.plot(y_data, label='Reward')
+        pltx.plotsize(80, 15)
         pltx.show()
     except ImportError:
-        print(colored("💡 Tip: Install 'plotext' for console charts: pip install plotext", Colors.DIM))
-    
-    print()
-    print(colored("✨ Analysis complete!", Colors.GREEN + Colors.BOLD))
+        pass
 
 if __name__ == "__main__":
     analyze()
