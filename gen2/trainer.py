@@ -238,6 +238,112 @@ class CurriculumManager:
             self.episode_steps_history = deque(state.get("steps_history", []), maxlen=100)
             self.episode_food_ratio_history = deque(state.get("food_ratio_history", []), maxlen=100)
 
+
+class SuperPatternOptimizer:
+    def __init__(self, base_stage_cfg, cfg, logger):
+        self.cfg = cfg
+        self.logger = logger
+        self.base_stage_cfg = dict(base_stage_cfg)
+        self.current_stage_cfg = dict(base_stage_cfg)
+        self.causes = deque(maxlen=cfg.opt.super_pattern_window)
+        self.food_ratios = deque(maxlen=cfg.opt.super_pattern_window)
+        self.steps = deque(maxlen=cfg.opt.super_pattern_window)
+        self.rewards = deque(maxlen=cfg.opt.super_pattern_window)
+
+    def reset_stage(self, base_stage_cfg):
+        self.base_stage_cfg = dict(base_stage_cfg)
+        self.current_stage_cfg = dict(base_stage_cfg)
+        self.causes.clear()
+        self.food_ratios.clear()
+        self.steps.clear()
+        self.rewards.clear()
+
+    def record_episode(self, cause, food_eaten, steps, reward):
+        self.causes.append(cause)
+        self.food_ratios.append(food_eaten / max(steps, 1))
+        self.steps.append(steps)
+        self.rewards.append(reward)
+
+    def maybe_update(self):
+        if not self.cfg.opt.super_pattern_enabled:
+            return None
+        if len(self.causes) < self.cfg.opt.super_pattern_window:
+            return None
+
+        wall_ratio = self.causes.count("Wall") / len(self.causes)
+        snake_ratio = self.causes.count("SnakeCollision") / len(self.causes)
+        avg_food_ratio = sum(self.food_ratios) / len(self.food_ratios)
+
+        updated = dict(self.current_stage_cfg)
+        changed = False
+
+        wall_base = self.base_stage_cfg.get("wall_proximity_penalty", 0.0)
+        wall_current = updated.get("wall_proximity_penalty", 0.0)
+        wall_cap = self.cfg.opt.super_pattern_wall_penalty_cap
+        wall_step = self.cfg.opt.super_pattern_penalty_step
+        if wall_ratio > self.cfg.opt.super_pattern_wall_ratio:
+            wall_target = min(wall_current + wall_step, wall_cap)
+        elif wall_ratio < self.cfg.opt.super_pattern_wall_ratio * 0.7:
+            wall_target = max(wall_current - wall_step, wall_base)
+        else:
+            wall_target = wall_current
+        if wall_target != wall_current:
+            updated["wall_proximity_penalty"] = wall_target
+            changed = True
+
+        enemy_base = self.base_stage_cfg.get("enemy_proximity_penalty", 0.0)
+        enemy_current = updated.get("enemy_proximity_penalty", 0.0)
+        enemy_cap = self.cfg.opt.super_pattern_enemy_penalty_cap
+        if snake_ratio > self.cfg.opt.super_pattern_snake_ratio:
+            enemy_target = min(enemy_current + wall_step, enemy_cap)
+        elif snake_ratio < self.cfg.opt.super_pattern_snake_ratio * 0.7:
+            enemy_target = max(enemy_current - wall_step, enemy_base)
+        else:
+            enemy_target = enemy_current
+        if enemy_target != enemy_current:
+            updated["enemy_proximity_penalty"] = enemy_target
+            changed = True
+
+        straight_base = self.base_stage_cfg.get("straight_penalty", 0.0)
+        straight_current = updated.get("straight_penalty", 0.0)
+        straight_cap = self.cfg.opt.super_pattern_straight_penalty_cap
+        if wall_ratio > self.cfg.opt.super_pattern_wall_ratio:
+            straight_target = min(straight_current + wall_step * 0.5, straight_cap)
+        elif wall_ratio < self.cfg.opt.super_pattern_wall_ratio * 0.7:
+            straight_target = max(straight_current - wall_step * 0.5, straight_base)
+        else:
+            straight_target = straight_current
+        if straight_target != straight_current:
+            updated["straight_penalty"] = straight_target
+            changed = True
+
+        food_base = self.base_stage_cfg.get("food_reward", 0.0)
+        food_current = updated.get("food_reward", 0.0)
+        food_cap = self.cfg.opt.super_pattern_food_reward_cap
+        if avg_food_ratio < self.cfg.opt.super_pattern_food_ratio_low:
+            food_target = min(food_current + self.cfg.opt.super_pattern_reward_step, food_cap)
+        elif avg_food_ratio > self.cfg.opt.super_pattern_food_ratio_high:
+            food_target = max(food_current - self.cfg.opt.super_pattern_reward_step, food_base)
+        else:
+            food_target = food_current
+        if food_target != food_current:
+            updated["food_reward"] = food_target
+            changed = True
+
+        if not changed:
+            return None
+
+        self.current_stage_cfg = updated
+        self.logger.info(
+            "[SuperPattern] Adjusted rewards: "
+            f"wall_pen={wall_current:.2f}->{updated.get('wall_proximity_penalty', wall_current):.2f}, "
+            f"enemy_pen={enemy_current:.2f}->{updated.get('enemy_proximity_penalty', enemy_current):.2f}, "
+            f"straight_pen={straight_current:.2f}->{updated.get('straight_penalty', straight_current):.2f}, "
+            f"food_reward={food_current:.2f}->{updated.get('food_reward', food_current):.2f} "
+            f"(wall_ratio={wall_ratio:.2f}, snake_ratio={snake_ratio:.2f}, food_ratio={avg_food_ratio:.3f})"
+        )
+        return updated
+
 class VecFrameStack:
     """
     Wraps SubprocVecEnv to stack frames.
@@ -475,6 +581,7 @@ def train(args):
     max_steps_per_episode = curriculum.get_max_steps()
     logger.info(f"  Curriculum Stage: {curriculum.current_stage} ({stage_cfg['name']})")
     logger.info(f"  Max Steps: {max_steps_per_episode}")
+    super_pattern = SuperPatternOptimizer(stage_cfg, cfg, logger)
 
     # Initialize stats file
     if not os.path.exists(stats_file) or not args.resume:
@@ -578,6 +685,11 @@ def train(args):
                 reward_window.clear()
                 best_avg_reward = -float('inf')
 
+        super_pattern.record_episode(cause_label, food_eaten, total_steps_local, total_reward)
+        updated_stage_cfg = super_pattern.maybe_update()
+        if updated_stage_cfg:
+            env.set_stage(updated_stage_cfg)
+
         # Track metrics for curriculum promotion
         curriculum.record_episode(food_eaten, total_steps_local)
 
@@ -586,6 +698,7 @@ def train(args):
             stage_cfg = curriculum.get_config()
             max_steps_per_episode = curriculum.get_max_steps()
             env.set_stage(stage_cfg)
+            super_pattern.reset_stage(stage_cfg)
             # Save checkpoint on promotion
             agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state())
 
