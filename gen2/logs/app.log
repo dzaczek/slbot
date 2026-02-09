@@ -18554,3 +18554,48 @@
 2026-02-09 17:58:09,874 - INFO - Ep 15973 | S1:HUNTER | Rw: 482.77 | St: 40 | Fd: 25 (0.625/st) | Eps: 0.493 | L: 0.9348 | SnakeCollision | Pos:(27482,30837) Wall:10650 Enemy:352
 2026-02-09 17:58:12,118 - INFO - Ep 15974 | S1:HUNTER | Rw: 440.92 | St: 42 | Fd: 25 (0.595/st) | Eps: 0.493 | L: 2.0304 | Wall | Pos:(39120,42462) Enemy:156
 2026-02-09 17:58:25,662 - INFO - Ep 15975 | S1:HUNTER | Rw: 575.65 | St: 50 | Fd: 30 (0.600/st) | Eps: 0.492 | L: 1.8509 | SnakeCollision | Pos:(38702,30413) Wall:2361 Enemy:360
+2026-02-09 18:22:48,802 - INFO - Configuration:
+2026-02-09 18:22:48,802 - INFO -   Style: Explorer (Anti-Float)
+2026-02-09 18:22:48,802 - INFO -   Mode: static
+2026-02-09 18:22:48,802 - INFO -   Agents: 5
+2026-02-09 18:22:48,803 - INFO -   Frame Stack: 4
+2026-02-09 18:22:48,803 - INFO -   Resolution: (84, 84)
+2026-02-09 18:22:48,803 - INFO -   Model: DuelingDQN (LeakyReLU)
+2026-02-09 18:22:48,803 - INFO -   LR: 6.25e-05
+2026-02-09 18:22:48,803 - INFO -   PER: True
+2026-02-09 18:22:49,596 - INFO - Resumed from episode 15975
+2026-02-09 18:22:55,833 - INFO -   Curriculum Stage: 1 (EXPLORER)
+2026-02-09 18:22:55,834 - INFO -   Max Steps: 99999
+2026-02-09 18:23:05,252 - INFO - Ep 15976 | S1:EXPLORER | Rw: -10.62 | St: 2 | Fd: 2 (1.000/st) | Eps: 0.492 | L: 0.0000 | SnakeCollision | Pos:(41194,28570) Wall:804 Enemy:46
+2026-02-09 18:23:14,936 - INFO - Ep 15977 | S1:EXPLORER | Rw: 92.87 | St: 37 | Fd: 13 (0.351/st) | Eps: 0.492 | L: 2.3482 | SnakeCollision | Pos:(37087,23504) Wall:5996 Enemy:70
+2026-02-09 18:23:17,045 - INFO - Ep 15978 | S1:EXPLORER | Rw: 175.30 | St: 36 | Fd: 22 (0.611/st) | Eps: 0.492 | L: 2.5109 | SnakeCollision | Pos:(33643,29880) Wall:6985 Enemy:483
+2026-02-09 18:23:24,761 - INFO - Ep 15979 | S1:EXPLORER | Rw: 125.47 | St: 60 | Fd: 17 (0.283/st) | Eps: 0.492 | L: 2.3968 | SnakeCollision | Pos:(28601,38476) Wall:3329 Enemy:33
+2026-02-09 18:23:30,909 - INFO - Ep 15980 | S1:EXPLORER | Rw: 167.13 | St: 32 | Fd: 21 (0.656/st) | Eps: 0.492 | L: 3.8572 | SnakeCollision | Pos:(39582,32397) Wall:625 Enemy:29
+2026-02-09 18:23:30,909 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 5, 'Unknown': 0, 'MaxSteps': 0}
+2026-02-09 18:23:37,743 - INFO - Ep 15981 | S1:EXPLORER | Rw: 211.12 | St: 42 | Fd: 27 (0.643/st) | Eps: 0.492 | L: 2.5180 | SnakeCollision | Pos:(30070,33382) Wall:7090 Enemy:202
+2026-02-09 18:23:45,739 - INFO - Ep 15982 | S1:EXPLORER | Rw: 189.07 | St: 103 | Fd: 27 (0.262/st) | Eps: 0.492 | L: 3.5300 | Wall | Pos:(45344,35599)
+2026-02-09 18:23:49,378 - INFO - Ep 15983 | S1:EXPLORER | Rw: 181.22 | St: 104 | Fd: 26 (0.250/st) | Eps: 0.492 | L: 5.6919 | Wall | Pos:(37352,44013)
+2026-02-09 18:23:51,489 - INFO - Ep 15984 | S1:EXPLORER | Rw: 156.17 | St: 26 | Fd: 21 (0.808/st) | Eps: 0.491 | L: 5.0788 | SnakeCollision | Pos:(34285,38606) Wall:384 Enemy:144
+2026-02-09 18:23:56,838 - INFO - Ep 15985 | S1:EXPLORER | Rw: 178.45 | St: 5 | Fd: 21 (4.200/st) | Eps: 0.491 | L: 5.5958 | SnakeCollision | Pos:(30498,31681) Wall:8154 Enemy:40
+2026-02-09 18:24:09,574 - INFO - Ep 15986 | S1:EXPLORER | Rw: 221.43 | St: 57 | Fd: 30 (0.526/st) | Eps: 0.491 | L: 5.7502 | SnakeCollision | Pos:(36409,27494) Wall:5661 Enemy:58
+2026-02-09 18:24:11,679 - INFO - Ep 15987 | S1:EXPLORER | Rw: 221.16 | St: 92 | Fd: 34 (0.370/st) | Eps: 0.491 | L: 7.2597 | Wall | Pos:(43713,39582)
+2026-02-09 18:24:18,887 - INFO - Ep 15988 | S1:EXPLORER | Rw: 250.56 | St: 121 | Fd: 40 (0.331/st) | Eps: 0.491 | L: 5.7759 | Wall | Pos:(41147,42615) Enemy:1701
+2026-02-09 18:24:24,514 - INFO - Ep 15989 | S1:EXPLORER | Rw: 139.68 | St: 25 | Fd: 19 (0.760/st) | Eps: 0.491 | L: 7.7049 | SnakeCollision | Pos:(28035,34369) Wall:7301 Enemy:52
+2026-02-09 18:24:31,033 - INFO - Ep 15990 | S1:EXPLORER | Rw: 172.05 | St: 13 | Fd: 21 (1.615/st) | Eps: 0.491 | L: 8.3131 | SnakeCollision | Pos:(30971,30878) Wall:8414 Enemy:26
+2026-02-09 18:24:31,033 - INFO - Death Stats: {'Wall': 4, 'SnakeCollision': 11, 'Unknown': 0, 'MaxSteps': 0}
+2026-02-09 18:24:35,685 - INFO - Ep 15991 | S1:EXPLORER | Rw: 49.08 | St: 8 | Fd: 8 (1.000/st) | Eps: 0.491 | L: 9.5481 | SnakeCollision | Pos:(36284,24040) Wall:6714 Enemy:1223
+2026-02-09 18:24:35,685 - INFO - Ep 15992 | S1:EXPLORER | Rw: 234.36 | St: 34 | Fd: 27 (0.794/st) | Eps: 0.491 | L: 9.5481 | SnakeCollision | Pos:(29519,36370) Wall:4841 Enemy:406
+2026-02-09 18:24:35,686 - INFO - Ep 15993 | S1:EXPLORER | Rw: 224.58 | St: 90 | Fd: 34 (0.378/st) | Eps: 0.491 | L: 9.5481 | Wall | Pos:(45540,34215)
+2026-02-09 18:24:44,659 - INFO - Ep 15994 | S1:EXPLORER | Rw: 116.48 | St: 27 | Fd: 18 (0.667/st) | Eps: 0.491 | L: 9.8281 | Wall | Pos:(39599,34820) Enemy:82
+2026-02-09 18:24:48,935 - INFO - Ep 15995 | S1:EXPLORER | Rw: 190.02 | St: 28 | Fd: 23 (0.821/st) | Eps: 0.491 | L: 9.4062 | SnakeCollision | Pos:(31007,34317) Wall:5782 Enemy:194
+2026-02-09 18:24:52,062 - INFO - Ep 15996 | S1:EXPLORER | Rw: 199.25 | St: 116 | Fd: 33 (0.284/st) | Eps: 0.491 | L: 17.1238 | Wall | Pos:(39666,43206)
+2026-02-09 18:25:03,893 - INFO - Ep 15997 | S1:EXPLORER | Rw: 213.95 | St: 36 | Fd: 27 (0.750/st) | Eps: 0.491 | L: 3.7166 | SnakeCollision | Pos:(25744,28063) Wall:13923 Enemy:71
+2026-02-09 18:25:08,029 - INFO - Ep 15998 | S1:EXPLORER | Rw: 191.50 | St: 65 | Fd: 31 (0.477/st) | Eps: 0.490 | L: 4.9810 | Wall | Pos:(42938,39823)
+2026-02-09 18:25:08,029 - INFO - Ep 15999 | S1:EXPLORER | Rw: 179.61 | St: 36 | Fd: 25 (0.694/st) | Eps: 0.490 | L: 4.9810 | Wall | Pos:(40241,37894) Enemy:167
+2026-02-09 18:25:15,645 - INFO - Ep 16000 | S1:EXPLORER | Rw: 239.79 | St: 86 | Fd: 34 (0.395/st) | Eps: 0.490 | L: 6.5659 | Wall | Pos:(45514,28905)
+2026-02-09 18:25:15,645 - INFO - Death Stats: {'Wall': 10, 'SnakeCollision': 15, 'Unknown': 0, 'MaxSteps': 0}
+2026-02-09 18:25:30,144 - INFO - Ep 16001 | S1:EXPLORER | Rw: 169.04 | St: 61 | Fd: 27 (0.443/st) | Eps: 0.490 | L: 3.6388 | Wall | Pos:(39120,36904) Enemy:44
+2026-02-09 18:25:32,247 - INFO - Ep 16002 | S1:EXPLORER | Rw: 312.86 | St: 119 | Fd: 42 (0.353/st) | Eps: 0.490 | L: 8.9866 | Wall | Pos:(45802,30539)
+2026-02-09 18:25:32,247 - INFO - Ep 16003 | S1:EXPLORER | Rw: 233.76 | St: 84 | Fd: 34 (0.405/st) | Eps: 0.490 | L: 8.9866 | Wall | Pos:(36475,39666) Enemy:208
+2026-02-09 18:25:40,696 - INFO - Ep 16004 | S1:EXPLORER | Rw: 114.91 | St: 18 | Fd: 15 (0.833/st) | Eps: 0.490 | L: 7.8178 | SnakeCollision | Pos:(34791,27602) Wall:7108 Enemy:176
+2026-02-09 18:25:44,334 - INFO - Ep 16005 | S1:EXPLORER | Rw: 297.17 | St: 103 | Fd: 39 (0.379/st) | Eps: 0.490 | L: 6.9478 | SnakeCollision | Pos:(33717,27090) Wall:8297 Enemy:750
