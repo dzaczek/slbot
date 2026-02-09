@@ -16,7 +16,10 @@ NC='\033[0m' # No Color
 
 # Files to track
 FILES_TO_COMMIT=(
-    "training_plot.png"
+    "*.png"
+    "*.log"
+    "*.csv"
+    "*.png"
     "training_detailed.png"
     "matrix_stats.csv"
 )
@@ -34,7 +37,7 @@ success() {
 }
 
 # Interval in seconds (5 minutes = 300 seconds)
-INTERVAL=900
+INTERVAL=1500
 
 echo ""
 echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
