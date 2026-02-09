@@ -10,11 +10,11 @@ STYLES = {
         "stages": {
             1: {
                 "name": "EAT",
-                "food_reward": 10.0,
+                "food_reward": 8.0,
                 "food_shaping": 0.015,  # Increased to fix floating
                 "survival": 0.05,
-                "death_wall": -20,
-                "death_snake": -20,
+                "death_wall": -200,     # Increased to prevent suicide eating
+                "death_snake": -100,
                 "straight_penalty": 0.0,
                 "length_bonus": 0.0,
                 "wall_alert_dist": 2000,
@@ -107,16 +107,16 @@ STYLES = {
         "description": "Penalizes staying still/floating. Forces movement.",
         "config": {
             "name": "EXPLORER",
-            "food_reward": 10.0,
+            "food_reward": 5.0,
             "food_shaping": 0.02,
-            "survival": 0.0,
-            "death_wall": -50,
-            "death_snake": -30,
+            "survival": 0.05,
+            "death_wall": -200,
+            "death_snake": -100,
             "straight_penalty": 0.1, # Force turning/activity
             "length_bonus": 0.0,
             "wall_alert_dist": 1800,
             "enemy_alert_dist": 800,
-            "wall_proximity_penalty": 0.1,
+            "wall_proximity_penalty": 0.5,
             "enemy_proximity_penalty": 0.1,
             "max_steps": 99999,
         }
