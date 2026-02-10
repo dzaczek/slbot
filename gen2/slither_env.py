@@ -680,12 +680,70 @@ class SlitherEnv:
 
         # 1. Food (Channel 0)
         foods = data.get('foods', [])
+        nearest_food = None
+        min_dist_sq = float('inf')
+
         for f in foods:
             if len(f) < 2: continue
             fx, fy = f[0], f[1]
+
+            # Track nearest food
+            dist_sq = (fx - mx)**2 + (fy - my)**2
+            if dist_sq < min_dist_sq:
+                min_dist_sq = dist_sq
+                nearest_food = (fx, fy)
+
             mx_x, mx_y = world_to_grid(fx, fy, mx, my, self.scale, self.matrix_size)
             if 0 <= mx_x < self.matrix_size and 0 <= mx_y < self.matrix_size:
                 matrix[0, mx_y, mx_x] = 1.0
+
+        # Highlighting Nearest Food (Compass/Focus)
+        if nearest_food:
+            nfx, nfy = nearest_food
+            # Calculate grid coordinates even if off-screen
+            dx = (nfx - mx) * self.scale
+            dy = (nfy - my) * self.scale
+            cx = self.matrix_size / 2
+            cy = self.matrix_size / 2
+
+            nmx_x = int(cx + dx)
+            nmx_y = int(cy + dy)
+
+            # Check if on screen
+            if 0 <= nmx_x < self.matrix_size and 0 <= nmx_y < self.matrix_size:
+                # On screen: Draw bigger (radius 2.0) to highlight
+                self._draw_circle(matrix, 0, nmx_x, nmx_y, 2.0, 1.0)
+            else:
+                # Off screen: Draw compass marker on edge
+                # Normalize vector
+                mag = math.hypot(dx, dy)
+                if mag > 0:
+                    ndx = dx / mag
+                    ndy = dy / mag
+
+                    # Project to edge (box projection)
+                    # We want to find t such that (cx + t*ndx, cy + t*ndy) is on edge
+                    # Edge is x=0, x=W, y=0, y=H
+
+                    # Max dist to edge from center is size/2
+                    half_size = self.matrix_size / 2 - 2 # -2 padding to keep marker fully inside
+
+                    # Calculate t for X and Y boundaries
+                    tx = float('inf')
+                    ty = float('inf')
+
+                    if abs(ndx) > 1e-6:
+                        tx = half_size / abs(ndx)
+                    if abs(ndy) > 1e-6:
+                        ty = half_size / abs(ndy)
+
+                    t = min(tx, ty)
+
+                    ex = cx + t * ndx
+                    ey = cy + t * ndy
+
+                    # Draw marker (radius 1.5)
+                    self._draw_circle(matrix, 0, ex, ey, 1.5, 0.8)
 
         # 2. Enemies (Channel 1)
         enemies = data.get('enemies', [])
