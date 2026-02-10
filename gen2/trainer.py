@@ -89,15 +89,18 @@ def select_style_and_model(args):
     model_path = args.model_path
 
     if not model_path and sys.stdin.isatty():
-        print("\n" + "="*40)
+        print("\n" + "="*60)
         print(" SELECT MODEL CHECKPOINT")
-        print("="*40)
+        print("="*60)
 
         # Scan for .pth files
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        checkpoints = []
+        backup_dir = os.path.join(base_dir, 'backup_models')
 
-        # Check current dir and gen2 dir
+        checkpoints = []
+        backups = []
+
+        # 1. Main Checkpoints (cwd, gen2/)
         search_paths = [os.getcwd(), base_dir]
         seen = set()
 
@@ -110,19 +113,46 @@ def select_style_and_model(args):
                             checkpoints.append(full_path)
                             seen.add(full_path)
 
-        checkpoints.sort(key=os.path.getmtime, reverse=True) # Newest first
+        # 2. Backup Models (gen2/backup_models/)
+        if os.path.exists(backup_dir):
+            for f in os.listdir(backup_dir):
+                if f.endswith('.pth'):
+                    full_path = os.path.join(backup_dir, f)
+                    backups.append(full_path)
 
-        print("0. New Random Agent (Start from scratch)")
-        for i, cp in enumerate(checkpoints):
-            rel_path = os.path.relpath(cp, os.getcwd())
-            print(f"{i+1}. {rel_path}")
+        # Sort: Newest first
+        checkpoints.sort(key=os.path.getmtime, reverse=True)
+        backups.sort(key=os.path.getmtime, reverse=True)
+
+        all_models = checkpoints + backups
+
+        print(f" [0] New Random Agent (Start from scratch)")
+        print("-" * 60)
+
+        list_idx = 1
+        if checkpoints:
+            print(" --- MAIN CHECKPOINTS ---")
+            for cp in checkpoints:
+                ts = time.strftime('%Y-%m-%d %H:%M', time.localtime(os.path.getmtime(cp)))
+                name = os.path.basename(cp)
+                print(f" [{list_idx}] {ts} | {name}")
+                list_idx += 1
+            print("-" * 60)
+
+        if backups:
+            print(" --- PROMISING BACKUPS (Auto-Saved) ---")
+            for cp in backups:
+                ts = time.strftime('%Y-%m-%d %H:%M', time.localtime(os.path.getmtime(cp)))
+                name = os.path.basename(cp)
+                print(f" [{list_idx}] {ts} | {name}")
+                list_idx += 1
 
         try:
-            choice = input(f"\nChoice (0-{len(checkpoints)}, default 0): ").strip()
+            choice = input(f"\nSelect Model (0-{len(all_models)}, default 0): ").strip()
             if choice and choice != '0':
-                idx = int(choice) - 1
-                if 0 <= idx < len(checkpoints):
-                    model_path = checkpoints[idx]
+                sel_idx = int(choice) - 1
+                if 0 <= sel_idx < len(all_models):
+                    model_path = all_models[sel_idx]
         except:
             pass
 
@@ -528,6 +558,8 @@ def train(args):
     # Paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
     checkpoint_path = os.path.join(base_dir, 'checkpoint.pth')
+    backup_dir = os.path.join(base_dir, 'backup_models')
+    os.makedirs(backup_dir, exist_ok=True)
     stats_file = os.path.join(base_dir, 'training_stats.csv')
 
     # Initialize Curriculum/Style Manager
@@ -675,6 +707,14 @@ def train(args):
             if avg_reward > best_avg_reward:
                 best_avg_reward = avg_reward
                 episodes_since_improvement = 0
+
+                # Save PROMISING model backup
+                if avg_reward > 0: # Only backup if positive reward
+                    backup_name = f"best_model_ep{start_episode}_rw{int(avg_reward)}.pth"
+                    backup_path = os.path.join(backup_dir, backup_name)
+                    agent.save_checkpoint(backup_path, start_episode, max_steps_per_episode, curriculum.get_state())
+                    logger.info(f"  >> New Best Avg Reward: {avg_reward:.2f}. Saved backup: {backup_name}")
+
             else:
                 episodes_since_improvement += 1
 
