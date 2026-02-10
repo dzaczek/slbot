@@ -57,7 +57,7 @@ STYLES = {
                 "enemy_alert_dist": 700,
                 "wall_proximity_penalty": 0.1,
                 "enemy_proximity_penalty": 0.08,
-                "max_steps": 99999,
+                "max_steps": 5000,
                 "promote_metric": None,
                 "promote_threshold": None,
                 "promote_window": 50,
