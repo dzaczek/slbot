@@ -11,7 +11,7 @@ STYLES = {
             1: {
                 "name": "EAT",
                 "food_reward": 8.0,
-                "food_shaping": 0.015,  # Increased to fix floating
+                "food_shaping": 0.05,   # Strongly encourage seeking food
                 "survival": 0.05,
                 "death_wall": -200,     # Increased to prevent suicide eating
                 "death_snake": -100,
@@ -47,7 +47,7 @@ STYLES = {
             3: {
                 "name": "GROW",
                 "food_reward": 10.0,
-                "food_shaping": 0.01,
+                "food_shaping": 0.05,   # Strongly encourage seeking food
                 "survival": 0.1,
                 "death_wall": -100,
                 "death_snake": -30,
@@ -108,7 +108,7 @@ STYLES = {
         "config": {
             "name": "EXPLORER",
             "food_reward": 5.0,
-            "food_shaping": 0.02,
+            "food_shaping": 0.05,   # Strongly encourage seeking food
             "survival": 0.05,
             "death_wall": -200,
             "death_snake": -100,
