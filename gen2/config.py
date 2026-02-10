@@ -31,11 +31,12 @@ class OptimizationConfig:
     target_update_freq: int = 1000 # More frequent updates (was 2000)
     max_episodes: int = 5000000
     checkpoint_every: int = 50
-    reward_scale: float = 100.0
+    reward_scale: float = 10.0
 
     # Autonomy / Stabilization
     scheduler_patience: int = 50
     scheduler_factor: float = 0.5
+    scheduler_min_lr: float = 1e-6
     adaptive_eps_patience: int = 100
     super_pattern_enabled: bool = True
     super_pattern_window: int = 50

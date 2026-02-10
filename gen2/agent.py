@@ -53,7 +53,8 @@ class DDQNAgent:
             self.optimizer,
             mode='max',
             factor=config.opt.scheduler_factor,
-            patience=config.opt.scheduler_patience
+            patience=config.opt.scheduler_patience,
+            min_lr=config.opt.scheduler_min_lr
         )
 
         if config.buffer.prioritized:
@@ -111,9 +112,10 @@ class DDQNAgent:
     def select_action(self, state_stack):
         """
         state_stack: numpy array (12, 84, 84)
+        Note: steps_done is incremented externally by the trainer (once per batch step)
+        to avoid N× decay with N parallel agents.
         """
         eps_threshold = self.get_epsilon()
-        self.steps_done += 1
 
         if random.random() > eps_threshold:
             with torch.no_grad():

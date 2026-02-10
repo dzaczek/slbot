@@ -597,6 +597,13 @@ def train(args):
     if load_path and os.path.exists(load_path):
         start_episode, _, supervisor_state = agent.load_checkpoint(load_path)
 
+        # Fix LR=0 from old checkpoints: restore to min_lr if frozen
+        current_lr = agent.optimizer.param_groups[0]['lr']
+        if current_lr < cfg.opt.scheduler_min_lr:
+            for pg in agent.optimizer.param_groups:
+                pg['lr'] = cfg.opt.lr
+            logger.info(f"  LR was {current_lr:.8f} (frozen). Reset to {cfg.opt.lr}")
+
         # Restore curriculum state only if we are in curriculum mode
         if curriculum.mode == 'curriculum' and supervisor_state:
             curriculum.load_state(supervisor_state)
@@ -719,11 +726,9 @@ def train(args):
                 episodes_since_improvement += 1
 
             if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
-                logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Boosting exploration.")
-                agent.boost_exploration(target_eps=0.5)
+                logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle exploration boost.")
+                agent.boost_exploration(target_eps=0.3)
                 episodes_since_improvement = 0
-                reward_window.clear()
-                best_avg_reward = -float('inf')
 
         super_pattern.record_episode(cause_label, food_eaten, total_steps_local, total_reward)
         updated_stage_cfg = super_pattern.maybe_update()
@@ -757,8 +762,9 @@ def train(args):
                 for param_group in agent.optimizer.param_groups:
                     param_group['lr'] = target_lr * lr_scale
 
-            # Select actions
+            # Select actions (increment steps_done once per batch, not per agent)
             actions = [agent.select_action(s) for s in states]
+            agent.steps_done += 1
 
             # Step
             next_states, rewards, dones, infos = env.step(actions)

@@ -315,9 +315,9 @@ class SlitherEnv:
         head_radius = self._head_radius_world(last_data.get('self') if last_data else None)
         
         # Classification logic
-        # Tighter thresholds for more accurate classification
-        COLLISION_BUFFER = 40
-        WALL_BUFFER = 40
+        # Wider buffers to account for frame_skip=4 movement distance
+        COLLISION_BUFFER = 120
+        WALL_BUFFER = 120
         
         cause = "Unknown"
         penalty = self.death_snake_penalty
@@ -564,11 +564,9 @@ class SlitherEnv:
         new_len = new_snake.get('len', 0)
         new_x, new_y = new_snake.get('x', 0), new_snake.get('y', 0)
         
-        # Update wall tracking from post-action data
+        # Update wall tracking from post-action data (Python radial logic)
         self._update_from_game_data(data)
-        new_dist_to_wall = data.get('dist_to_wall', 99999)
-        if not math.isfinite(new_dist_to_wall):
-            new_dist_to_wall = 99999
+        new_dist_to_wall = self.last_dist_to_wall
         min_enemy_dist = self._min_enemy_distance(data.get('enemies', []), new_x, new_y)
         
         # 1. Survival reward

@@ -11,7 +11,18 @@ neat-checkpoint-*
 #training_stats.csv
 fatal_error.log
 temp_slitherbot/
-gen2/evensts/*
-# Browser logs
+gen2/events/
+# Logs
+gen2/logs/
 chromedriver.log
 geckodriver.log
+
+# Generated reports and charts
+gen2/progress_report.md
+gen2/training_progress_overview.png
+gen2/training_learning_detection.png
+gen2/training_goal_progress.png
+
+# Claude Code
+.claude/
+CLAUDE.md

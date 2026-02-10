@@ -393,7 +393,7 @@ class SlitherBrowser:
                         var trimCount = Math.floor(ptsLen * 0.1) + Math.floor((s.sp || 5.7) * 2.0);
                         var startIndex = Math.min(ptsLen - 1, trimCount);
                         
-                        var step = Math.max(1, Math.floor(ptsLen / 20));
+                        var step = Math.max(1, Math.floor(ptsLen / 40));
                         for (var j = startIndex; j < ptsLen; j += step) {{
                             var p = s.pts[j];
                             var px = p.xx !== undefined ? p.xx : (p.x || 0);
@@ -430,9 +430,9 @@ class SlitherBrowser:
                     if (s.pts) {{
                         var ptsLen = s.pts.length;
                         // Trim ghost tail dynamically (Increased)
-                        var trimCount = Math.floor(ptsLen * 0.25) + Math.floor((s.sp || 5.7) * 4.0);
+                        var trimCount = Math.floor(ptsLen * 0.15) + Math.floor((s.sp || 5.7) * 2.0);
                         var startIndex = Math.min(ptsLen - 1, trimCount);
-                        
+
                         var step = Math.max(1, Math.floor(ptsLen / MAX_BODY_PTS));
                         for (var j = startIndex; j < ptsLen && pts.length < MAX_BODY_PTS; j += step) {{
                             var p = s.pts[j];
