@@ -89,6 +89,8 @@ class Episode:
     style: str = ''
     lr: float = 0.0
     beta: float = 0.0
+    uid: str = ''
+    parent_uid: str = ''
 
 @dataclass
 class TrainingSession:
@@ -226,33 +228,68 @@ def parse_log(log_path: str) -> Tuple[List[Episode], List[TrainingSession]]:
 
 
 def parse_csv(csv_path: str) -> List[Episode]:
-    """Parse training_stats.csv for current session detail."""
+    """Parse training_stats.csv for current session detail.
+    Supports both old format (Episode,...) and new format (UID,ParentUID,Episode,...)."""
     episodes = []
     try:
         with open(csv_path, 'r') as f:
             header = f.readline().strip().split(',')
+            has_uid = header[0] == 'UID'
             for line in f:
                 parts = line.strip().split(',')
-                if len(parts) < 10:
-                    continue
-                ep = Episode(
-                    number=int(parts[0]),
-                    steps=int(parts[1]),
-                    reward=float(parts[2]),
-                    epsilon=float(parts[3]),
-                    loss=float(parts[4]),
-                    beta=float(parts[5]),
-                    lr=float(parts[6]),
-                    cause=parts[7],
-                    stage=int(parts[8]),
-                    food=int(parts[9]),
-                    stage_name='',
-                    food_per_step=int(parts[9]) / max(int(parts[1]), 1),
-                )
+                if has_uid:
+                    if len(parts) < 12:
+                        continue
+                    ep = Episode(
+                        uid=parts[0],
+                        parent_uid=parts[1],
+                        number=int(parts[2]),
+                        steps=int(parts[3]),
+                        reward=float(parts[4]),
+                        epsilon=float(parts[5]),
+                        loss=float(parts[6]),
+                        beta=float(parts[7]),
+                        lr=float(parts[8]),
+                        cause=parts[9],
+                        stage=int(parts[10]),
+                        food=int(parts[11]),
+                        stage_name='',
+                        food_per_step=int(parts[11]) / max(int(parts[3]), 1),
+                    )
+                else:
+                    if len(parts) < 10:
+                        continue
+                    ep = Episode(
+                        number=int(parts[0]),
+                        steps=int(parts[1]),
+                        reward=float(parts[2]),
+                        epsilon=float(parts[3]),
+                        loss=float(parts[4]),
+                        beta=float(parts[5]),
+                        lr=float(parts[6]),
+                        cause=parts[7],
+                        stage=int(parts[8]),
+                        food=int(parts[9]),
+                        stage_name='',
+                        food_per_step=int(parts[9]) / max(int(parts[1]), 1),
+                    )
                 episodes.append(ep)
     except Exception as e:
         print(c(f"  Warning: Could not parse CSV: {e}", C.YEL))
     return episodes
+
+
+def discover_uids(episodes: List[Episode]) -> List[Tuple[str, int, int, int]]:
+    """Scan episodes and return list of (uid, count, first_ep, last_ep), sorted chronologically."""
+    uid_map = OrderedDict()
+    for ep in episodes:
+        uid = ep.uid or 'unknown'
+        if uid not in uid_map:
+            uid_map[uid] = {'count': 0, 'first': ep.number, 'last': ep.number}
+        uid_map[uid]['count'] += 1
+        uid_map[uid]['last'] = max(uid_map[uid]['last'], ep.number)
+        uid_map[uid]['first'] = min(uid_map[uid]['first'], ep.number)
+    return [(uid, info['count'], info['first'], info['last']) for uid, info in uid_map.items()]
 
 
 # ═══════════════════════════════════════════════════════
@@ -1253,6 +1290,8 @@ def main():
     parser.add_argument('--csv', default=None, help='Path to training_stats.csv')
     parser.add_argument('--no-charts', action='store_true', help='Skip chart generation')
     parser.add_argument('--no-report', action='store_true', help='Skip markdown report')
+    parser.add_argument('--uid', type=str, default=None, help='Filter by specific run UID')
+    parser.add_argument('--latest', action='store_true', help='Analyze only the latest UID')
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1287,6 +1326,33 @@ def main():
     if not episodes:
         print(c('\n  No training data found!', C.RED, C.B))
         return
+
+    # UID discovery and filtering (applies to CSV episodes)
+    uids = discover_uids(csv_episodes) if csv_episodes else []
+    if uids and any(u[0] != 'unknown' for u in uids):
+        print()
+        print(c('  Available UIDs:', C.CYN, C.B))
+        for uid, count, first_ep, last_ep in uids:
+            print(f'    {c(uid, C.WHT)}  episodes {first_ep}-{last_ep} ({count} eps)')
+
+        # Apply --uid or --latest filter
+        if args.uid:
+            matched = [u for u in uids if args.uid in u[0]]
+            if matched:
+                target_uid = matched[0][0]
+                csv_episodes = [e for e in csv_episodes if e.uid == target_uid]
+                if not episodes or episodes is csv_episodes:
+                    episodes = csv_episodes
+                print(c(f'  Filtering by UID: {target_uid} ({len(csv_episodes)} episodes)', C.GRN))
+            else:
+                print(c(f'  UID "{args.uid}" not found!', C.RED))
+                return
+        elif args.latest:
+            latest_uid = uids[-1][0]
+            csv_episodes = [e for e in csv_episodes if e.uid == latest_uid]
+            if not episodes or episodes[0].uid:
+                episodes = csv_episodes
+            print(c(f'  Using latest UID: {latest_uid} ({len(csv_episodes)} episodes)', C.GRN))
 
     # Assess learning
     print(c('  Analyzing learning progress...', C.CYN))

@@ -1,61 +1,79 @@
-# Slither.io Bot - Training Progress Report
+# Slither.io Bot Gen2 - Training Progress Report
 
-**Generated:** 2026-02-11 06:15:22  
-**Total Episodes:** 22430  
-**Training Sessions:** 8
+**Updated:** 2026-02-11
+**Architecture:** Dueling DQN + Double DQN + Prioritized Experience Replay
+**Observation:** 84x84 3-channel egocentric matrix, 4-frame stack (12 channels)
+**Actions:** 6 (straight, left/right small, left/right big, boost)
 
-## Verdict: NOT LEARNING (Confidence: 20%)
+---
 
-**Goal Feasibility:** IMPOSSIBLE with current setup
+## Previous Training Analysis (5000+ episodes)
 
-### Critical Issues
-- Rewards DECLINING: -208.2 (getting worse)
-- Very short episodes: avg=49 steps (dying too fast)
+**Verdict: NOT LEARNING** - Agent was stuck with median 40-50 steps per episode.
 
-### Warnings
-- Multiple training restarts detected (8 sessions) - fragmented learning
+| Problem | Root Cause |
+|---------|-----------|
+| 55% deaths = SnakeCollision, 40% = Wall | Agent never learned obstacle avoidance |
+| Curriculum backwards | Stage 1 = EAT (passed in 101 ep), Stage 2 = SURVIVE (stuck 4800+ ep) |
+| Food reward dominated | 80% of reward was food; death still "profitable" (reward ~175 in 50 steps) |
+| tanh crushed penalties | -30 and -100 both mapped to ~-1.0, no differentiation |
+| LR frozen at 1e-6 | Scheduler reduced it, recovery bug (`<` instead of `<=`) |
+| North-up observation | Contradicted relative actions - same situation yielded different training data |
+| Epsilon decayed too slow | `steps_done += 1` per batch instead of per-agent |
 
-## Key Statistics
+---
 
-| Metric | Mean | Std | Min | Max | P50 | P95 |
-|--------|------|-----|-----|-----|-----|-----|
-| Reward | 358.57 | 217.96 | -4215.93 | 2129.92 | 386.56 | 707.08 |
-| Steps | 49.24 | 69.59 | 1.00 | 800.00 | 33.00 | 133.00 |
-| Food | 24.79 | 9.50 | 0.00 | 114.00 | 23.00 | 42.00 |
-| Loss | 1.53 | 1.59 | 0.00 | 45.85 | 1.22 | 4.07 |
+## Fixes Applied (2026-02-10 — 2026-02-11)
 
-## Goal Progress
+### Observation & Perception
+- **Egocentric rotation**: Snake heading always = "up" in matrix. Eliminates north-up contradiction
+- **Enemy body sampling**: Doubled density (ptsLen/40), trim reduced 25%->15%
+- **COLLISION_BUFFER / WALL_BUFFER**: 40 -> 120 (frame_skip=4 compensation)
 
-| Target | Current Best | Goal | Progress |
-|--------|-------------|------|----------|
-| Points | 114 | 6,000 | 1.9% |
-| Survival | 26.7 min | 60 min | 44.4% |
+### Reward System Redesign: SURVIVE First
+- **Curriculum reversed**: Stage 1=SURVIVE, Stage 2=EAT, Stage 3=GROW
+- **Escalating survival reward**: `survival * (1 + escalation * steps_in_episode)`
+  - Stage 1: step 1 -> +0.5, step 50 -> +0.75, step 100 -> +1.0, step 200 -> +1.5
+- **Food minimized in Stage 1**: 1.0 (was 8.0) with no shaping
+- **Equal death penalties in Stage 1**: wall=-200, snake=-200 (both equally dangerous)
+- **Proximity penalties active from start**: wall=0.3, enemy=0.3
 
-## Session History
+### Reward Normalization
+- **tanh -> linear clamp [-5, 5]**: `clamp(reward / scale, -5, 5)`
+  - Now: -30 -> -3.0, -100 -> -5.0 (was both ~-1.0 with tanh)
+  - Survival 0.5 -> 0.05, food 8.0 -> 0.8
 
-| # | Style | Episodes | Avg Reward | Avg Steps |
-|---|-------|----------|------------|----------|
-| 1 | Unknown | 975-1069 | 461.4 | 45 |
-| 2 | Unknown | 1070-1094 | 990.6 | 158 |
-| 3 | Aggressive (Hunter) | 1095-8480 | 451.3 | 48 |
-| 4 | Aggressive (Hunter) | 8451-15975 | 485.2 | 55 |
-| 5 | Aggressive (Hunter) | 15976-16165 | 184.4 | 51 |
-| 6 | Standard (Curriculum) | 1-87 | 129.2 | 51 |
-| 7 | Standard (Curriculum) | 1-270 | 177.5 | 79 |
-| 8 | Standard (Curriculum) | 1-6852 | 130.6 | 42 |
+### Training Stability
+- **LR recovery fix**: `<` -> `<=` catches exactly min_lr
+- **Stagnation handler**: Now also resets LR to initial value (was only boosting epsilon)
+- **steps_done += num_agents**: Epsilon decays per game-step, not per batch
+- **eps_decay**: 100000 -> 50000 (faster initial exploration reduction)
+- **prev_length fallback**: 10 instead of 0 (prevents phantom food reward on reset)
 
-## Recommendations
+### Infrastructure
+- **UID system**: YYYYMMDD-8hex format, parent_uid lineage tracking
+- **CSV columns**: UID, ParentUID added for run traceability
 
-Training is fundamentally broken. Fix critical issues first:
-  1. Restore learning rate > 0 (check LR scheduler)
-  2. Consider resetting epsilon to allow fresh exploration
-  3. Review reward shaping - excessive penalties prevent learning
+---
 
-1. Average episode too short. Consider:
-     - Reducing death penalties to avoid discouraging exploration
-     - Adding survival bonus to incentivize staying alive
+## Curriculum Stages (New)
 
-2. Multiple session restarts detected. Each restart disrupts learning continuity. Try to maintain consistent training runs of 10,000+ episodes.
+| Stage | Name | Goal | Food Reward | Survival | Death Penalty | Promote Condition |
+|-------|------|------|------------|----------|---------------|-------------------|
+| 1 | SURVIVE | Don't die | 1.0 | 0.5 + escalation | -200 (both) | avg_steps >= 80 over 100 ep |
+| 2 | EAT | Find food | 8.0 | 0.2 + escalation | wall=-200, snake=-100 | food_per_step >= 0.15 over 100 ep |
+| 3 | GROW | Full game | 10.0 | 0.1 + escalation | wall=-100, snake=-30 | Terminal stage |
+
+---
+
+## Expected Behavior After Fixes
+
+1. Agent starts in Stage 1 (SURVIVE), not EAT
+2. Survival reward grows over time - longer episodes become increasingly rewarding
+3. Death penalties are clearly differentiated (-3.0 vs -5.0 normalized)
+4. LR starts at 1e-4 (not frozen at 1e-6)
+5. Egocentric view: same spatial situation always produces same observation
+6. Promotion from Stage 1 requires avg 80+ steps (was auto-promoting at 101 episodes)
 
 ## Charts
 

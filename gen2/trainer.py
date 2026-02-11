@@ -6,6 +6,7 @@ import random
 import os
 import sys
 import time
+import hashlib
 import multiprocessing as mp
 import argparse
 from collections import deque
@@ -44,6 +45,17 @@ if not logger.hasHandlers():
     logger.addHandler(c_handler)
     logger.addHandler(f_handler_app)
     logger.addHandler(f_handler_train)
+
+
+def generate_uid():
+    """Generate a unique run ID in format YYYYMMDD-8hexchars."""
+    timestamp = str(time.time())
+    rand_part = str(random.getrandbits(64))
+    pid = str(os.getpid())
+    raw = f"{timestamp}-{rand_part}-{pid}"
+    hash_hex = hashlib.sha256(raw.encode()).hexdigest()[:8]
+    date_str = time.strftime('%Y%m%d')
+    return f"{date_str}-{hash_hex}"
 
 
 def select_style_and_model(args):
@@ -575,6 +587,11 @@ def train(args):
     logger.info(f"  LR: {cfg.opt.lr}")
     logger.info(f"  PER: {cfg.buffer.prioritized}")
 
+    # Generate unique Run UID
+    run_uid = generate_uid()
+    parent_uid = None
+    logger.info(f"Training Run UID: {run_uid}")
+
     # Initialize Env
     raw_env = SubprocVecEnv(
         num_agents=cfg.env.num_agents,
@@ -595,11 +612,16 @@ def train(args):
     load_path = model_path if model_path else (checkpoint_path if args.resume else None)
 
     if load_path and os.path.exists(load_path):
-        start_episode, _, supervisor_state = agent.load_checkpoint(load_path)
+        start_episode, _, supervisor_state, checkpoint_uid = agent.load_checkpoint(load_path)
+
+        # Set parent_uid from the checkpoint's run_uid (lineage tracking)
+        if checkpoint_uid:
+            parent_uid = checkpoint_uid
+            logger.info(f"  Parent UID: {parent_uid}")
 
         # Fix LR=0 from old checkpoints: restore to min_lr if frozen
         current_lr = agent.optimizer.param_groups[0]['lr']
-        if current_lr < cfg.opt.scheduler_min_lr:
+        if current_lr <= cfg.opt.scheduler_min_lr:
             for pg in agent.optimizer.param_groups:
                 pg['lr'] = cfg.opt.lr
             logger.info(f"  LR was {current_lr:.8f} (frozen). Reset to {cfg.opt.lr}")
@@ -622,10 +644,10 @@ def train(args):
     logger.info(f"  Max Steps: {max_steps_per_episode}")
     super_pattern = SuperPatternOptimizer(stage_cfg, cfg, logger)
 
-    # Initialize stats file
-    if not os.path.exists(stats_file) or not args.resume:
+    # Initialize stats file (always append, never overwrite)
+    if not os.path.exists(stats_file):
         with open(stats_file, 'w') as f:
-            f.write("Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food\n")
+            f.write("UID,ParentUID,Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food\n")
 
     # LR Scheduler (Linear Warmup)
     warmup_steps = 10000
@@ -700,7 +722,7 @@ def train(args):
             logger.info(f"Death Stats: {death_stats}")
 
         with open(stats_file, 'a') as f:
-            f.write(f"{start_episode},{total_steps_local},{total_reward:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause_label},{curriculum.current_stage},{food_eaten}\n")
+            f.write(f"{run_uid},{parent_uid or ''},{start_episode},{total_steps_local},{total_reward:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause_label},{curriculum.current_stage},{food_eaten}\n")
 
         # Autonomy Logic (Scheduler & Watchdog)
         reward_window.append(total_reward)
@@ -717,17 +739,21 @@ def train(args):
 
                 # Save PROMISING model backup
                 if avg_reward > 0: # Only backup if positive reward
-                    backup_name = f"best_model_ep{start_episode}_rw{int(avg_reward)}.pth"
+                    backup_name = f"best_model_{run_uid}_ep{start_episode}_rw{int(avg_reward)}.pth"
                     backup_path = os.path.join(backup_dir, backup_name)
-                    agent.save_checkpoint(backup_path, start_episode, max_steps_per_episode, curriculum.get_state())
+                    agent.save_checkpoint(backup_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
                     logger.info(f"  >> New Best Avg Reward: {avg_reward:.2f}. Saved backup: {backup_name}")
 
             else:
                 episodes_since_improvement += 1
 
             if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
-                logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle exploration boost.")
+                logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle exploration boost + LR reset.")
                 agent.boost_exploration(target_eps=0.3)
+                # Reset LR to initial value so the network can learn again
+                for pg in agent.optimizer.param_groups:
+                    pg['lr'] = cfg.opt.lr
+                logger.info(f"  LR reset to {cfg.opt.lr}")
                 episodes_since_improvement = 0
 
         super_pattern.record_episode(cause_label, food_eaten, total_steps_local, total_reward)
@@ -745,10 +771,10 @@ def train(args):
             env.set_stage(stage_cfg)
             super_pattern.reset_stage(stage_cfg)
             # Save checkpoint on promotion
-            agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state())
+            agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
 
         if start_episode % cfg.opt.checkpoint_every == 0:
-            agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state())
+            agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
 
         episode_rewards[agent_index] = 0
         episode_steps[agent_index] = 0
@@ -762,9 +788,9 @@ def train(args):
                 for param_group in agent.optimizer.param_groups:
                     param_group['lr'] = target_lr * lr_scale
 
-            # Select actions (increment steps_done once per batch, not per agent)
+            # Select actions (scale steps_done by num_agents so epsilon decays per game-step, not per batch)
             actions = [agent.select_action(s) for s in states]
-            agent.steps_done += 1
+            agent.steps_done += cfg.env.num_agents
 
             # Step
             next_states, rewards, dones, infos = env.step(actions)
@@ -811,7 +837,7 @@ def train(args):
 
     except KeyboardInterrupt:
         print("Interrupted. Saving...")
-        agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state())
+        agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
     finally:
         env.close()
 

@@ -59,6 +59,10 @@ class SlitherEnv:
         self.straight_penalty = 0.0   # Stage 1: no straight penalty
         self.length_bonus = 0.0       # Stage 3: per-step bonus for snake length
 
+        # Escalating survival
+        self.survival_escalation = 0.0
+        self.steps_in_episode = 0
+
         # Threat awareness
         self.wall_alert_dist = 2000
         self.enemy_alert_dist = 800
@@ -105,6 +109,7 @@ class SlitherEnv:
         self.death_snake_penalty = stage_config.get('death_snake', -10)
         self.straight_penalty = stage_config.get('straight_penalty', 0.05)
         self.length_bonus = stage_config.get('length_bonus', 0.0)
+        self.survival_escalation = stage_config.get('survival_escalation', 0.0)
 
         # Update alert distances if provided, otherwise keep defaults
         self.wall_alert_dist = stage_config.get('wall_alert_dist', 2000)
@@ -352,6 +357,7 @@ class SlitherEnv:
         self.browser.force_restart()
         self.near_wall_frames = 0
         self.invalid_frame_count = 0
+        self.steps_in_episode = 0
         
         # One-time game variable scan
         if not self._map_vars_printed:
@@ -404,9 +410,9 @@ class SlitherEnv:
             data = self.browser.get_game_data()
 
         if data and data.get('self'):
-            self.prev_length = data['self'].get('len', 0)
+            self.prev_length = data['self'].get('len', 10)
         else:
-            self.prev_length = 0
+            self.prev_length = 10
             
         matrix = self._process_data_to_matrix(data)
         self.last_matrix = matrix
@@ -560,17 +566,20 @@ class SlitherEnv:
 
         # === REWARD CALCULATION ===
         reward = 0
+        self.steps_in_episode += 1
         new_snake = data.get('self', {})
         new_len = new_snake.get('len', 0)
         new_x, new_y = new_snake.get('x', 0), new_snake.get('y', 0)
-        
+
         # Update wall tracking from post-action data (Python radial logic)
         self._update_from_game_data(data)
         new_dist_to_wall = self.last_dist_to_wall
         min_enemy_dist = self._min_enemy_distance(data.get('enemies', []), new_x, new_y)
-        
-        # 1. Survival reward
-        reward += self.survival_reward
+
+        # 1. Escalating survival reward (grows with episode length)
+        escalation = self.survival_escalation * self.steps_in_episode
+        survival_reward = self.survival_reward * (1.0 + escalation)
+        reward += survival_reward
         
         # 2. Food reward (parametrized by curriculum stage)
         food_eaten = 0
@@ -648,7 +657,22 @@ class SlitherEnv:
             return matrix
 
         mx, my = my_snake['x'], my_snake['y']
-        
+        ang = my_snake.get('ang', 0)
+
+        # Egocentric rotation: rotate world so snake heading = matrix "up"
+        sin_a = math.sin(ang)
+        cos_a = math.cos(ang)
+
+        def _ego(dx, dy):
+            """World-relative (dx,dy) → egocentric grid coords."""
+            rx = -sin_a * dx + cos_a * dy
+            ry = -cos_a * dx - sin_a * dy
+            return int(rx * self.scale + self.matrix_size / 2), int(ry * self.scale + self.matrix_size / 2)
+
+        def _ego_raw(dx, dy):
+            """World-relative (dx,dy) → egocentric (rx,ry) unscaled."""
+            return -sin_a * dx + cos_a * dy, -cos_a * dx - sin_a * dy
+
         # UPDATE view_size from actual game data!
         game_view_radius = data.get('view_radius')
         if game_view_radius and game_view_radius > 0:
@@ -691,16 +715,17 @@ class SlitherEnv:
                 min_dist_sq = dist_sq
                 nearest_food = (fx, fy)
 
-            mx_x, mx_y = world_to_grid(fx, fy, mx, my, self.scale, self.matrix_size)
-            if 0 <= mx_x < self.matrix_size and 0 <= mx_y < self.matrix_size:
-                matrix[0, mx_y, mx_x] = 1.0
+            gx, gy = _ego(fx - mx, fy - my)
+            if 0 <= gx < self.matrix_size and 0 <= gy < self.matrix_size:
+                matrix[0, gy, gx] = 1.0
 
         # Highlighting Nearest Food (Compass/Focus)
         if nearest_food:
             nfx, nfy = nearest_food
-            # Calculate grid coordinates even if off-screen
-            dx = (nfx - mx) * self.scale
-            dy = (nfy - my) * self.scale
+            # Calculate egocentric grid coordinates even if off-screen
+            rx, ry = _ego_raw(nfx - mx, nfy - my)
+            dx = rx * self.scale
+            dy = ry * self.scale
             cx = self.matrix_size / 2
             cy = self.matrix_size / 2
 
@@ -754,13 +779,12 @@ class SlitherEnv:
         for e in enemies:
             ex, ey = e['x'], e['y']
 
-            # Relative position
-            dx = ex - mx
-            dy = ey - my
+            # Relative position → egocentric rotation
+            rx, ry = _ego_raw(ex - mx, ey - my)
 
-            # Grid coordinates (no rotation, north-up)
-            hx = cx_grid + dx * self.scale
-            hy = cx_grid + dy * self.scale
+            # Grid coordinates (egocentric: heading = up)
+            hx = cx_grid + rx * self.scale
+            hy = cy_grid + ry * self.scale
 
             # Calculate snake width in matrix pixels
             sc = e.get('sc', 1.0)
@@ -781,11 +805,10 @@ class SlitherEnv:
 
             for pt in pts:
                 px_world, py_world = pt[0], pt[1]
-                dx_p = px_world - mx
-                dy_p = py_world - my
+                rx_p, ry_p = _ego_raw(px_world - mx, py_world - my)
 
-                px_grid = cx_grid + dx_p * self.scale
-                py_grid = cx_grid + dy_p * self.scale
+                px_grid = cx_grid + rx_p * self.scale
+                py_grid = cy_grid + ry_p * self.scale
 
                 self._draw_thick_line(matrix, 1, prev_x, prev_y, px_grid, py_grid, width_matrix, 0.5)
                 prev_x, prev_y = px_grid, py_grid
@@ -800,14 +823,14 @@ class SlitherEnv:
         # Head to first point
         if my_pts:
              px, py = my_pts[0][0], my_pts[0][1]
-             bx, by = world_to_grid(px, py, mx, my, self.scale, self.matrix_size)
+             bx, by = _ego(px - mx, py - my)
              self._draw_thick_line(matrix, 2, cx, cy, bx, by, my_width_matrix, 0.5)
 
         for i in range(len(my_pts) - 1):
             p1 = my_pts[i]
             p2 = my_pts[i+1]
-            x1, y1 = world_to_grid(p1[0], p1[1], mx, my, self.scale, self.matrix_size)
-            x2, y2 = world_to_grid(p2[0], p2[1], mx, my, self.scale, self.matrix_size)
+            x1, y1 = _ego(p1[0] - mx, p1[1] - my)
+            x2, y2 = _ego(p2[0] - mx, p2[1] - my)
             self._draw_thick_line(matrix, 2, x1, y1, x2, y2, my_width_matrix, 0.5)
 
         # Head
@@ -827,9 +850,13 @@ class SlitherEnv:
              # Standard Circular Wall
              y_grid, x_grid = np.ogrid[:self.matrix_size, :self.matrix_size]
 
-             # Convert grid coords to relative world coords
-             dx_world = (x_grid - (self.matrix_size / 2)) / self.scale
-             dy_world = (y_grid - (self.matrix_size / 2)) / self.scale
+             # Grid coords → egocentric relative coords
+             rx_grid = (x_grid - (self.matrix_size / 2)) / self.scale
+             ry_grid = (y_grid - (self.matrix_size / 2)) / self.scale
+
+             # Inverse rotation: egocentric → world-relative
+             dx_world = -sin_a * rx_grid - cos_a * ry_grid
+             dy_world =  cos_a * rx_grid - sin_a * ry_grid
 
              # Absolute world coords
              wx = mx + dx_world

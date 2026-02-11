@@ -196,11 +196,11 @@ class DDQNAgent:
         done_batch = torch.tensor(batch_done, dtype=torch.float32).to(self.device)
         weights_batch = torch.tensor(is_weights, dtype=torch.float32).to(self.device)
 
-        # Reward clipping (simpler and more stable than normalization)
-        # Clamp rewards to [-1, 1] range to stabilize training
-        # Death penalties (-100, -10) -> -1, food rewards -> proportional
+        # Reward scaling: divide by reward_scale, then hard-clip to [-5, 5]
+        # Linear scaling preserves penalty differentiation:
+        # survival(0.5) → 0.05, food(8) → 0.8, death(-30) → -3.0, death(-200) → -5.0
         reward_scale = max(self.config.opt.reward_scale, 1.0)
-        norm_rewards = torch.clamp(reward_batch / reward_scale, -1.0, 1.0)
+        norm_rewards = torch.clamp(reward_batch / reward_scale, -5.0, 5.0)
 
         # Q(s, a)
         q_values = self.policy_net(state_batch).gather(1, action_batch)
@@ -231,7 +231,7 @@ class DDQNAgent:
     def update_target(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def save_checkpoint(self, filepath, episode, max_steps=None, supervisor_state=None):
+    def save_checkpoint(self, filepath, episode, max_steps=None, supervisor_state=None, run_uid=None, parent_uid=None):
         checkpoint = {
             'episode': episode,
             'steps_done': self.steps_done,
@@ -242,12 +242,14 @@ class DDQNAgent:
             # For now skip saving memory to save disk/time
             'max_steps': max_steps,  # Curriculum state
             'supervisor_state': supervisor_state,
+            'run_uid': run_uid,
+            'parent_uid': parent_uid,
         }
         torch.save(checkpoint, filepath)
 
     def load_checkpoint(self, filepath):
         if not os.path.exists(filepath):
-            return 0, 200, None  # episode, max_steps (default), supervisor_state
+            return 0, 200, None, None  # episode, max_steps (default), supervisor_state, run_uid
 
         checkpoint = torch.load(filepath, map_location=self.device)
         self.policy_net.load_state_dict(checkpoint['policy_net_state'])
@@ -256,4 +258,5 @@ class DDQNAgent:
         self.steps_done = checkpoint['steps_done']
 
         max_steps = checkpoint.get('max_steps', 200)  # Default to 200 for old checkpoints
-        return checkpoint['episode'], max_steps, checkpoint.get('supervisor_state')
+        run_uid = checkpoint.get('run_uid', None)
+        return checkpoint['episode'], max_steps, checkpoint.get('supervisor_state'), run_uid

@@ -27,7 +27,7 @@ class OptimizationConfig:
     grad_clip: float = 10.0
     eps_start: float = 1.0
     eps_end: float = 0.1           # Higher minimum exploration (was 0.05)
-    eps_decay: int = 100000        # Faster decay (was 300000)
+    eps_decay: int = 50000         # Faster decay (was 100000)
     target_update_freq: int = 1000 # More frequent updates (was 2000)
     max_episodes: int = 5000000
     checkpoint_every: int = 50
