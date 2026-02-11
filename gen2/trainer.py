@@ -191,6 +191,7 @@ class CurriculumManager:
         self.episode_food_history = deque(maxlen=100)
         self.episode_steps_history = deque(maxlen=100)
         self.episode_food_ratio_history = deque(maxlen=100)
+        self.episode_cause_history = deque(maxlen=100)
 
     def get_config(self):
         """Return current stage config dict."""
@@ -205,12 +206,13 @@ class CurriculumManager:
         else:
             return self.style_config["stages"][self.current_stage]["max_steps"]
 
-    def record_episode(self, food_eaten, steps):
+    def record_episode(self, food_eaten, steps, cause="Unknown"):
         """Record episode metrics for promotion check."""
         self.episode_food_history.append(food_eaten)
         self.episode_steps_history.append(steps)
         ratio = food_eaten / max(steps, 1)
         self.episode_food_ratio_history.append(ratio)
+        self.episode_cause_history.append(cause)
 
     def check_promotion(self):
         """Check if we should advance to the next stage. Returns True if promoted."""
@@ -248,9 +250,23 @@ class CurriculumManager:
                 return False
             recent = list(self.episode_steps_history)[-window:]
             avg = sum(recent) / len(recent)
-            if avg >= threshold:
-                self._promote()
-                return True
+            if avg < threshold:
+                return False
+
+            # Compound check: wall death ratio must be below max
+            wall_death_max = cfg.get("promote_wall_death_max")
+            if wall_death_max is not None and len(self.episode_cause_history) >= window:
+                recent_causes = list(self.episode_cause_history)[-window:]
+                wall_deaths = sum(1 for c in recent_causes if c == "Wall")
+                wall_ratio = wall_deaths / len(recent_causes)
+                if wall_ratio > wall_death_max:
+                    # Log why promotion is blocked (every 50 episodes to avoid spam)
+                    if len(self.episode_steps_history) % 50 == 0:
+                        print(f"  [Curriculum] avg_steps={avg:.0f} OK but wall_death={wall_ratio:.0%} > {wall_death_max:.0%} — blocked")
+                    return False
+
+            self._promote()
+            return True
 
         return False
 
@@ -270,6 +286,7 @@ class CurriculumManager:
             "food_history": list(self.episode_food_history),
             "steps_history": list(self.episode_steps_history),
             "food_ratio_history": list(self.episode_food_ratio_history),
+            "cause_history": list(self.episode_cause_history),
         }
 
     def load_state(self, state):
@@ -279,6 +296,7 @@ class CurriculumManager:
             self.episode_food_history = deque(state.get("food_history", []), maxlen=100)
             self.episode_steps_history = deque(state.get("steps_history", []), maxlen=100)
             self.episode_food_ratio_history = deque(state.get("food_ratio_history", []), maxlen=100)
+            self.episode_cause_history = deque(state.get("cause_history", []), maxlen=100)
 
 
 class SuperPatternOptimizer:
@@ -762,7 +780,7 @@ def train(args):
             env.set_stage(updated_stage_cfg)
 
         # Track metrics for curriculum promotion
-        curriculum.record_episode(food_eaten, total_steps_local)
+        curriculum.record_episode(food_eaten, total_steps_local, cause_label)
 
         # Check for stage promotion
         if curriculum.check_promotion():

@@ -25,6 +25,7 @@ STYLES = {
                 "max_steps": 400,
                 "promote_metric": "avg_steps",
                 "promote_threshold": 80,
+                "promote_wall_death_max": 0.10,  # Max 10% wall deaths to promote
                 "promote_window": 100,
             },
             2: {
