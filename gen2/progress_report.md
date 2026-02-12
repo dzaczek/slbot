@@ -1,47 +1,43 @@
 # Slither.io Bot - Training Progress Report
 
-**Generated:** 2026-02-12 16:41:24  
-**Total Episodes:** 175  
-**Training Sessions:** 2
+**Generated:** 2026-02-12 17:30:12  
+**Total Episodes:** 8  
+**Training Sessions:** 1
 
-## Verdict: NOT LEARNING (Confidence: 45%)
+## Verdict: NOT LEARNING (Confidence: 10%)
 
-**Goal Feasibility:** UNLIKELY (5-25% chance) without tuning
+**Goal Feasibility:** 
 
-### Warnings
-- Epsilon very high (0.811) - still mostly random
+### Critical Issues
+- Insufficient data (< 20 episodes)
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | Max | P50 | P95 |
 |--------|------|-----|-----|-----|-----|-----|
-| Reward | 645.54 | 589.94 | -31.58 | 3106.91 | 490.90 | 1829.70 |
-| Steps | 106.73 | 94.32 | 1.00 | 400.00 | 75.00 | 302.00 |
-| Food | 39.33 | 24.16 | 0.00 | 122.00 | 31.00 | 86.60 |
-| Loss | 0.23 | 0.31 | 0.00 | 3.35 | 0.14 | 0.63 |
+| Reward | 253.47 | 192.85 | 32.55 | 594.00 | 247.23 | 547.18 |
+| Steps | 85.75 | 44.06 | 30.00 | 155.00 | 90.00 | 147.30 |
+| Food | 32.88 | 13.14 | 16.00 | 50.00 | 35.50 | 49.65 |
+| Loss | 122.41 | 88.75 | 0.00 | 290.42 | 129.83 | 256.41 |
 
 ## Goal Progress
 
 | Target | Current Best | Goal | Progress |
 |--------|-------------|------|----------|
-| Points | 122 | 6,000 | 2.0% |
-| Survival | 13.3 min | 60 min | 22.2% |
+| Points | 50 | 6,000 | 0.8% |
+| Survival | 5.2 min | 60 min | 8.6% |
 
 ## Session History
 
 | # | Style | Episodes | Avg Reward | Avg Steps |
 |---|-------|----------|------------|----------|
-| 1 | Unknown | 1-86 | 718.5 | 150 |
-| 2 | Aggressive (Hunter) | 87-175 | 575.0 | 65 |
+| 1 | Unknown | 1-8 | 253.5 | 86 |
 
 ## Recommendations
 
-Some learning signals present but not strong enough.
-  1. Fine-tune hyperparameters
-  2. Increase training duration significantly
-  3. Consider curriculum adjustments
 
-1. Epsilon is 0.811 after 175 episodes. Consider faster decay (eps_decay=50000) or lower eps_start if resuming.
+
+1. Epsilon is 0.992 after 8 episodes. Consider faster decay (eps_decay=50000) or lower eps_start if resuming.
 
 2. Average episode too short. Consider:
      - Reducing death penalties to avoid discouraging exploration
