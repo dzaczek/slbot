@@ -49,7 +49,7 @@ class OptimizationConfig:
     super_pattern_wall_penalty_cap: float = 0.3
     super_pattern_enemy_penalty_cap: float = 0.3
     super_pattern_straight_penalty_cap: float = 0.1
-    super_pattern_food_reward_cap: float = 20.0
+    super_pattern_food_reward_cap: float = 15.0
 
 @dataclass
 class ReplayBufferConfig:
