@@ -5,7 +5,7 @@ from typing import Tuple
 class EnvironmentConfig:
     frame_stack: int = 4
     frame_skip: int = 4
-    resolution: Tuple[int, int] = (128, 128)
+    resolution: Tuple[int, int] = (64, 64)
     grayscale: bool = False
     num_agents: int = 1
     view_first: bool = False
@@ -27,7 +27,7 @@ class OptimizationConfig:
     grad_clip: float = 10.0
     eps_start: float = 1.0
     eps_end: float = 0.1           # Higher minimum exploration (was 0.05)
-    eps_decay: int = 50000         # Faster decay (was 100000)
+    eps_decay: int = 80000         # Slower decay for 10 actions (was 50000)
     target_update_freq: int = 1000 # More frequent updates (was 2000)
     max_episodes: int = 5000000
     checkpoint_every: int = 50

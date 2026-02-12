@@ -637,12 +637,12 @@ def train(args):
             parent_uid = checkpoint_uid
             logger.info(f"  Parent UID: {parent_uid}")
 
-        # Fix LR=0 from old checkpoints: restore to min_lr if frozen
+        # Fix stale LR from old checkpoints: reset if below 10% of target
         current_lr = agent.optimizer.param_groups[0]['lr']
-        if current_lr <= cfg.opt.scheduler_min_lr:
+        if current_lr < cfg.opt.lr * 0.1:
             for pg in agent.optimizer.param_groups:
                 pg['lr'] = cfg.opt.lr
-            logger.info(f"  LR was {current_lr:.8f} (frozen). Reset to {cfg.opt.lr}")
+            logger.info(f"  LR was {current_lr:.8f} (stale). Reset to {cfg.opt.lr}")
 
         # Restore curriculum state only if we are in curriculum mode
         if curriculum.mode == 'curriculum' and supervisor_state:
@@ -870,7 +870,74 @@ if __name__ == "__main__":
     parser.add_argument("--model-path", type=str, help="Path to model checkpoint to load")
     parser.add_argument("--url", type=str, default="http://slither.io", help="Game URL (e.g. http://eslither.io)")
     parser.add_argument("--vision-size", type=int, default=0, help="Vision input size override (default: from config)")
+    parser.add_argument("--reset", action="store_true", help="Total reset: delete logs, CSV, checkpoints, events")
     args = parser.parse_args()
+
+    if args.reset:
+        import glob as glob_mod
+        import shutil
+        base = os.path.dirname(os.path.abspath(__file__))
+        targets = []
+        # Checkpoints
+        for p in glob_mod.glob(os.path.join(base, '*.pth')):
+            targets.append(p)
+        for p in glob_mod.glob(os.path.join(base, '..', '*.pth')):
+            targets.append(p)
+        # Backup models dir
+        backup_dir = os.path.join(base, 'backup_models')
+        if os.path.isdir(backup_dir):
+            targets.append(backup_dir)
+        backup_dir2 = os.path.join(base, 'backup')
+        if os.path.isdir(backup_dir2):
+            targets.append(backup_dir2)
+        # CSV
+        for p in glob_mod.glob(os.path.join(base, '*.csv')):
+            targets.append(p)
+        # Logs
+        for p in glob_mod.glob(os.path.join(base, 'logs', '*.log')):
+            targets.append(p)
+        # Charts
+        for p in glob_mod.glob(os.path.join(base, '*.png')):
+            targets.append(p)
+        # Events
+        events_dir = os.path.join(base, 'events')
+        if os.path.isdir(events_dir):
+            targets.append(events_dir)
+
+        if not targets:
+            print("Nothing to clean.")
+            exit(0)
+
+        print("\n=== TOTAL RESET ===")
+        print("The following will be DELETED:\n")
+        dirs = [t for t in targets if os.path.isdir(t)]
+        files = [t for t in targets if not os.path.isdir(t)]
+        for d in dirs:
+            count = sum(len(fs) for _, _, fs in os.walk(d))
+            print(f"  [DIR]  {os.path.relpath(d, base)}/  ({count} files)")
+        for f in files:
+            sz = os.path.getsize(f)
+            unit = 'B'
+            if sz > 1024*1024: sz /= 1024*1024; unit = 'MB'
+            elif sz > 1024: sz /= 1024; unit = 'KB'
+            print(f"  [FILE] {os.path.relpath(f, base)}  ({sz:.1f} {unit})")
+
+        print(f"\nTotal: {len(files)} files + {len(dirs)} directories")
+        confirm = input("\nType 'yes' to confirm deletion: ").strip()
+        if confirm.lower() != 'yes':
+            print("Aborted.")
+            exit(0)
+
+        for t in targets:
+            if os.path.isdir(t):
+                shutil.rmtree(t)
+                print(f"  Removed dir:  {os.path.relpath(t, base)}/")
+            elif os.path.isfile(t):
+                os.remove(t)
+                print(f"  Removed file: {os.path.relpath(t, base)}")
+
+        print("\nReset complete. Ready for fresh training.")
+        exit(0)
 
     mp.set_start_method('spawn', force=True)
     train(args)
