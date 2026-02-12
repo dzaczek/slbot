@@ -20,25 +20,25 @@ class ModelConfig:
 
 @dataclass
 class OptimizationConfig:
-    lr: float = 1e-4               # Increased from 6.25e-5
+    lr: float = 1e-5               # Decreased to 1e-5 for stability
     weight_decay: float = 1e-5
-    batch_size: int = 64
-    gamma: float = 0.99
+    batch_size: int = 128          # Increased batch size for stability
+    gamma: float = 0.995           # Increased gamma for long-term planning
     grad_clip: float = 10.0
     eps_start: float = 1.0
     eps_end: float = 0.1           # Higher minimum exploration (was 0.05)
-    eps_decay: int = 80000         # Slower decay for 10 actions (was 50000)
+    eps_decay: int = 200000        # Slower decay for 10 actions (was 80000)
     target_update_freq: int = 1000 # More frequent updates (was 2000)
     max_episodes: int = 5000000
     checkpoint_every: int = 50
-    reward_scale: float = 10.0
+    reward_scale: float = 1.0      # Reduced to 1.0 to prevent Q-value explosion
 
     # Autonomy / Stabilization
     scheduler_patience: int = 50
     scheduler_factor: float = 0.5
     scheduler_min_lr: float = 1e-6
     adaptive_eps_patience: int = 100
-    super_pattern_enabled: bool = True
+    super_pattern_enabled: bool = False
     super_pattern_window: int = 50
     super_pattern_wall_ratio: float = 0.55
     super_pattern_snake_ratio: float = 0.55
