@@ -128,9 +128,9 @@ class SlitherEnv:
         # We ignore JS dist_to_wall to fix false positives with polygon logic
         # and enforce Python radial logic.
         
-        # Update map params if they look reasonable, else stick to defaults
+        # Update map params if they look reasonable (standard slither.io: ~21600)
         mr = data.get('map_radius')
-        if mr and math.isfinite(mr) and mr > 10000:
+        if mr and math.isfinite(mr) and 15000 < mr < 30000:
              self.map_radius = mr
 
         cx = data.get('map_center_x')
@@ -430,23 +430,31 @@ class SlitherEnv:
     def step(self, action):
         """
         Executes action and returns (next_state, reward, done, info).
-        Actions:
+        Actions (10):
         0: Keep current direction
-        1: Turn Left small (~40 deg)
-        2: Turn Right small (~40 deg)
-        3: Turn Left big (~103 deg)
-        4: Turn Right big (~103 deg)
-        5: Boost (speed up, loses mass)
+        1: Turn Left gentle  (~20 deg)  - fine correction
+        2: Turn Right gentle (~20 deg)  - fine correction
+        3: Turn Left medium  (~40 deg)  - standard evasion
+        4: Turn Right medium (~40 deg)  - standard evasion
+        5: Turn Left sharp   (~69 deg)  - aggressive evasion
+        6: Turn Right sharp  (~69 deg)  - aggressive evasion
+        7: Turn Left u-turn  (~103 deg) - emergency escape
+        8: Turn Right u-turn (~103 deg) - emergency escape
+        9: Boost (speed up, loses mass)
         """
         angle_change = 0
         boost = 0
 
-        if action == 0: pass
-        elif action == 1: angle_change = -0.7  # ~40 deg
-        elif action == 2: angle_change = 0.7   # ~40 deg
-        elif action == 3: angle_change = -1.8  # ~103 deg
-        elif action == 4: angle_change = 1.8   # ~103 deg
-        elif action == 5: boost = 1
+        if action == 0:   pass
+        elif action == 1:  angle_change = -0.35  # ~20 deg
+        elif action == 2:  angle_change =  0.35  # ~20 deg
+        elif action == 3:  angle_change = -0.7   # ~40 deg
+        elif action == 4:  angle_change =  0.7   # ~40 deg
+        elif action == 5:  angle_change = -1.2   # ~69 deg
+        elif action == 6:  angle_change =  1.2   # ~69 deg
+        elif action == 7:  angle_change = -1.8   # ~103 deg
+        elif action == 8:  angle_change =  1.8   # ~103 deg
+        elif action == 9:  boost = 1
 
         # Get current state before action
         data = self.browser.get_game_data()

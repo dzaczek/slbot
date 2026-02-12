@@ -32,13 +32,13 @@ class DDQNAgent:
 
         self.policy_net = DuelingDQN(
             input_channels=self.input_channels,
-            action_dim=6,
+            action_dim=10,
             input_size=self.input_size
         ).to(self.device)
 
         self.target_net = DuelingDQN(
             input_channels=self.input_channels,
-            action_dim=6,
+            action_dim=10,
             input_size=self.input_size
         ).to(self.device)
 
@@ -126,7 +126,7 @@ class DDQNAgent:
                 q_values = self.policy_net(state_t)
                 return q_values.max(1)[1].item()
         else:
-            return random.randrange(6)
+            return random.randrange(10)
 
     def remember(self, state, action, reward, next_state, done):
         """

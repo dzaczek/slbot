@@ -439,10 +439,10 @@ class SlitherBrowser:
                             var px = p.xx !== undefined ? p.xx : (p.x || 0);
                             var py = p.yy !== undefined ? p.yy : (p.y || 0);
                             
-                            // Only include points that could be in view
+                            // Only include points within search radius (5x view)
                             var pdx = px - myX;
                             var pdy = py - myY;
-                            if (pdx*pdx + pdy*pdy < viewRadSq * 2) {{
+                            if (pdx*pdx + pdy*pdy < searchRadSq) {{
                                 pts.push([px, py]);
                             }}
                         }}
@@ -477,6 +477,7 @@ class SlitherBrowser:
             var pbxCount = 0;
 
             if (typeof window.pbx !== 'undefined' && window.pbx && window.pbx.length >= 3 &&
+                window.pbx.length < 500 &&
                 (typeof window.pby === 'undefined' || (window.pby && window.pby.length >= 3))) {{
                  usePolygon = true;
                  boundarySource = 'pbx';
@@ -574,6 +575,10 @@ class SlitherBrowser:
                  );
                  distToWall = mapRadius - distFromCenter;
             }}
+
+            // Sanity cap: distToWall should never exceed mapRadius
+            if (distToWall > mapRadius) distToWall = mapRadius;
+            if (distToWall < -500) distToWall = -500;
 
             possibleMapVars['map_center'] = Math.round(mapCenterX) + ',' + Math.round(mapCenterY);
             possibleMapVars['map_radius'] = Math.round(mapRadius);
@@ -814,7 +819,7 @@ class SlitherBrowser:
 
                 // 3. Draw Enemies (Red)
                 if (window.slithers) {
-                    var viewRadSq = viewRadius * viewRadius * 1.5;
+                    var viewRadSq = viewRadius * viewRadius * 4.0; // 2x radius to show full body
                     for (var i = 0; i < window.slithers.length; i++) {
                         var s = window.slithers[i];
                         if (s === window.slither) continue;
@@ -829,10 +834,10 @@ class SlitherBrowser:
                         ctx.fillStyle = '#ff6600'; // Body color
                         if (s.pts) {
                              var ptsLen = s.pts.length;
-                             // TRIM TAIL DYNAMICALLY (Increased):
+                             // TRIM TAIL DYNAMICALLY:
                              // Remove ghost points from tail (start of array)
-                             // Trimming ~25% of history points + speed offset to match real visual length
-                             var trimCount = Math.floor(ptsLen * 0.25) + Math.floor((s.sp || 5.7) * 4.0);
+                             // Aligned with data extraction (15% + speed*2.0)
+                             var trimCount = Math.floor(ptsLen * 0.15) + Math.floor((s.sp || 5.7) * 2.0);
                              var startIndex = Math.min(ptsLen - 1, trimCount);
                              
                              var step = Math.max(1, Math.floor(ptsLen / 100));
