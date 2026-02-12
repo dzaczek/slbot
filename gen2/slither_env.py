@@ -415,17 +415,19 @@ class SlitherEnv:
             self.prev_length = 10
             
         matrix = self._process_data_to_matrix(data)
-        self.last_matrix = matrix
+        sectors = self._compute_sectors(data)
+        obs = {'matrix': matrix, 'sectors': sectors}
+        self.last_matrix = obs
         self.last_valid_data = data if self._is_valid_frame(data) else None
-        
+
         # Update overlay with initial state (include gsc and view_radius for debugging)
         if self.view_plus and data:
             gsc = data.get('gsc', 0)
             view_r = data.get('view_radius', 0)
             debug_info = data.get('debug', {})
             self.browser.update_view_plus_overlay(matrix, gsc=gsc, view_radius=view_r, debug_info=debug_info)
-            
-        return matrix
+
+        return obs
 
     def step(self, action):
         """
@@ -461,7 +463,8 @@ class SlitherEnv:
 
         # Robust check (Validation Logic from tsrgy0)
         if not data:
-            return self._matrix_zeros(), -5, True, {"cause": "BrowserError"}
+            zeros = self._matrix_zeros()
+            return zeros, -5, True, {"cause": "BrowserError"}
 
         # Check for valid coordinates regardless of dead status
         has_valid_coords = self._has_valid_coordinates(data)
@@ -501,7 +504,8 @@ class SlitherEnv:
             # data is 'dead', so it might be empty.
             # But we have last_valid_data
 
-            return self._matrix_zeros(), reward, True, {
+            zeros = self._matrix_zeros()
+            return zeros, reward, True, {
                 "cause": cause,
                 "pos": (mx, my),
                 "wall_dist": dtw,
@@ -540,18 +544,20 @@ class SlitherEnv:
                  return self.last_matrix, -5, True, {"cause": "InvalidFrame"}
              return self.last_matrix, 0.0, False, {"cause": "InvalidFrame"}
 
-        state = self._process_data_to_matrix(data)
+        matrix = self._process_data_to_matrix(data)
+        sectors = self._compute_sectors(data)
+        state = {'matrix': matrix, 'sectors': sectors}
         self.last_matrix = state
         if self._is_valid_frame(data):
             self.last_valid_data = data
             self.invalid_frame_count = 0
-        
+
         # Update view-plus overlay
         if self.view_plus and data:
             gsc = data.get('gsc', 0)
             view_r = data.get('view_radius', 0)
             debug_info = data.get('debug', {})
-            self.browser.update_view_plus_overlay(state, gsc=gsc, view_radius=view_r, debug_info=debug_info)
+            self.browser.update_view_plus_overlay(matrix, gsc=gsc, view_radius=view_r, debug_info=debug_info)
 
         # Check if died after action
         if not data or data.get('dead'):
@@ -641,10 +647,170 @@ class SlitherEnv:
 
     def _get_state(self):
         data = self.browser.get_game_data()
-        return self._process_data_to_matrix(data)
+        matrix = self._process_data_to_matrix(data)
+        sectors = self._compute_sectors(data)
+        return {'matrix': matrix, 'sectors': sectors}
 
     def _matrix_zeros(self):
-        return np.zeros((3, self.matrix_size, self.matrix_size), dtype=np.float32)
+        return {
+            'matrix': np.zeros((3, self.matrix_size, self.matrix_size), dtype=np.float32),
+            'sectors': np.zeros(75, dtype=np.float32),
+        }
+
+    def _compute_sectors(self, data):
+        """
+        Compute 75-float sector vector (egocentric).
+        24 sectors × 15° covering 360°. Sector 0 = straight ahead.
+
+        Layout (75 floats):
+          [0..23]  food_score[i]      — closest food per sector, 1 - dist/scope
+          [24..47] obstacle_score[i]  — closest enemy/wall per sector
+          [48..71] obstacle_type[i]   — -1=none, 0=body/wall, 1=head
+          [72]     wall_dist_norm     — dist_to_wall / scope
+          [73]     snake_length_norm  — length / 500
+          [74]     speed_norm         — speed / 20
+        """
+        NUM_SECTORS = 24
+        SCOPE = 1500.0
+        SECTOR_ANGLE = 2 * math.pi / NUM_SECTORS  # 15° in radians
+
+        sectors = np.zeros(75, dtype=np.float32)
+        # Initialize obstacle types to -1 (no obstacle)
+        sectors[48:72] = -1.0
+
+        if not data or data.get('dead'):
+            return sectors
+
+        my_snake = data.get('self')
+        if not my_snake:
+            return sectors
+
+        mx = my_snake.get('x', 0)
+        my_ = my_snake.get('y', 0)
+        ang = my_snake.get('ang', 0)
+        snake_len = my_snake.get('len', 0)
+        spd = my_snake.get('sp', 0)
+
+        sin_a = math.sin(ang)
+        cos_a = math.cos(ang)
+
+        def to_ego_angle_dist(dx, dy):
+            """World-relative (dx,dy) -> egocentric (angle, dist).
+            Returns angle in [0, 2*pi) where 0=ahead, clockwise."""
+            # Egocentric rotation (same as _ego_raw)
+            rx = -sin_a * dx + cos_a * dy
+            ry = -cos_a * dx - sin_a * dy
+            # In ego frame: ahead = -ry direction (up in matrix)
+            # Convert to angle: 0=ahead(up), clockwise
+            # atan2 with ahead=-y: angle = atan2(rx, -ry)
+            angle = math.atan2(rx, -ry)
+            if angle < 0:
+                angle += 2 * math.pi
+            dist = math.hypot(dx, dy)
+            return angle, dist
+
+        def sector_index(angle):
+            idx = int(angle / SECTOR_ANGLE) % NUM_SECTORS
+            return idx
+
+        def score_distance(d):
+            return max(0.0, 1.0 - d / SCOPE)
+
+        # --- Food scores ---
+        foods = data.get('foods', [])
+        for f in foods:
+            if len(f) < 2:
+                continue
+            fx, fy = f[0], f[1]
+            dx, dy = fx - mx, fy - my_
+            angle, dist = to_ego_angle_dist(dx, dy)
+            if dist > SCOPE:
+                continue
+            si = sector_index(angle)
+            sc = score_distance(dist)
+            if sc > sectors[si]:
+                sectors[si] = sc
+
+        # --- Obstacle scores (enemies) ---
+        enemies = data.get('enemies', [])
+        for e in enemies:
+            ex, ey = e.get('x', 0), e.get('y', 0)
+            e_sc = e.get('sc', 1.0)
+            half_width = e_sc * 29.0 * 0.5  # body half-width
+
+            # Head
+            dx, dy = ex - mx, ey - my_
+            angle, dist = to_ego_angle_dist(dx, dy)
+            effective_dist = max(0.0, dist - half_width)
+            if effective_dist < SCOPE:
+                si = sector_index(angle)
+                sc = score_distance(effective_dist)
+                if sc > sectors[24 + si]:
+                    sectors[24 + si] = sc
+                    sectors[48 + si] = 1.0  # head type
+
+            # Body points
+            for pt in e.get('pts', []):
+                if len(pt) < 2:
+                    continue
+                px, py = pt[0], pt[1]
+                dx, dy = px - mx, py - my_
+                angle, dist = to_ego_angle_dist(dx, dy)
+                effective_dist = max(0.0, dist - half_width)
+                if effective_dist < SCOPE:
+                    si = sector_index(angle)
+                    sc = score_distance(effective_dist)
+                    if sc > sectors[24 + si]:
+                        sectors[24 + si] = sc
+                        sectors[48 + si] = 0.0  # body type
+
+        # --- Wall per sector (ray-circle intersection) ---
+        # Map is circle centered at (map_center_x, map_center_y) with radius map_radius
+        # Snake at (mx, my_). For each sector, cast ray and find intersection distance.
+        for si in range(NUM_SECTORS):
+            # Ray direction in ego frame: sector center angle
+            ego_angle = si * SECTOR_ANGLE + SECTOR_ANGLE / 2
+            # ego direction: ahead=up=-y, clockwise
+            # rx = sin(ego_angle), ry = -cos(ego_angle)
+            ray_rx = math.sin(ego_angle)
+            ray_ry = -math.cos(ego_angle)
+
+            # Convert ray direction from ego to world
+            # Inverse rotation: dx = -sin(ang)*rx - cos(ang)*ry
+            #                   dy = cos(ang)*rx - sin(ang)*ry
+            ray_dx = -sin_a * ray_rx - cos_a * ray_ry
+            ray_dy = cos_a * ray_rx - sin_a * ray_ry
+
+            # Ray-circle intersection
+            # Ray: P = (mx, my_) + t * (ray_dx, ray_dy)
+            # Circle: |P - C|^2 = R^2
+            # (mx + t*rdx - cx)^2 + (my_ + t*rdy - cy)^2 = R^2
+            ocx = mx - self.map_center_x
+            ocy = my_ - self.map_center_y
+            a = ray_dx * ray_dx + ray_dy * ray_dy  # always 1 for unit vector but keep general
+            b = 2.0 * (ocx * ray_dx + ocy * ray_dy)
+            c = ocx * ocx + ocy * ocy - self.map_radius * self.map_radius
+
+            discriminant = b * b - 4.0 * a * c
+            if discriminant >= 0:
+                sqrt_disc = math.sqrt(discriminant)
+                t1 = (-b - sqrt_disc) / (2.0 * a)
+                t2 = (-b + sqrt_disc) / (2.0 * a)
+                # We want the positive t (forward along ray)
+                # t2 is always the exit point; t1 may be behind us if we're inside circle
+                wall_t = t2 if t2 > 0 else t1
+                if wall_t > 0 and wall_t < SCOPE:
+                    wall_sc = score_distance(wall_t)
+                    if wall_sc > sectors[24 + si]:
+                        sectors[24 + si] = wall_sc
+                        sectors[48 + si] = 0.0  # wall = body type (solid obstacle)
+
+        # --- Global features ---
+        sectors[72] = min(1.0, self.last_dist_to_wall / SCOPE)
+        sectors[73] = min(1.0, snake_len / 500.0)
+        sectors[74] = min(1.0, spd / 20.0) if spd else 0.0
+
+        return sectors
 
     def _process_data_to_matrix(self, data):
         """

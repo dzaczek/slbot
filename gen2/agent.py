@@ -9,7 +9,7 @@ import os
 from collections import deque
 
 from config import Config
-from model import DuelingDQN
+from model import DuelingDQN, HybridDuelingDQN
 from per import PrioritizedReplayBuffer
 
 class DDQNAgent:
@@ -29,18 +29,32 @@ class DDQNAgent:
         # Calculate input channels (3 base channels * frame_stack)
         self.input_channels = 3 * config.env.frame_stack
         self.input_size = config.env.resolution
+        self.use_hybrid = config.model.architecture == 'HybridDuelingDQN'
 
-        self.policy_net = DuelingDQN(
-            input_channels=self.input_channels,
-            action_dim=10,
-            input_size=self.input_size
-        ).to(self.device)
-
-        self.target_net = DuelingDQN(
-            input_channels=self.input_channels,
-            action_dim=10,
-            input_size=self.input_size
-        ).to(self.device)
+        if self.use_hybrid:
+            self.policy_net = HybridDuelingDQN(
+                input_channels=self.input_channels,
+                action_dim=10,
+                input_size=self.input_size,
+                sector_dim=config.model.sector_dim,
+            ).to(self.device)
+            self.target_net = HybridDuelingDQN(
+                input_channels=self.input_channels,
+                action_dim=10,
+                input_size=self.input_size,
+                sector_dim=config.model.sector_dim,
+            ).to(self.device)
+        else:
+            self.policy_net = DuelingDQN(
+                input_channels=self.input_channels,
+                action_dim=10,
+                input_size=self.input_size,
+            ).to(self.device)
+            self.target_net = DuelingDQN(
+                input_channels=self.input_channels,
+                action_dim=10,
+                input_size=self.input_size,
+            ).to(self.device)
 
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
@@ -112,9 +126,9 @@ class DDQNAgent:
         """
         return np.concatenate(frames, axis=0)
 
-    def select_action(self, state_stack):
+    def select_action(self, state):
         """
-        state_stack: numpy array (12, 84, 84)
+        state: dict {'matrix': (12, H, W), 'sectors': (75,)} or numpy array (12, H, W) for legacy.
         Note: steps_done is incremented externally by the trainer (once per batch step)
         to avoid N× decay with N parallel agents.
         """
@@ -122,63 +136,39 @@ class DDQNAgent:
 
         if random.random() > eps_threshold:
             with torch.no_grad():
-                state_t = torch.tensor(state_stack, dtype=torch.float32).unsqueeze(0).to(self.device)
-                q_values = self.policy_net(state_t)
+                if self.use_hybrid:
+                    mat_t = torch.tensor(state['matrix'], dtype=torch.float32).unsqueeze(0).to(self.device)
+                    sec_t = torch.tensor(state['sectors'], dtype=torch.float32).unsqueeze(0).to(self.device)
+                    q_values = self.policy_net(mat_t, sec_t)
+                else:
+                    state_arr = state['matrix'] if isinstance(state, dict) else state
+                    state_t = torch.tensor(state_arr, dtype=torch.float32).unsqueeze(0).to(self.device)
+                    q_values = self.policy_net(state_t)
                 return q_values.max(1)[1].item()
         else:
             return random.randrange(10)
 
     def remember(self, state, action, reward, next_state, done):
         """
-        Stores transition.
-        state/next_state should be single frames (3, H, W) usually,
-        BUT PER/LazyFrames logic handles stacking.
-
-        However, standard PER implementation expects full states if we don't have a specialized LazyFrame wrapper.
-        For simplicity in this step, we will assume the caller passes the FULL STACKED STATE.
-
-        Wait, the plan said "Lazy Frames logic – store single frames, stack on sampling".
-        To do this, I need to store the history in the buffer or agent.
-
-        Simpler approach for now: Store full stacks. It uses more RAM (12 channels vs 3),
-        but implementation is robust. 4x RAM usage.
-        Given 84x84x12 float32 is ~340KB per item. 100k items = 34GB. Too big.
-
-        We MUST implement Lazy Stacking or store unit8.
-        The frames are currently float32 (0.0 to 1.0) from `slither_env`.
-        We should convert to uint8 (0-255) for storage.
-
-        Let's assume the Trainer manages the frame history (deque) and passes the CURRENT frame to the agent,
-        and the agent stores a sequence.
-
-        Actually, `PrioritizedReplayBuffer` stores whatever we pass to `push`.
-
-        Refined Plan for Memory:
-        The `SlitherEnv` returns a single frame (3, 84, 84).
-        The `Trainer` maintains a `deque(maxlen=4)` of frames.
-        When `remember` is called, we pass the *current frame*.
-        BUT to reconstruct state, we need context.
-
-        If we use `LazyFrames`, the buffer needs to be aware of the sequence.
-
-        Given the constraints and complexity, I will implement **Explicit Stacking in Agent** but store **Compressed** data if possible.
-        Or, I will stick to storing stacked frames but reduce buffer size if needed.
-
-        Actually, let's implement the standard approach:
-        The Agent stores `(state, action, reward, next_state, done)`.
-        If we want to save memory, we can cast to `uint8` before storing.
-        (3, 84, 84) float32 -> 84KB. 100k = 8.4GB. Manageable.
-        (12, 84, 84) float32 -> 338KB. 100k = 33GB. Too big.
-
-        Decision: Store stacked frames as `np.uint8`.
-        The env returns float (0.0, 0.5, 1.0).
-        We scale by 255 and cast to uint8.
+        Stores transition with compression.
+        state/next_state: dict {'matrix': (12,H,W) float32, 'sectors': (75,) float32}
+        Stored as: (matrix_u8, sectors_f32) tuple for memory efficiency.
         """
-        # Compress to uint8
-        state_u8 = (state * 255).astype(np.uint8)
-        next_state_u8 = (next_state * 255).astype(np.uint8)
+        if isinstance(state, dict):
+            state_compressed = (
+                (state['matrix'] * 255).astype(np.uint8),
+                state['sectors'].astype(np.float32),
+            )
+            next_compressed = (
+                (next_state['matrix'] * 255).astype(np.uint8),
+                next_state['sectors'].astype(np.float32),
+            )
+        else:
+            # Legacy: plain numpy array
+            state_compressed = (state * 255).astype(np.uint8)
+            next_compressed = (next_state * 255).astype(np.uint8)
 
-        self.memory.push(state_u8, action, reward, next_state_u8, done)
+        self.memory.push(state_compressed, action, reward, next_compressed, done)
 
     def optimize_model(self):
         if len(self.memory) < self.config.opt.batch_size:
@@ -190,29 +180,39 @@ class DDQNAgent:
         # Unzip
         batch_state, batch_action, batch_reward, batch_next, batch_done = zip(*transitions)
 
-        # Convert to tensors
-        # Note: They are uint8, need to convert back to float and normalize
-        state_batch = torch.tensor(np.array(batch_state), dtype=torch.float32).to(self.device) / 255.0
         action_batch = torch.tensor(batch_action, dtype=torch.long).unsqueeze(1).to(self.device)
         reward_batch = torch.tensor(batch_reward, dtype=torch.float32).to(self.device)
-        next_batch = torch.tensor(np.array(batch_next), dtype=torch.float32).to(self.device) / 255.0
         done_batch = torch.tensor(batch_done, dtype=torch.float32).to(self.device)
         weights_batch = torch.tensor(is_weights, dtype=torch.float32).to(self.device)
 
-        # Reward scaling: divide by reward_scale, then hard-clip to [-5, 5]
-        # Linear scaling preserves penalty differentiation:
-        # survival(0.5) → 0.05, food(8) → 0.8, death(-30) → -3.0, death(-200) → -5.0
+        # Reward scaling
         reward_scale = max(self.config.opt.reward_scale, 1.0)
         norm_rewards = torch.clamp(reward_batch / reward_scale, -5.0, 5.0)
 
-        # Q(s, a)
-        q_values = self.policy_net(state_batch).gather(1, action_batch)
+        if self.use_hybrid:
+            # Unpack tuples: (matrix_u8, sectors_f32)
+            s_matrices = torch.tensor(np.array([s[0] for s in batch_state]), dtype=torch.float32).to(self.device) / 255.0
+            s_sectors = torch.tensor(np.array([s[1] for s in batch_state]), dtype=torch.float32).to(self.device)
+            n_matrices = torch.tensor(np.array([s[0] for s in batch_next]), dtype=torch.float32).to(self.device) / 255.0
+            n_sectors = torch.tensor(np.array([s[1] for s in batch_next]), dtype=torch.float32).to(self.device)
 
-        # Double DQN Target
-        with torch.no_grad():
-            next_actions = self.policy_net(next_batch).max(1)[1].unsqueeze(1)
-            next_q_values = self.target_net(next_batch).gather(1, next_actions).squeeze(1)
-            expected_q_values = (next_q_values * self.config.opt.gamma * (1 - done_batch)) + norm_rewards
+            q_values = self.policy_net(s_matrices, s_sectors).gather(1, action_batch)
+
+            with torch.no_grad():
+                next_actions = self.policy_net(n_matrices, n_sectors).max(1)[1].unsqueeze(1)
+                next_q_values = self.target_net(n_matrices, n_sectors).gather(1, next_actions).squeeze(1)
+                expected_q_values = (next_q_values * self.config.opt.gamma * (1 - done_batch)) + norm_rewards
+        else:
+            # Legacy: plain uint8 arrays
+            state_batch = torch.tensor(np.array(batch_state), dtype=torch.float32).to(self.device) / 255.0
+            next_batch = torch.tensor(np.array(batch_next), dtype=torch.float32).to(self.device) / 255.0
+
+            q_values = self.policy_net(state_batch).gather(1, action_batch)
+
+            with torch.no_grad():
+                next_actions = self.policy_net(next_batch).max(1)[1].unsqueeze(1)
+                next_q_values = self.target_net(next_batch).gather(1, next_actions).squeeze(1)
+                expected_q_values = (next_q_values * self.config.opt.gamma * (1 - done_batch)) + norm_rewards
 
         # TD Error for PER
         td_errors = (q_values.squeeze(1) - expected_q_values).abs().detach().cpu().numpy()
@@ -255,9 +255,19 @@ class DDQNAgent:
             return 0, 200, None, None  # episode, max_steps (default), supervisor_state, run_uid
 
         checkpoint = torch.load(filepath, map_location=self.device)
-        self.policy_net.load_state_dict(checkpoint['policy_net_state'])
-        self.target_net.load_state_dict(checkpoint['target_net_state'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        # strict=False allows loading old DuelingDQN weights into HybridDuelingDQN
+        # (matching CNN layers transfer, new sector/merge layers stay randomly initialized)
+        missing_p, unexpected_p = self.policy_net.load_state_dict(checkpoint['policy_net_state'], strict=False)
+        missing_t, unexpected_t = self.target_net.load_state_dict(checkpoint['target_net_state'], strict=False)
+        if missing_p:
+            print(f"  [Checkpoint] Policy net - new layers (randomly init): {len(missing_p)} params")
+        if unexpected_p:
+            print(f"  [Checkpoint] Policy net - dropped layers: {len(unexpected_p)} params")
+        # Only load optimizer if architectures match (no missing keys)
+        if not missing_p and not unexpected_p:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        else:
+            print(f"  [Checkpoint] Architecture changed - optimizer reset to fresh state")
         self.steps_done = checkpoint['steps_done']
 
         max_steps = checkpoint.get('max_steps', 200)  # Default to 200 for old checkpoints

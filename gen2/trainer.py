@@ -407,6 +407,9 @@ class SuperPatternOptimizer:
 class VecFrameStack:
     """
     Wraps SubprocVecEnv to stack frames.
+    Observations are dicts: {'matrix': (3,H,W), 'sectors': (75,)}.
+    Only matrices get stacked (4 frames -> 12 channels).
+    Sectors are passed through from the current frame (no stacking).
     """
     def __init__(self, venv, k):
         self.venv = venv
@@ -414,46 +417,49 @@ class VecFrameStack:
         self.num_agents = venv.num_agents
         self.frames = [deque(maxlen=k) for _ in range(self.num_agents)]
 
-        # Initialize frames with initial reset
-        # We don't call reset here to avoid double reset, or we do?
-        # Standard wrappers often wait for explicit reset.
-        pass
+    def _stack_obs(self, i, current_sectors):
+        """Build stacked observation dict from frame deque + current sectors."""
+        stacked_matrix = np.concatenate([f for f in self.frames[i]], axis=0)
+        return {'matrix': stacked_matrix, 'sectors': current_sectors}
 
     def reset(self):
-        obs = self.venv.reset()
+        obs_list = self.venv.reset()
         stacked_obs = []
-        for i, o in enumerate(obs):
+        for i, o in enumerate(obs_list):
+            mat = o['matrix']
             self.frames[i].clear()
             for _ in range(self.k):
-                self.frames[i].append(o)
-            stacked_obs.append(np.concatenate(list(self.frames[i]), axis=0))
+                self.frames[i].append(mat)
+            stacked_obs.append(self._stack_obs(i, o['sectors']))
         return stacked_obs
 
     def step(self, actions):
-        obs, rews, dones, infos = self.venv.step(actions)
+        obs_list, rews, dones, infos = self.venv.step(actions)
         stacked_obs = []
 
         for i in range(self.num_agents):
-            # If done, the 'obs' is the first frame of the new episode.
-            # The terminal observation (last frame of old episode) is in info.
             if dones[i]:
                 # 1. Handle terminal observation stacking
-                term_frame = infos[i]['terminal_observation']
-                # Copy current deque to create terminal stack
+                term_obs = infos[i]['terminal_observation']
+                term_mat = term_obs['matrix']
+                term_sectors = term_obs['sectors']
                 term_stack_deque = self.frames[i].copy()
-                term_stack_deque.append(term_frame) # Now has k frames ending with terminal
-                infos[i]['terminal_observation'] = np.concatenate(list(term_stack_deque), axis=0)
+                term_stack_deque.append(term_mat)
+                term_stacked_matrix = np.concatenate(list(term_stack_deque), axis=0)
+                infos[i]['terminal_observation'] = {
+                    'matrix': term_stacked_matrix,
+                    'sectors': term_sectors,
+                }
 
                 # 2. Handle new episode start
-                # Clear deque and fill with new frame
+                new_mat = obs_list[i]['matrix']
                 self.frames[i].clear()
                 for _ in range(self.k):
-                    self.frames[i].append(obs[i])
+                    self.frames[i].append(new_mat)
             else:
-                self.frames[i].append(obs[i])
+                self.frames[i].append(obs_list[i]['matrix'])
 
-            # Create stacked observation
-            stacked_obs.append(np.concatenate(list(self.frames[i]), axis=0))
+            stacked_obs.append(self._stack_obs(i, obs_list[i]['sectors']))
 
         return stacked_obs, rews, dones, infos
 
@@ -463,10 +469,11 @@ class VecFrameStack:
 
     def reset_one(self, i):
         obs = self.venv.reset_one(i)
+        mat = obs['matrix']
         self.frames[i].clear()
         for _ in range(self.k):
-            self.frames[i].append(obs)
-        return np.concatenate(list(self.frames[i]), axis=0)
+            self.frames[i].append(mat)
+        return self._stack_obs(i, obs['sectors'])
 
     def close(self):
         self.venv.close()

@@ -1,121 +1,90 @@
 #!/bin/bash
 #
-# Auto Report Script - Slither.io MatrixBot Training
-# Runs analyze_matrix.py every 5 minutes and pushes results to git
+# Auto Report Script - SlitherBot Gen2 Training
+# Runs training_progress_analyzer.py every 10 minutes and pushes to GitHub
 #
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel)"
 cd "$SCRIPT_DIR"
 
-# Colors for output
+# Disable git pager (no 'q' to confirm)
+export GIT_PAGER=cat
+
+# Activate venv
+source /Users/dzaczek/slbot/venv/bin/activate
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Files to track
-FILES_TO_COMMIT=(
-    "*.png"
-    "*.log"
-    "*.csv"
-    "*.png"
-    "training_detailed.png"
-    "matrix_stats.csv"
-)
+log()     { echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1"; }
+error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+success() { echo -e "${GREEN}[OK]${NC} $1"; }
 
-log() {
-    echo -e "${BLUE}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"
-}
-
-error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-success() {
-    echo -e "${GREEN}[OK]${NC} $1"
-}
-
-# Interval in seconds (5 minutes = 300 seconds)
-INTERVAL=1500
+INTERVAL=600
 
 echo ""
-echo -e "${GREEN}╔════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║     🐍 MatrixBot Auto Report - Starting Loop           ║${NC}"
-echo -e "${GREEN}║     Interval: ${INTERVAL} seconds (5 minutes)                  ║${NC}"
-echo -e "${GREEN}║     Press Ctrl+C to stop                               ║${NC}"
-echo -e "${GREEN}╚════════════════════════════════════════════════════════╝${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}  SlitherBot Auto Report (${INTERVAL}s)${NC}"
+echo -e "${GREEN}  Repo: ${REPO_ROOT}${NC}"
+echo -e "${GREEN}  Ctrl+C to stop${NC}"
+echo -e "${GREEN}========================================${NC}"
 echo ""
 
-# Counter for iterations
 iteration=0
 
 while true; do
     iteration=$((iteration + 1))
+    log "--- Iteration #${iteration} ---"
 
-    echo ""
-    log "═══════════════════════════════════════════════════════"
-    log "📊 Iteration #${iteration} starting..."
-    log "═══════════════════════════════════════════════════════"
+    # Step 1: Run analyzer
+    log "Running analyzer..."
+    python3 "$SCRIPT_DIR/training_progress_analyzer.py" --latest 2>&1 | tail -3
 
-    # Step 1: Run analyze_matrix.py
-    log "Running analyze_matrix.py..."
+    # Step 2: Stage files using git -C (never cd away)
+    FILES=(
+        training_stats.csv
+        training_progress_overview.png
+        training_learning_detection.png
+        training_goal_progress.png
+        training_detailed.png
+        training_plot.png
+        progress_report.md
+        logs/train.log
+        logs/app.log
+    )
 
-    if python3 analyze_matrix.py 2>&1; then
-        success "Analysis completed"
-    else
-        error "Analysis failed, but continuing..."
-    fi
-
-    # Step 2: Check if there are changes to commit
-    log "Checking for changes..."
-
-    cd "$SCRIPT_DIR/.."  # Go to repo root
-
-    # Add the generated files
-    changes_found=false
-    for file in "${FILES_TO_COMMIT[@]}"; do
-        filepath="gen2/$file"
-        if [[ -f "$filepath" ]]; then
-            git add "$filepath" 2>/dev/null
-            if git diff --cached --quiet "$filepath" 2>/dev/null; then
-                : # No changes
-            else
-                changes_found=true
-                log "  📄 $file - changed"
-            fi
+    added=0
+    for f in "${FILES[@]}"; do
+        full="$SCRIPT_DIR/$f"
+        if [[ -f "$full" ]]; then
+            git -C "$REPO_ROOT" add -f "gen2/$f" 2>&1
+            added=$((added + 1))
         fi
     done
+    log "Staged $added files"
 
-    # Step 3: Commit and push if there are changes
-    if $changes_found; then
-        log "Committing changes..."
-
-        # Create commit message with timestamp
-        commit_msg="auto: update training reports $(date '+%Y-%m-%d %H:%M')"
-
-        if git commit -m "$commit_msg" 2>&1; then
-            success "Committed: $commit_msg"
-
-            # Push to origin
-            log "Pushing to origin/main..."
-            if git push origin main 2>&1; then
-                success "Pushed successfully!"
-            else
-                error "Push failed. Will retry next iteration."
-            fi
-        else
-            error "Commit failed"
-        fi
-    else
+    # Step 3: Check & commit & push
+    if git -C "$REPO_ROOT" diff --cached --quiet; then
         log "No changes to commit"
+    else
+        git -C "$REPO_ROOT" diff --cached --stat
+        git -C "$REPO_ROOT" commit -m "stats" 2>&1 | tail -1
+        success "Committed"
+        if git -C "$REPO_ROOT" push origin main 2>&1; then
+            success "Pushed to GitHub"
+        else
+            error "Push failed"
+        fi
     fi
 
-    cd "$SCRIPT_DIR"  # Return to gen2 directory
-
-    # Step 4: Wait for next iteration
-    log "Next update in ${INTERVAL} seconds ($(date -d "+${INTERVAL} seconds" '+%H:%M:%S' 2>/dev/null || date -v+${INTERVAL}S '+%H:%M:%S'))"
-    log "═══════════════════════════════════════════════════════"
+    next_time=$(date -v+${INTERVAL}S '+%H:%M:%S' 2>/dev/null || echo "~10min")
+    log "Next: ${next_time}"
+    log "---"
+    echo ""
 
     sleep $INTERVAL
 done

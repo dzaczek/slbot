@@ -12,11 +12,14 @@ class EnvironmentConfig:
 
 @dataclass
 class ModelConfig:
-    architecture: str = 'DuelingDQN'
+    architecture: str = 'HybridDuelingDQN'
     activation: str = 'LeakyReLU'
     negative_slope: float = 0.01
     fc_units: int = 512
     input_channels: int = 3
+    sector_dim: int = 75
+    sector_scope: float = 1500.0
+    num_sectors: int = 24
 
 @dataclass
 class OptimizationConfig:
