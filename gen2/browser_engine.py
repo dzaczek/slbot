@@ -150,15 +150,20 @@ class SlitherBrowser:
         // Disable visual effects
         window.redraw = window.redraw || function(){};
         
-        // Override mouse controls
-        window.onmousemove = function(e) {
-            if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
-            return false;
-        };
-        
-        // Initialize control variables
-        if (typeof window.xm === 'undefined') window.xm = 0;
-        if (typeof window.ym === 'undefined') window.ym = 0;
+        // Block ALL mouse events (capture phase stops addEventListener listeners too)
+        ['mousemove', 'pointermove', 'touchmove'].forEach(function(evt) {
+            document.addEventListener(evt, function(e) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+            }, true);  // capture phase = fires BEFORE game's listeners
+        });
+        window.onmousemove = null;
+
+        // Bot steering: game reads xm/ym each frame for target angle
+        // We set them from send_action(), this flag confirms bot has control
+        window._botSteering = true;
+        if (typeof window.xm === 'undefined') window.xm = window.innerWidth / 2;
+        if (typeof window.ym === 'undefined') window.ym = window.innerHeight / 2;
         
         console.log("SlitherBot: Controls injected.");
         """
@@ -637,21 +642,29 @@ class SlitherBrowser:
         control_js = f"""
         var ang = {angle};
         var is_boost = {is_boost};
-        
+
         if (window.slither) {{
             var canvas = document.getElementById('mc') || document.querySelector('canvas');
             var w = canvas ? canvas.width : 800;
             var h = canvas ? canvas.height : 600;
             var centerX = w / 2;
             var centerY = h / 2;
-            
+
             var radius = 300;
             var target_x = centerX + Math.cos(ang) * radius;
             var target_y = centerY + Math.sin(ang) * radius;
-            
+
+            // Set mouse target (game reads these each frame)
             window.xm = target_x;
             window.ym = target_y;
-            
+
+            // Also set via game's internal mouse tracking if available
+            if (typeof window.mx !== 'undefined') window.mx = target_x;
+            if (typeof window.my !== 'undefined') window.my = target_y;
+
+            // Force angle directly if game exposes it
+            if (typeof window.desired_ang !== 'undefined') window.desired_ang = ang;
+
             // Boost control
             if (is_boost) {{
                 window.accelerating = true;
