@@ -869,7 +869,7 @@ if __name__ == "__main__":
     parser.add_argument("--style-name", type=str, help="Learning style name (e.g. 'Aggressive')")
     parser.add_argument("--model-path", type=str, help="Path to model checkpoint to load")
     parser.add_argument("--url", type=str, default="http://slither.io", help="Game URL (e.g. http://eslither.io)")
-    parser.add_argument("--vision-size", type=int, default=84, help="Vision input size (64, 84, 128, etc.)")
+    parser.add_argument("--vision-size", type=int, default=0, help="Vision input size override (default: from config)")
     args = parser.parse_args()
 
     mp.set_start_method('spawn', force=True)

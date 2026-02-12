@@ -873,6 +873,46 @@ class SlitherEnv:
              wall_mask = dist_sq > radius_sq
              matrix[1][wall_mask] = 1.0
 
+        # 5. Wall Compass (Channel 1 - DANGER)
+        # Show direction to nearest wall even when wall is off-screen
+        # Brightness proportional to proximity (brighter = closer)
+        if dist_to_wall_py < self.wall_alert_dist:
+            # Direction from snake to nearest wall point (outward from map center)
+            wall_dx = mx - self.map_center_x
+            wall_dy = my - self.map_center_y
+            wall_mag = math.hypot(wall_dx, wall_dy)
+
+            if wall_mag > 100:  # avoid div-by-zero near center
+                wall_dx /= wall_mag
+                wall_dy /= wall_mag
+
+                # Convert world direction to egocentric
+                rx, ry = _ego_raw(wall_dx * self.view_size, wall_dy * self.view_size)
+                dx_s = rx * self.scale
+                dy_s = ry * self.scale
+
+                # Normalize to unit vector
+                mag_s = math.hypot(dx_s, dy_s)
+                if mag_s > 0:
+                    ndx = dx_s / mag_s
+                    ndy = dy_s / mag_s
+
+                    # Project to matrix edge
+                    half_size = self.matrix_size / 2 - 2
+                    tx = half_size / abs(ndx) if abs(ndx) > 1e-6 else float('inf')
+                    ty = half_size / abs(ndy) if abs(ndy) > 1e-6 else float('inf')
+                    t = min(tx, ty)
+
+                    ex = self.matrix_size / 2 + t * ndx
+                    ey = self.matrix_size / 2 + t * ndy
+
+                    # Brightness: 0.3 at alert_dist, 1.0 at wall
+                    proximity = 1.0 - (dist_to_wall_py / max(self.wall_alert_dist, 1))
+                    brightness = 0.3 + 0.7 * proximity
+                    radius = 1.5 + 1.5 * proximity  # bigger when closer
+
+                    self._draw_circle(matrix, 1, ex, ey, radius, brightness)
+
         return matrix
 
     def close(self):

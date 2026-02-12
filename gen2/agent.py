@@ -28,15 +28,18 @@ class DDQNAgent:
 
         # Calculate input channels (3 base channels * frame_stack)
         self.input_channels = 3 * config.env.frame_stack
+        self.input_size = config.env.resolution
 
         self.policy_net = DuelingDQN(
             input_channels=self.input_channels,
-            action_dim=6
+            action_dim=6,
+            input_size=self.input_size
         ).to(self.device)
 
         self.target_net = DuelingDQN(
             input_channels=self.input_channels,
-            action_dim=6
+            action_dim=6,
+            input_size=self.input_size
         ).to(self.device)
 
         self.target_net.load_state_dict(self.policy_net.state_dict())

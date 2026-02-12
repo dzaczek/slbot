@@ -5,7 +5,7 @@ from typing import Tuple
 class EnvironmentConfig:
     frame_stack: int = 4
     frame_skip: int = 4
-    resolution: Tuple[int, int] = (84, 84)
+    resolution: Tuple[int, int] = (128, 128)
     grayscale: bool = False
     num_agents: int = 1
     view_first: bool = False
