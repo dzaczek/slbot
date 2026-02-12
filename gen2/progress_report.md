@@ -1,37 +1,40 @@
 # Slither.io Bot - Training Progress Report
 
-**Generated:** 2026-02-12 15:16:58  
-**Total Episodes:** 4099  
+**Generated:** 2026-02-12 16:31:20  
+**Total Episodes:** 86  
 **Training Sessions:** 1
 
-## Verdict: NOT LEARNING (Confidence: 45%)
+## Verdict: NOT LEARNING (Confidence: 50%)
 
 **Goal Feasibility:** UNLIKELY (5-25% chance) without tuning
 
 ### Warnings
-- Rewards flat: change = 2.7 between halves
+- Epsilon very high (0.866) - still mostly random
+
+### Positive Signals
+- Loss decreasing (model converging)
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | Max | P50 | P95 |
 |--------|------|-----|-----|-----|-----|-----|
-| Reward | 210.81 | 307.48 | -40.00 | 3087.36 | 101.78 | 801.29 |
-| Steps | 69.19 | 59.38 | 1.00 | 400.00 | 53.00 | 186.10 |
-| Food | 30.13 | 12.99 | 0.00 | 106.00 | 27.00 | 55.00 |
-| Loss | 2.82 | 2.50 | 0.01 | 18.59 | 2.20 | 7.80 |
+| Reward | 718.53 | 784.57 | -31.58 | 3106.91 | 362.48 | 2544.06 |
+| Steps | 149.63 | 103.74 | 5.00 | 400.00 | 117.50 | 360.75 |
+| Food | 49.84 | 27.70 | 3.00 | 122.00 | 39.00 | 102.75 |
+| Loss | 0.14 | 0.39 | 0.01 | 3.35 | 0.05 | 0.42 |
 
 ## Goal Progress
 
 | Target | Current Best | Goal | Progress |
 |--------|-------------|------|----------|
-| Points | 106 | 6,000 | 1.8% |
+| Points | 122 | 6,000 | 2.0% |
 | Survival | 13.3 min | 60 min | 22.2% |
 
 ## Session History
 
 | # | Style | Episodes | Avg Reward | Avg Steps |
 |---|-------|----------|------------|----------|
-| 1 | Standard (Curriculum) | 1-4099 | 210.8 | 69 |
+| 1 | Unknown | 1-86 | 718.5 | 150 |
 
 ## Recommendations
 
@@ -40,9 +43,7 @@ Some learning signals present but not strong enough.
   2. Increase training duration significantly
   3. Consider curriculum adjustments
 
-1. Average episode too short. Consider:
-     - Reducing death penalties to avoid discouraging exploration
-     - Adding survival bonus to incentivize staying alive
+1. Epsilon is 0.866 after 86 episodes. Consider faster decay (eps_decay=50000) or lower eps_start if resuming.
 
 ## Charts
 
