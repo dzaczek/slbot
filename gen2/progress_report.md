@@ -1,19 +1,16 @@
 # Slither.io Bot - Training Progress Report
 
-**Generated:** 2026-02-12 17:50:21  
-**Total Episodes:** 239  
+**Generated:** 2026-02-12 18:00:25  
+**Total Episodes:** 345  
 **Training Sessions:** 2
 
-## Verdict: NOT LEARNING (Confidence: 25%)
+## Verdict: NOT LEARNING (Confidence: 45%)
 
-**Goal Feasibility:** VERY UNLIKELY (<5% chance)
-
-### Critical Issues
-- Rewards DECLINING: -57.9 (getting worse)
-- Very short episodes: avg=49 steps (dying too fast)
+**Goal Feasibility:** UNLIKELY (5-25% chance) without tuning
 
 ### Warnings
-- Loss very high (40.28) - training unstable
+- Rewards flat: change = -33.8 between halves
+- Loss very high (41.08) - training unstable
 
 ### Positive Signals
 - Loss decreasing (model converging)
@@ -22,10 +19,10 @@
 
 | Metric | Mean | Std | Min | Max | P50 | P95 |
 |--------|------|-----|-----|-----|-----|-----|
-| Reward | 116.97 | 178.18 | -38.52 | 1104.08 | 57.84 | 485.20 |
-| Steps | 49.24 | 42.48 | 2.00 | 225.00 | 38.00 | 139.00 |
-| Food | 25.85 | 8.69 | 0.00 | 62.00 | 24.00 | 41.00 |
-| Loss | 59.25 | 50.22 | 0.00 | 588.59 | 48.45 | 123.19 |
+| Reward | 120.44 | 171.93 | -38.52 | 1104.08 | 63.41 | 486.17 |
+| Steps | 50.60 | 41.73 | 2.00 | 225.00 | 40.00 | 139.00 |
+| Food | 26.11 | 8.48 | 0.00 | 62.00 | 24.00 | 41.80 |
+| Loss | 51.92 | 44.72 | 0.00 | 588.59 | 40.77 | 116.10 |
 
 ## Goal Progress
 
@@ -39,14 +36,14 @@
 | # | Style | Episodes | Avg Reward | Avg Steps |
 |---|-------|----------|------------|----------|
 | 1 | Unknown | 1-8 | 253.5 | 86 |
-| 2 | Standard (Curriculum) | 9-239 | 112.2 | 48 |
+| 2 | Standard (Curriculum) | 9-345 | 117.3 | 50 |
 
 ## Recommendations
 
-Significant issues detected. Major changes needed:
-  1. Fix learning rate and optimizer state
-  2. Simplify reward structure
-  3. Ensure episodes can last long enough to learn from
+Some learning signals present but not strong enough.
+  1. Fine-tune hyperparameters
+  2. Increase training duration significantly
+  3. Consider curriculum adjustments
 
 1. Average episode too short. Consider:
      - Reducing death penalties to avoid discouraging exploration
