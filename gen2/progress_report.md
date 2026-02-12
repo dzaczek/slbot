@@ -1,15 +1,15 @@
 # Slither.io Bot - Training Progress Report
 
-**Generated:** 2026-02-12 22:15:03  
-**Total Episodes:** 229  
+**Generated:** 2026-02-12 22:25:07  
+**Total Episodes:** 325  
 **Training Sessions:** 1
 
-## Verdict: NOT LEARNING (Confidence: 40%)
+## Verdict: NOT LEARNING (Confidence: 50%)
 
-**Goal Feasibility:** VERY UNLIKELY (<5% chance)
+**Goal Feasibility:** UNLIKELY (5-25% chance) without tuning
 
-### Critical Issues
-- Rewards DECLINING: -74.5 (getting worse)
+### Warnings
+- Rewards flat: change = -43.6 between halves
 
 ### Positive Signals
 - Loss decreasing (model converging)
@@ -18,10 +18,10 @@
 
 | Metric | Mean | Std | Min | Max | P50 | P95 |
 |--------|------|-----|-----|-----|-----|-----|
-| Reward | 187.19 | 291.91 | -38.58 | 1996.81 | 82.38 | 807.22 |
-| Steps | 63.66 | 57.79 | 2.00 | 318.00 | 47.00 | 189.20 |
-| Food | 28.06 | 12.34 | 0.00 | 77.00 | 24.00 | 52.60 |
-| Loss | 31.47 | 74.72 | 1.20 | 392.24 | 6.32 | 230.81 |
+| Reward | 187.95 | 271.63 | -38.58 | 1996.81 | 91.72 | 788.52 |
+| Steps | 65.17 | 55.26 | 2.00 | 318.00 | 51.00 | 185.40 |
+| Food | 27.93 | 11.52 | 0.00 | 77.00 | 25.00 | 50.80 |
+| Loss | 23.78 | 63.86 | 1.07 | 392.24 | 5.87 | 181.56 |
 
 ## Goal Progress
 
@@ -34,14 +34,14 @@
 
 | # | Style | Episodes | Avg Reward | Avg Steps |
 |---|-------|----------|------------|----------|
-| 1 | Standard (Curriculum) | 1-229 | 187.2 | 64 |
+| 1 | Standard (Curriculum) | 1-325 | 187.9 | 65 |
 
 ## Recommendations
 
-Significant issues detected. Major changes needed:
-  1. Fix learning rate and optimizer state
-  2. Simplify reward structure
-  3. Ensure episodes can last long enough to learn from
+Some learning signals present but not strong enough.
+  1. Fine-tune hyperparameters
+  2. Increase training duration significantly
+  3. Consider curriculum adjustments
 
 1. Average episode too short. Consider:
      - Reducing death penalties to avoid discouraging exploration
