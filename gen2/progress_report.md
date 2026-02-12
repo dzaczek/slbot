@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report
 
-**Generated:** 2026-02-12 22:25:07  
-**Total Episodes:** 325  
+**Generated:** 2026-02-12 22:35:11  
+**Total Episodes:** 430  
 **Training Sessions:** 1
 
 ## Verdict: NOT LEARNING (Confidence: 50%)
@@ -9,7 +9,7 @@
 **Goal Feasibility:** UNLIKELY (5-25% chance) without tuning
 
 ### Warnings
-- Rewards flat: change = -43.6 between halves
+- Rewards flat: change = -18.0 between halves
 
 ### Positive Signals
 - Loss decreasing (model converging)
@@ -18,10 +18,10 @@
 
 | Metric | Mean | Std | Min | Max | P50 | P95 |
 |--------|------|-----|-----|-----|-----|-----|
-| Reward | 187.95 | 271.63 | -38.58 | 1996.81 | 91.72 | 788.52 |
-| Steps | 65.17 | 55.26 | 2.00 | 318.00 | 51.00 | 185.40 |
-| Food | 27.93 | 11.52 | 0.00 | 77.00 | 25.00 | 50.80 |
-| Loss | 23.78 | 63.86 | 1.07 | 392.24 | 5.87 | 181.56 |
+| Reward | 183.64 | 257.98 | -38.58 | 1996.81 | 90.59 | 682.12 |
+| Steps | 64.60 | 53.72 | 2.00 | 318.00 | 50.00 | 169.55 |
+| Food | 27.86 | 11.11 | 0.00 | 77.00 | 25.00 | 48.00 |
+| Loss | 19.24 | 56.11 | 0.86 | 392.24 | 5.54 | 75.34 |
 
 ## Goal Progress
 
@@ -34,7 +34,7 @@
 
 | # | Style | Episodes | Avg Reward | Avg Steps |
 |---|-------|----------|------------|----------|
-| 1 | Standard (Curriculum) | 1-325 | 187.9 | 65 |
+| 1 | Standard (Curriculum) | 1-430 | 183.6 | 65 |
 
 ## Recommendations
 
