@@ -24,7 +24,7 @@ log()     { echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC} $1"; }
 
-INTERVAL=600
+INTERVAL=3600
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -47,14 +47,22 @@ while true; do
     # Step 2: Stage files using git -C (never cd away)
     FILES=(
         training_stats.csv
-        training_progress_overview.png
-        training_learning_detection.png
-        training_goal_progress.png
-        training_detailed.png
-        training_plot.png
         progress_report.md
         logs/train.log
         logs/app.log
+        chart_01_dashboard.png
+        chart_02_stage_progression.png
+        chart_03_stage_distributions.png
+        chart_04_hyperparameters.png
+        chart_05_correlations.png
+        chart_05b_correlation_heatmap.png
+        chart_06_performance_bands.png
+        chart_07_death_analysis.png
+        chart_08_food_efficiency.png
+        chart_09_reward_distributions.png
+        chart_10_learning_detection.png
+        chart_11_goal_gauges.png
+        chart_12_hyperparameter_analysis.png
     )
 
     added=0

@@ -135,5 +135,21 @@ class TestDeathClassification(unittest.TestCase):
         print(f"Scenario 5 (NaN Wall Dist): Cause={cause}, Penalty={penalty}")
         self.assertEqual(cause, "SnakeCollision")
 
+    def test_inside_map_no_enemy_returns_snake_collision(self):
+        """
+        Scenario 6: Far from wall, NO enemies in data (inf distance).
+        Should return SnakeCollision (not Unknown).
+        """
+        data = {
+            'self': {'x': 21600, 'y': 21600},  # Center of map
+            'enemies': [],  # No enemies detected
+            'boundary_type': 'circle'
+        }
+        self.env._update_from_game_data(data)
+        penalty, cause = self.env._get_death_reward_and_cause(data)
+        print(f"Scenario 6 (No enemies, inside map): Cause={cause}, Penalty={penalty}")
+        self.assertEqual(cause, "SnakeCollision")
+        self.assertEqual(penalty, self.env.death_snake_penalty)
+
 if __name__ == '__main__':
     unittest.main()

@@ -188,10 +188,10 @@ class CurriculumManager:
         self.mode = self.style_config["type"] # "curriculum" or "static"
 
         self.current_stage = start_stage
-        self.episode_food_history = deque(maxlen=100)
-        self.episode_steps_history = deque(maxlen=100)
-        self.episode_food_ratio_history = deque(maxlen=100)
-        self.episode_cause_history = deque(maxlen=100)
+        self.episode_food_history = deque(maxlen=300)
+        self.episode_steps_history = deque(maxlen=300)
+        self.episode_food_ratio_history = deque(maxlen=300)
+        self.episode_cause_history = deque(maxlen=300)
 
     def get_config(self):
         """Return current stage config dict."""
@@ -206,7 +206,7 @@ class CurriculumManager:
         else:
             return self.style_config["stages"][self.current_stage]["max_steps"]
 
-    def record_episode(self, food_eaten, steps, cause="Unknown"):
+    def record_episode(self, food_eaten, steps, cause="SnakeCollision"):
         """Record episode metrics for promotion check."""
         self.episode_food_history.append(food_eaten)
         self.episode_steps_history.append(steps)
@@ -221,13 +221,41 @@ class CurriculumManager:
 
         cfg = self.style_config["stages"][self.current_stage]
         metric = cfg["promote_metric"]
-        threshold = cfg["promote_threshold"]
         window = cfg["promote_window"]
 
         if metric is None:
             return False  # Final stage
 
-        if metric == "food_per_step":
+        if metric == "compound":
+            # All conditions in promote_conditions must be met simultaneously
+            conditions = cfg.get("promote_conditions", {})
+            if not conditions:
+                return False
+            min_len = max(len(self.episode_food_history), len(self.episode_steps_history))
+            if min_len < window:
+                return False
+
+            recent_food = list(self.episode_food_history)[-window:]
+            recent_steps = list(self.episode_steps_history)[-window:]
+            avg_food = sum(recent_food) / len(recent_food)
+            avg_steps = sum(recent_steps) / len(recent_steps)
+
+            blocked = []
+            if "avg_food" in conditions and avg_food < conditions["avg_food"]:
+                blocked.append(f"avg_food={avg_food:.1f}<{conditions['avg_food']}")
+            if "avg_steps" in conditions and avg_steps < conditions["avg_steps"]:
+                blocked.append(f"avg_steps={avg_steps:.0f}<{conditions['avg_steps']}")
+
+            if blocked:
+                if len(self.episode_steps_history) % 50 == 0:
+                    print(f"  [Curriculum] Compound blocked: {', '.join(blocked)}")
+                return False
+
+            self._promote()
+            return True
+
+        elif metric == "food_per_step":
+            threshold = cfg["promote_threshold"]
             if len(self.episode_food_ratio_history) < window:
                 return False
             recent = list(self.episode_food_ratio_history)[-window:]
@@ -237,6 +265,7 @@ class CurriculumManager:
                 return True
 
         elif metric == "avg_food":
+            threshold = cfg["promote_threshold"]
             if len(self.episode_food_history) < window:
                 return False
             recent = list(self.episode_food_history)[-window:]
@@ -246,6 +275,7 @@ class CurriculumManager:
                 return True
 
         elif metric == "avg_steps":
+            threshold = cfg["promote_threshold"]
             if len(self.episode_steps_history) < window:
                 return False
             recent = list(self.episode_steps_history)[-window:]
@@ -260,7 +290,6 @@ class CurriculumManager:
                 wall_deaths = sum(1 for c in recent_causes if c == "Wall")
                 wall_ratio = wall_deaths / len(recent_causes)
                 if wall_ratio > wall_death_max:
-                    # Log why promotion is blocked (every 50 episodes to avoid spam)
                     if len(self.episode_steps_history) % 50 == 0:
                         print(f"  [Curriculum] avg_steps={avg:.0f} OK but wall_death={wall_ratio:.0%} > {wall_death_max:.0%} — blocked")
                     return False
@@ -293,10 +322,10 @@ class CurriculumManager:
         """Restore from checkpoint."""
         if state:
             self.current_stage = state.get("stage", 1)
-            self.episode_food_history = deque(state.get("food_history", []), maxlen=100)
-            self.episode_steps_history = deque(state.get("steps_history", []), maxlen=100)
-            self.episode_food_ratio_history = deque(state.get("food_ratio_history", []), maxlen=100)
-            self.episode_cause_history = deque(state.get("cause_history", []), maxlen=100)
+            self.episode_food_history = deque(state.get("food_history", []), maxlen=300)
+            self.episode_steps_history = deque(state.get("steps_history", []), maxlen=300)
+            self.episode_food_ratio_history = deque(state.get("food_ratio_history", []), maxlen=300)
+            self.episode_cause_history = deque(state.get("cause_history", []), maxlen=300)
 
 
 class SuperPatternOptimizer:
@@ -665,6 +694,7 @@ def train(args):
     stage_cfg = curriculum.get_config()
     env.set_stage(stage_cfg)
     max_steps_per_episode = curriculum.get_max_steps()
+    agent.set_gamma(stage_cfg.get('gamma', cfg.opt.gamma))
     logger.info(f"  Curriculum Stage: {curriculum.current_stage} ({stage_cfg['name']})")
     logger.info(f"  Max Steps: {max_steps_per_episode}")
     super_pattern = SuperPatternOptimizer(stage_cfg, cfg, logger)
@@ -690,7 +720,7 @@ def train(args):
     episode_food = [0] * cfg.env.num_agents
 
     # Death Counters
-    death_stats = {"Wall": 0, "SnakeCollision": 0, "Unknown": 0, "MaxSteps": 0}
+    death_stats = {"Wall": 0, "SnakeCollision": 0, "InvalidFrame": 0, "BrowserError": 0, "MaxSteps": 0}
 
     # Initial Reset
     states = env.reset()
@@ -701,8 +731,8 @@ def train(args):
         total_reward = episode_rewards[agent_index]
         food_eaten = episode_food[agent_index]
 
-        # Store transition
-        agent.remember(states[agent_index], actions[agent_index], rewards[agent_index], terminal_state, True)
+        # Store transition (n-step)
+        agent.remember_nstep(states[agent_index], actions[agent_index], rewards[agent_index], terminal_state, True, agent_id=agent_index)
 
         # Log
         start_episode += 1
@@ -715,13 +745,13 @@ def train(args):
         if force_done_flag:
             cause_label = "MaxSteps"
         else:
-            cause_label = cause or "Unknown"
+            cause_label = cause if cause else "SnakeCollision"
 
         # Update death stats
         if cause_label in death_stats:
             death_stats[cause_label] += 1
         else:
-            death_stats["Unknown"] = death_stats.get("Unknown", 0) + 1
+            death_stats["SnakeCollision"] += 1
 
         pos = infos[agent_index].get('pos', (0, 0))
         wall_dist = infos[agent_index].get('wall_dist', -1)
@@ -781,10 +811,12 @@ def train(args):
                 logger.info(f"  LR reset to {cfg.opt.lr}")
                 episodes_since_improvement = 0
 
-        super_pattern.record_episode(cause_label, food_eaten, total_steps_local, total_reward)
-        updated_stage_cfg = super_pattern.maybe_update()
-        if updated_stage_cfg:
-            env.set_stage(updated_stage_cfg)
+        # SuperPattern only active from stage 3+
+        if curriculum.current_stage >= 3:
+            super_pattern.record_episode(cause_label, food_eaten, total_steps_local, total_reward)
+            updated_stage_cfg = super_pattern.maybe_update()
+            if updated_stage_cfg:
+                env.set_stage(updated_stage_cfg)
 
         # Track metrics for curriculum promotion
         curriculum.record_episode(food_eaten, total_steps_local, cause_label)
@@ -794,6 +826,7 @@ def train(args):
             stage_cfg = curriculum.get_config()
             max_steps_per_episode = curriculum.get_max_steps()
             env.set_stage(stage_cfg)
+            agent.set_gamma(stage_cfg.get('gamma', cfg.opt.gamma))
             super_pattern.reset_stage(stage_cfg)
             # Save checkpoint on promotion
             agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
@@ -841,11 +874,11 @@ def train(args):
                     finalize_episode(
                         agent_index=i,
                         terminal_state=terminal_state,
-                        cause=infos[i].get('cause', 'Unknown'),
+                        cause=infos[i].get('cause', 'SnakeCollision'),
                         force_done_flag=force_done and not dones[i]
                     )
                 else:
-                    agent.remember(states[i], actions[i], rewards[i], next_states[i], False)
+                    agent.remember_nstep(states[i], actions[i], rewards[i], next_states[i], False, agent_id=i)
 
             # Update states
             states = next_states
@@ -872,7 +905,7 @@ if __name__ == "__main__":
     parser.add_argument("--view", action="store_true", help="View first agent")
     parser.add_argument("--view-plus", action="store_true", help="View first agent with bot vision overlay grid")
     parser.add_argument("--resume", action="store_true", help="Resume")
-    parser.add_argument("--stage", type=int, default=0, help="Force start at specific stage (1-3)")
+    parser.add_argument("--stage", type=int, default=0, help="Force start at specific stage (1-4)")
     parser.add_argument("--style-name", type=str, help="Learning style name (e.g. 'Aggressive')")
     parser.add_argument("--model-path", type=str, help="Path to model checkpoint to load")
     parser.add_argument("--url", type=str, default="http://slither.io", help="Game URL (e.g. http://eslither.io)")

@@ -69,6 +69,11 @@ class SlitherEnv:
         self.wall_proximity_penalty = 0.0
         self.enemy_proximity_penalty = 0.0
 
+        # New reward components
+        self.enemy_approach_penalty = 0.0
+        self.boost_penalty = 0.0
+        self.prev_enemy_dist = None
+
         # Frame validation (from tsrgy0)
         self.last_matrix = self._matrix_zeros()
         self.last_valid_data = None
@@ -117,8 +122,13 @@ class SlitherEnv:
         self.wall_proximity_penalty = stage_config.get('wall_proximity_penalty', 0.0)
         self.enemy_proximity_penalty = stage_config.get('enemy_proximity_penalty', 0.0)
 
-        print(f"  ENV: food={self.food_reward} surv={self.survival_reward} "
-              f"wall={self.death_wall_penalty} snake={self.death_snake_penalty}")
+        # New reward components
+        self.enemy_approach_penalty = stage_config.get('enemy_approach_penalty', 0.0)
+        self.boost_penalty = stage_config.get('boost_penalty', 0.0)
+
+        print(f"  ENV: food={self.food_reward} shaping={self.food_shaping} surv={self.survival_reward} "
+              f"wall={self.death_wall_penalty} snake={self.death_snake_penalty} "
+              f"enemy_approach={self.enemy_approach_penalty} boost_pen={self.boost_penalty}")
 
     def _update_from_game_data(self, data):
         """Update wall distance and map info from game data."""
@@ -324,7 +334,7 @@ class SlitherEnv:
         COLLISION_BUFFER = 120
         WALL_BUFFER = 120
         
-        cause = "Unknown"
+        cause = "SnakeCollision"
         penalty = self.death_snake_penalty
 
         # Priority 1: Strictly outside map (Absolute Wall Death)
@@ -342,13 +352,14 @@ class SlitherEnv:
              cause = "Wall"
              penalty = self.death_wall_penalty
 
-        # Priority 4: Default (Assumed Snake Collision if inside map)
+        # Priority 4: Must be snake collision (only 2 death types in slither.io)
         else:
-            cause = "Unknown" if min_enemy_dist == float('inf') else "SnakeCollision"
+            cause = "SnakeCollision"
             penalty = self.death_snake_penalty
-        
+
         min_enemy_display = min_enemy_dist if min_enemy_dist != float('inf') else -1
-        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_display:.0f} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
+        enemy_detected = min_enemy_dist != float('inf')
+        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_display:.0f} EnemyDetected={enemy_detected} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
         
         return penalty, cause
 
@@ -358,6 +369,7 @@ class SlitherEnv:
         self.near_wall_frames = 0
         self.invalid_frame_count = 0
         self.steps_in_episode = 0
+        self.prev_enemy_dist = None
         
         # One-time game variable scan
         if not self._map_vars_printed:
@@ -616,7 +628,7 @@ class SlitherEnv:
         if current_food_dist is not None and new_food_dist is not None:
             dist_delta = current_food_dist - new_food_dist
             shaping_reward = dist_delta * self.food_shaping
-            shaping_reward = max(-0.5, min(0.5, shaping_reward))
+            shaping_reward = max(-2.0, min(2.0, shaping_reward))
             reward += shaping_reward
         
         # 5. Straight penalty (encourage turning/exploration)
@@ -631,10 +643,22 @@ class SlitherEnv:
         if self.enemy_proximity_penalty > 0 and min_enemy_dist != float('inf') and min_enemy_dist < self.enemy_alert_dist:
             enemy_ratio = max(0.0, 1.0 - (min_enemy_dist / max(self.enemy_alert_dist, 1)))
             reward -= self.enemy_proximity_penalty * enemy_ratio
-        
+
+        # 7. Enemy approach penalty (penalize getting closer to enemies)
+        if self.enemy_approach_penalty > 0 and min_enemy_dist != float('inf'):
+            if self.prev_enemy_dist is not None and self.prev_enemy_dist != float('inf'):
+                approach_delta = self.prev_enemy_dist - min_enemy_dist
+                if approach_delta > 0 and min_enemy_dist < self.enemy_alert_dist:
+                    reward -= self.enemy_approach_penalty * (approach_delta / max(self.enemy_alert_dist, 1))
+
+        # 8. Boost penalty (discourage boost usage in early stages)
+        if self.boost_penalty > 0 and action == 9:
+            reward -= self.boost_penalty
+
         # Update tracked values
         self.prev_length = new_len
         self.prev_food_dist = new_food_dist
+        self.prev_enemy_dist = min_enemy_dist
 
         return state, reward, False, {
             "length": new_len,

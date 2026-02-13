@@ -87,6 +87,13 @@ class DDQNAgent:
 
         self.steps_done = 0
 
+        # Dynamic gamma (set per curriculum stage)
+        self.current_gamma = config.opt.gamma
+
+        # N-step returns
+        self.n_step = 3
+        self.n_step_buffers = {}  # per-agent buffers: {agent_id: deque}
+
         # Reward Normalization Stats
         self.reward_mean = 0.0
         self.reward_std = 1.0
@@ -170,6 +177,58 @@ class DDQNAgent:
 
         self.memory.push(state_compressed, action, reward, next_compressed, done)
 
+    def set_gamma(self, gamma):
+        """Set gamma for current curriculum stage."""
+        self.current_gamma = gamma
+        print(f"  [Agent] Gamma set to {gamma} (effective n-step gamma: {gamma**self.n_step:.3f})")
+
+    def remember_nstep(self, state, action, reward, next_state, done, agent_id=0):
+        """
+        N-step return buffer. Accumulates transitions and pushes
+        n-step returns to PER when buffer is full or episode ends.
+        """
+        if agent_id not in self.n_step_buffers:
+            self.n_step_buffers[agent_id] = deque(maxlen=self.n_step)
+
+        buf = self.n_step_buffers[agent_id]
+        buf.append((state, action, reward, next_state, done))
+
+        if done:
+            # Flush all remaining transitions in buffer
+            self._flush_nstep(agent_id)
+        elif len(buf) == self.n_step:
+            # Buffer full: compute n-step return for oldest transition
+            self._push_nstep_transition(agent_id)
+
+    def _push_nstep_transition(self, agent_id):
+        """Compute n-step return for oldest transition and push to PER."""
+        buf = self.n_step_buffers[agent_id]
+        if not buf:
+            return
+
+        # Oldest transition provides (state, action)
+        state_0, action_0, _, _, _ = buf[0]
+
+        # Compute n-step discounted return: R = r1 + gamma*r2 + gamma^2*r3
+        R = 0.0
+        last_next_state = None
+        last_done = False
+        for i, (_, _, r, ns, d) in enumerate(buf):
+            R += (self.current_gamma ** i) * r
+            last_next_state = ns
+            last_done = d
+            if d:
+                break
+
+        self.remember(state_0, action_0, R, last_next_state, last_done)
+
+    def _flush_nstep(self, agent_id):
+        """Flush all remaining transitions at episode end."""
+        buf = self.n_step_buffers[agent_id]
+        while buf:
+            self._push_nstep_transition(agent_id)
+            buf.popleft()
+
     def optimize_model(self):
         if len(self.memory) < self.config.opt.batch_size:
             return None
@@ -201,7 +260,8 @@ class DDQNAgent:
             with torch.no_grad():
                 next_actions = self.policy_net(n_matrices, n_sectors).max(1)[1].unsqueeze(1)
                 next_q_values = self.target_net(n_matrices, n_sectors).gather(1, next_actions).squeeze(1)
-                expected_q_values = (next_q_values * self.config.opt.gamma * (1 - done_batch)) + norm_rewards
+                gamma_n = self.current_gamma ** self.n_step
+                expected_q_values = (next_q_values * gamma_n * (1 - done_batch)) + norm_rewards
         else:
             # Legacy: plain uint8 arrays
             state_batch = torch.tensor(np.array(batch_state), dtype=torch.float32).to(self.device) / 255.0
@@ -212,7 +272,8 @@ class DDQNAgent:
             with torch.no_grad():
                 next_actions = self.policy_net(next_batch).max(1)[1].unsqueeze(1)
                 next_q_values = self.target_net(next_batch).gather(1, next_actions).squeeze(1)
-                expected_q_values = (next_q_values * self.config.opt.gamma * (1 - done_batch)) + norm_rewards
+                gamma_n = self.current_gamma ** self.n_step
+                expected_q_values = (next_q_values * gamma_n * (1 - done_batch)) + norm_rewards
 
         # TD Error for PER
         td_errors = (q_values.squeeze(1) - expected_q_values).abs().detach().cpu().numpy()

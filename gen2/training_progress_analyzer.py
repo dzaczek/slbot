@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
 """
 =============================================================================
-  SLITHER.IO BOT - DEEP TRAINING PROGRESS ANALYZER
+  SLITHER.IO BOT - DEEP TRAINING PROGRESS ANALYZER v3
 =============================================================================
-  Full analysis tool for AI model learning progress.
-  Parses train.log (full history) + training_stats.csv (current session).
+  Full data-analytics dashboard for AI model learning progress.
+  Parses train.log + training_stats.csv.
 
-  Provides:
-    - Learning detection (is the model actually learning?)
-    - Trend analysis with statistical significance
-    - Goal feasibility estimation (6000 pts / 1 hour survival)
-    - Training health diagnostics (LR, epsilon, loss, death patterns)
-    - Multi-session comparison
-    - Detailed charts and terminal report
+  Generates 10+ professional charts covering every metric in the CSV.
 
   Usage:
     python training_progress_analyzer.py
-    python training_progress_analyzer.py --log logs/train.log --csv training_stats.csv
+    python training_progress_analyzer.py --latest
     python training_progress_analyzer.py --no-charts   # text report only
 =============================================================================
 """
@@ -40,9 +34,8 @@ warnings.filterwarnings('ignore')
 # ═══════════════════════════════════════════════════════
 
 class C:
-    """Terminal color codes."""
-    R = '\033[0m'     # Reset
-    B = '\033[1m'     # Bold
+    R = '\033[0m'
+    B = '\033[1m'
     DIM = '\033[2m'
     RED = '\033[91m'
     GRN = '\033[92m'
@@ -59,7 +52,7 @@ class C:
 def c(text, *colors):
     return ''.join(colors) + str(text) + C.R
 
-def bar(value, max_val, width=30, fill_char='█', empty_char='░', color=C.CYN):
+def bar(value, max_val, width=30, fill_char='\u2588', empty_char='\u2591', color=C.CYN):
     if max_val <= 0:
         return empty_char * width
     ratio = min(max(value / max_val, 0), 1.0)
@@ -70,6 +63,19 @@ def bar(value, max_val, width=30, fill_char='█', empty_char='░', color=C.CYN
 # ═══════════════════════════════════════════════════════
 #  DATA STRUCTURES
 # ═══════════════════════════════════════════════════════
+
+STAGE_NAMES = {1: 'FOOD_VECTOR', 2: 'WALL_AVOID', 3: 'ENEMY_AVOID', 4: 'MASS_MANAGEMENT'}
+STAGE_COLORS_HEX = {1: '#ff6666', 2: '#ffaa00', 3: '#00ccff', 4: '#00ff88'}
+CAUSE_NAMES = ['Wall', 'SnakeCollision', 'MaxSteps', 'InvalidFrame', 'BrowserError']
+CAUSE_COLORS = {'Wall': '#ff4444', 'SnakeCollision': '#ffaa00', 'MaxSteps': '#00ccff',
+                'InvalidFrame': '#888888', 'BrowserError': '#ff8888'}
+
+STAGE_PROMOTE = {
+    1: ('compound', {'avg_food': 5, 'avg_steps': 50}, 200),
+    2: ('avg_steps', 80, 200),
+    3: ('avg_steps', 120, 200),
+    4: (None, None, None),
+}
 
 @dataclass
 class Episode:
@@ -94,7 +100,6 @@ class Episode:
 
 @dataclass
 class TrainingSession:
-    """A continuous training run (between restarts)."""
     style: str
     start_episode: int
     end_episode: int
@@ -118,47 +123,35 @@ EP_PATTERN = re.compile(
 )
 
 WALL_ENEMY_PATTERN = re.compile(r'Wall:(\d+)\s*(?:Enemy:(\d+))?')
-
 CONFIG_STYLE_PATTERN = re.compile(r'Style: (.+)')
 CONFIG_AGENTS_PATTERN = re.compile(r'Agents: (\d+)')
 CONFIG_LR_PATTERN = re.compile(r'LR: ([\d.e\-]+)')
-RESUMED_PATTERN = re.compile(r'Resumed from episode (\d+)')
 
 
 def parse_log(log_path: str) -> Tuple[List[Episode], List[TrainingSession]]:
-    """Parse the full train.log and extract all episodes + sessions."""
     episodes = []
     sessions = []
-
     current_style = "Unknown"
     current_agents = 1
     current_lr = 0.0
-    session_start_ep = None
     current_session_episodes = []
     session_start_time = None
 
     with open(log_path, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
-            # Detect configuration blocks
             m_style = CONFIG_STYLE_PATTERN.search(line)
             if m_style:
-                # Save previous session if exists
                 if current_session_episodes:
-                    sess = TrainingSession(
-                        style=prev_style if 'prev_style' in dir() else current_style,
+                    sessions.append(TrainingSession(
+                        style=current_style,
                         start_episode=current_session_episodes[0].number,
                         end_episode=current_session_episodes[-1].number,
                         episodes=current_session_episodes,
-                        agents=prev_agents if 'prev_agents' in dir() else current_agents,
-                        lr_config=prev_lr if 'prev_lr' in dir() else current_lr,
+                        agents=current_agents,
+                        lr_config=current_lr,
                         start_time=session_start_time,
                         end_time=current_session_episodes[-1].timestamp,
-                    )
-                    sessions.append(sess)
-
-                prev_style = current_style
-                prev_agents = current_agents
-                prev_lr = current_lr
+                    ))
                 current_style = m_style.group(1).strip()
                 current_session_episodes = []
                 session_start_time = None
@@ -174,11 +167,9 @@ def parse_log(log_path: str) -> Tuple[List[Episode], List[TrainingSession]]:
                 current_lr = float(m_lr.group(1))
                 continue
 
-            # Parse episode line
             m = EP_PATTERN.search(line)
             if m:
                 ts = datetime.strptime(m.group(1), '%Y-%m-%d %H:%M:%S')
-
                 wall_dist = None
                 enemy_dist = None
                 m_we = WALL_ENEMY_PATTERN.search(line)
@@ -188,48 +179,33 @@ def parse_log(log_path: str) -> Tuple[List[Episode], List[TrainingSession]]:
                         enemy_dist = int(m_we.group(2))
 
                 ep = Episode(
-                    number=int(m.group(2)),
-                    stage=int(m.group(3)),
-                    stage_name=m.group(4),
-                    reward=float(m.group(5)),
-                    steps=int(m.group(6)),
-                    food=int(m.group(7)),
-                    food_per_step=float(m.group(8)),
-                    epsilon=float(m.group(9)),
-                    loss=float(m.group(10)),
-                    cause=m.group(11),
-                    wall_dist=wall_dist,
-                    enemy_dist=enemy_dist,
-                    timestamp=ts,
-                    style=current_style,
+                    number=int(m.group(2)), stage=int(m.group(3)),
+                    stage_name=m.group(4), reward=float(m.group(5)),
+                    steps=int(m.group(6)), food=int(m.group(7)),
+                    food_per_step=float(m.group(8)), epsilon=float(m.group(9)),
+                    loss=float(m.group(10)), cause=m.group(11),
+                    wall_dist=wall_dist, enemy_dist=enemy_dist,
+                    timestamp=ts, style=current_style,
                 )
-
                 episodes.append(ep)
                 current_session_episodes.append(ep)
-
                 if session_start_time is None:
                     session_start_time = ts
 
-    # Save last session
     if current_session_episodes:
-        sess = TrainingSession(
+        sessions.append(TrainingSession(
             style=current_style,
             start_episode=current_session_episodes[0].number,
             end_episode=current_session_episodes[-1].number,
             episodes=current_session_episodes,
-            agents=current_agents,
-            lr_config=current_lr,
+            agents=current_agents, lr_config=current_lr,
             start_time=session_start_time,
             end_time=current_session_episodes[-1].timestamp if current_session_episodes else None,
-        )
-        sessions.append(sess)
-
+        ))
     return episodes, sessions
 
 
 def parse_csv(csv_path: str) -> List[Episode]:
-    """Parse training_stats.csv for current session detail.
-    Supports both old format (Episode,...) and new format (UID,ParentUID,Episode,...)."""
     episodes = []
     try:
         with open(csv_path, 'r') as f:
@@ -241,18 +217,12 @@ def parse_csv(csv_path: str) -> List[Episode]:
                     if len(parts) < 12:
                         continue
                     ep = Episode(
-                        uid=parts[0],
-                        parent_uid=parts[1],
-                        number=int(parts[2]),
-                        steps=int(parts[3]),
-                        reward=float(parts[4]),
-                        epsilon=float(parts[5]),
-                        loss=float(parts[6]),
-                        beta=float(parts[7]),
-                        lr=float(parts[8]),
-                        cause=parts[9],
-                        stage=int(parts[10]),
-                        food=int(parts[11]),
+                        uid=parts[0], parent_uid=parts[1],
+                        number=int(parts[2]), steps=int(parts[3]),
+                        reward=float(parts[4]), epsilon=float(parts[5]),
+                        loss=float(parts[6]), beta=float(parts[7]),
+                        lr=float(parts[8]), cause=parts[9],
+                        stage=int(parts[10]), food=int(parts[11]),
                         stage_name='',
                         food_per_step=int(parts[11]) / max(int(parts[3]), 1),
                     )
@@ -260,16 +230,11 @@ def parse_csv(csv_path: str) -> List[Episode]:
                     if len(parts) < 10:
                         continue
                     ep = Episode(
-                        number=int(parts[0]),
-                        steps=int(parts[1]),
-                        reward=float(parts[2]),
-                        epsilon=float(parts[3]),
-                        loss=float(parts[4]),
-                        beta=float(parts[5]),
-                        lr=float(parts[6]),
-                        cause=parts[7],
-                        stage=int(parts[8]),
-                        food=int(parts[9]),
+                        number=int(parts[0]), steps=int(parts[1]),
+                        reward=float(parts[2]), epsilon=float(parts[3]),
+                        loss=float(parts[4]), beta=float(parts[5]),
+                        lr=float(parts[6]), cause=parts[7],
+                        stage=int(parts[8]), food=int(parts[9]),
                         stage_name='',
                         food_per_step=int(parts[9]) / max(int(parts[1]), 1),
                     )
@@ -280,7 +245,6 @@ def parse_csv(csv_path: str) -> List[Episode]:
 
 
 def discover_uids(episodes: List[Episode]) -> List[Tuple[str, int, int, int]]:
-    """Scan episodes and return list of (uid, count, first_ep, last_ep), sorted chronologically."""
     uid_map = OrderedDict()
     for ep in episodes:
         uid = ep.uid or 'unknown'
@@ -302,8 +266,31 @@ def moving_average(data, window):
     kernel = np.ones(window) / window
     return np.convolve(data, kernel, mode='valid')
 
+def exponential_ma(data, span):
+    alpha = 2 / (span + 1)
+    ema = np.zeros(len(data))
+    ema[0] = data[0]
+    for i in range(1, len(data)):
+        ema[i] = alpha * data[i] + (1 - alpha) * ema[i - 1]
+    return ema
+
+def rolling_std(data, window):
+    if len(data) < window:
+        return np.zeros(len(data))
+    result = np.zeros(len(data))
+    for i in range(window - 1, len(data)):
+        result[i] = np.std(data[i - window + 1:i + 1])
+    return result
+
+def rolling_percentile(data, window, pct):
+    if len(data) < window:
+        return np.full(len(data), np.nan)
+    result = np.full(len(data), np.nan)
+    for i in range(window - 1, len(data)):
+        result[i] = np.percentile(data[i - window + 1:i + 1], pct)
+    return result
+
 def linear_trend(data):
-    """Returns slope and r-squared of linear fit."""
     if len(data) < 10:
         return 0.0, 0.0
     x = np.arange(len(data))
@@ -316,7 +303,6 @@ def linear_trend(data):
     return slope, r_sq
 
 def segment_trends(data, n_segments=4):
-    """Split data into segments and compute trend for each."""
     if len(data) < n_segments * 10:
         return []
     seg_size = len(data) // n_segments
@@ -327,22 +313,17 @@ def segment_trends(data, n_segments=4):
         seg = data[start:end]
         slope, r2 = linear_trend(seg)
         results.append({
-            'segment': i + 1,
-            'start_idx': start,
-            'end_idx': end,
-            'mean': np.mean(seg),
-            'std': np.std(seg),
-            'slope': slope,
-            'r2': r2,
+            'segment': i + 1, 'start_idx': start, 'end_idx': end,
+            'mean': np.mean(seg), 'std': np.std(seg),
+            'slope': slope, 'r2': r2,
         })
     return results
 
 def detect_plateau(data, window=100, threshold=0.01):
-    """Detect if metric is in plateau (no significant change)."""
     if len(data) < window * 2:
         return False, 0
     recent = data[-window:]
-    earlier = data[-window*2:-window]
+    earlier = data[-window * 2:-window]
     recent_mean = np.mean(recent)
     earlier_mean = np.mean(earlier)
     if earlier_mean == 0:
@@ -354,15 +335,10 @@ def compute_percentiles(data):
     if len(data) == 0:
         return {}
     return {
-        'p5': np.percentile(data, 5),
-        'p25': np.percentile(data, 25),
-        'p50': np.percentile(data, 50),
-        'p75': np.percentile(data, 75),
-        'p95': np.percentile(data, 95),
-        'mean': np.mean(data),
-        'std': np.std(data),
-        'min': np.min(data),
-        'max': np.max(data),
+        'p5': np.percentile(data, 5), 'p25': np.percentile(data, 25),
+        'p50': np.percentile(data, 50), 'p75': np.percentile(data, 75),
+        'p95': np.percentile(data, 95), 'mean': np.mean(data),
+        'std': np.std(data), 'min': np.min(data), 'max': np.max(data),
     }
 
 
@@ -373,7 +349,7 @@ def compute_percentiles(data):
 @dataclass
 class LearningVerdict:
     is_learning: bool
-    confidence: float  # 0-1
+    confidence: float
     issues: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     positives: List[str] = field(default_factory=list)
@@ -382,11 +358,9 @@ class LearningVerdict:
     estimated_episodes_to_goal: Optional[int] = None
 
 
-def assess_learning(episodes: List[Episode], csv_episodes: List[Episode],
-                    sessions: List[TrainingSession]) -> LearningVerdict:
-    """Main learning assessment engine."""
+def assess_learning(episodes, csv_episodes, sessions):
     verdict = LearningVerdict(is_learning=False, confidence=0.0)
-    score = 50  # Start neutral
+    score = 50
 
     if len(episodes) < 20:
         verdict.issues.append("Insufficient data (< 20 episodes)")
@@ -399,791 +373,1355 @@ def assess_learning(episodes: List[Episode], csv_episodes: List[Episode],
     losses = np.array([e.loss for e in episodes])
     epsilons = np.array([e.epsilon for e in episodes])
 
-    # --- CHECK 1: Learning Rate ---
     if csv_episodes:
         current_lr = csv_episodes[-1].lr
         if current_lr == 0.0:
-            verdict.issues.append(
-                "CRITICAL: Learning Rate = 0.0 - Model CANNOT learn! "
-                "The LR scheduler has reduced LR to zero. "
-                "Weights are frozen, no gradient updates are happening."
-            )
+            verdict.issues.append("CRITICAL: Learning Rate = 0.0 - Model CANNOT learn!")
             score -= 40
         elif current_lr < 1e-7:
             verdict.warnings.append(f"Learning rate extremely low: {current_lr:.2e}")
             score -= 15
 
-    # --- CHECK 2: Reward Trend ---
     n_recent = min(len(rewards), 100)
     recent_rewards = rewards[-n_recent:]
 
     if len(rewards) > 200:
-        first_half = rewards[:len(rewards)//2]
-        second_half = rewards[len(rewards)//2:]
-        reward_improvement = np.mean(second_half) - np.mean(first_half)
-
-        if reward_improvement > 50:
-            verdict.positives.append(f"Rewards improving: +{reward_improvement:.1f} (2nd half vs 1st half)")
+        first_half = rewards[:len(rewards) // 2]
+        second_half = rewards[len(rewards) // 2:]
+        improvement = np.mean(second_half) - np.mean(first_half)
+        if improvement > 50:
+            verdict.positives.append(f"Rewards improving: +{improvement:.1f}")
             score += 15
-        elif reward_improvement < -50:
-            verdict.issues.append(f"Rewards DECLINING: {reward_improvement:.1f} (getting worse)")
+        elif improvement < -50:
+            verdict.issues.append(f"Rewards DECLINING: {improvement:.1f}")
             score -= 15
         else:
-            verdict.warnings.append(f"Rewards flat: change = {reward_improvement:.1f} between halves")
+            verdict.warnings.append(f"Rewards flat: change = {improvement:.1f}")
             score -= 5
 
     reward_slope, reward_r2 = linear_trend(rewards)
     if reward_slope > 0.1 and reward_r2 > 0.05:
-        verdict.positives.append(f"Positive reward trend (slope={reward_slope:.4f}, R²={reward_r2:.3f})")
+        verdict.positives.append(f"Positive reward trend (slope={reward_slope:.4f}, R\u00b2={reward_r2:.3f})")
         score += 10
     elif reward_slope < -0.1 and reward_r2 > 0.05:
-        verdict.issues.append(f"Negative reward trend (slope={reward_slope:.4f}, R²={reward_r2:.3f})")
+        verdict.issues.append(f"Negative reward trend (slope={reward_slope:.4f})")
         score -= 10
 
-    # --- CHECK 3: Survival Duration ---
     steps_slope, steps_r2 = linear_trend(steps.astype(float))
     if steps_slope > 0.05 and steps_r2 > 0.03:
         verdict.positives.append(f"Episodes getting longer (slope={steps_slope:.3f}/ep)")
         score += 10
 
     avg_steps = np.mean(steps)
-    max_steps = np.max(steps)
     if avg_steps < 50:
-        verdict.issues.append(f"Very short episodes: avg={avg_steps:.0f} steps (dying too fast)")
+        verdict.issues.append(f"Very short episodes: avg={avg_steps:.0f} steps")
         score -= 10
     elif avg_steps > 500:
         verdict.positives.append(f"Good episode length: avg={avg_steps:.0f} steps")
         score += 5
 
-    # --- CHECK 4: Food Collection Trend ---
     food_slope, food_r2 = linear_trend(food.astype(float))
     if food_slope > 0.01:
         verdict.positives.append(f"Food collection improving (slope={food_slope:.4f}/ep)")
         score += 5
 
-    # --- CHECK 5: Loss Behavior ---
     if len(losses) > 50:
-        loss_slope, loss_r2 = linear_trend(losses)
         recent_loss_mean = np.mean(losses[-50:])
-
         if recent_loss_mean < 0.01:
-            verdict.warnings.append(f"Loss near zero ({recent_loss_mean:.6f}) - model may have collapsed")
+            verdict.warnings.append(f"Loss near zero ({recent_loss_mean:.6f}) - possible collapse")
             score -= 10
         elif recent_loss_mean > 10:
-            verdict.warnings.append(f"Loss very high ({recent_loss_mean:.2f}) - training unstable")
+            verdict.warnings.append(f"Loss very high ({recent_loss_mean:.2f}) - unstable")
             score -= 5
 
-        if loss_slope < -0.001 and loss_r2 > 0.05:
-            verdict.positives.append("Loss decreasing (model converging)")
-            score += 5
-
-    # --- CHECK 6: Epsilon Progress ---
     current_eps = epsilons[-1]
     if current_eps > 0.8:
-        verdict.warnings.append(f"Epsilon very high ({current_eps:.3f}) - still mostly random")
+        verdict.warnings.append(f"Epsilon very high ({current_eps:.3f}) - mostly random")
         score -= 5
-    elif current_eps > 0.3:
-        verdict.warnings.append(f"Epsilon moderate ({current_eps:.3f}) - still significant random exploration")
     elif current_eps < 0.15:
-        verdict.positives.append(f"Epsilon low ({current_eps:.3f}) - model exploiting learned policy")
+        verdict.positives.append(f"Epsilon low ({current_eps:.3f}) - exploiting policy")
         score += 5
 
-    # --- CHECK 7: Death Pattern ---
     causes = [e.cause for e in episodes[-min(200, len(episodes)):]]
-    cause_counts = defaultdict(int)
-    for ca in causes:
-        cause_counts[ca] += 1
-    total_deaths = len(causes)
-
-    wall_pct = cause_counts.get('Wall', 0) / total_deaths * 100 if total_deaths > 0 else 0
+    wall_pct = sum(1 for ca in causes if ca == 'Wall') / len(causes) * 100
     if wall_pct > 60:
-        verdict.issues.append(f"Wall deaths dominant ({wall_pct:.0f}%) - bot not learning wall avoidance")
+        verdict.issues.append(f"Wall deaths dominant ({wall_pct:.0f}%)")
         score -= 10
 
-    # --- CHECK 8: Plateau Detection ---
-    is_plateau, change = detect_plateau(rewards)
+    is_plateau, _ = detect_plateau(rewards)
     if is_plateau:
-        verdict.warnings.append(f"Reward in plateau (change < 1% over last 200 episodes)")
+        verdict.warnings.append("Reward in plateau (< 1% change over 200 eps)")
         score -= 5
 
-    # --- CHECK 9: Multiple Restarts ---
-    if len(sessions) > 3:
-        verdict.warnings.append(f"Multiple training restarts detected ({len(sessions)} sessions) - fragmented learning")
-        score -= 5
-
-    # --- CHECK 10: Best Performance vs Goal ---
-    best_reward = np.max(rewards)
-    best_steps = int(np.max(steps))
-    best_food = int(np.max(food))
-
-    # Goal: 6000 points, 1 hour (~3600 steps at ~1 step/sec, or more depending on speed)
-    GOAL_REWARD = 6000
-    GOAL_STEPS = 3600  # ~1 hour at 1 step/sec
-
-    reward_pct = (best_reward / GOAL_REWARD) * 100 if GOAL_REWARD > 0 else 0
-    steps_pct = (best_steps / GOAL_STEPS) * 100 if GOAL_STEPS > 0 else 0
-
-    # --- FINAL VERDICT ---
     score = max(0, min(100, score))
     verdict.confidence = score / 100.0
     verdict.is_learning = score > 55
 
-    # Goal feasibility
     if score < 25:
         verdict.goal_feasibility = "IMPOSSIBLE with current setup"
-        verdict.recommendation = (
-            "Training is fundamentally broken. Fix critical issues first:\n"
-            "  1. Restore learning rate > 0 (check LR scheduler)\n"
-            "  2. Consider resetting epsilon to allow fresh exploration\n"
-            "  3. Review reward shaping - excessive penalties prevent learning"
-        )
+        verdict.recommendation = "Fix critical issues: LR, rewards, episode length."
     elif score < 45:
-        verdict.goal_feasibility = "VERY UNLIKELY (<5% chance)"
-        verdict.recommendation = (
-            "Significant issues detected. Major changes needed:\n"
-            "  1. Fix learning rate and optimizer state\n"
-            "  2. Simplify reward structure\n"
-            "  3. Ensure episodes can last long enough to learn from"
-        )
+        verdict.goal_feasibility = "VERY UNLIKELY (<5%)"
+        verdict.recommendation = "Major changes needed: LR, reward structure, curriculum."
     elif score < 65:
-        verdict.goal_feasibility = "UNLIKELY (5-25% chance) without tuning"
-        verdict.recommendation = (
-            "Some learning signals present but not strong enough.\n"
-            "  1. Fine-tune hyperparameters\n"
-            "  2. Increase training duration significantly\n"
-            "  3. Consider curriculum adjustments"
-        )
+        verdict.goal_feasibility = "UNLIKELY (5-25%) without tuning"
+        verdict.recommendation = "Fine-tune hyperparameters, increase training duration."
     elif score < 80:
-        verdict.goal_feasibility = "POSSIBLE (25-60% chance) with continued training"
+        verdict.goal_feasibility = "POSSIBLE (25-60%)"
         verdict.recommendation = "Keep training. Monitor for sustained improvement."
     else:
-        verdict.goal_feasibility = "LIKELY (>60% chance)"
+        verdict.goal_feasibility = "LIKELY (>60%)"
         verdict.recommendation = "Training looks healthy. Continue and monitor."
 
-    # Estimate episodes to goal
     if reward_slope > 0.1:
-        remaining_reward = GOAL_REWARD - np.mean(recent_rewards)
-        if remaining_reward > 0:
-            verdict.estimated_episodes_to_goal = int(remaining_reward / reward_slope)
+        remaining = 6000 - np.mean(recent_rewards)
+        if remaining > 0:
+            verdict.estimated_episodes_to_goal = int(remaining / reward_slope)
 
     return verdict
 
 
 # ═══════════════════════════════════════════════════════
-#  REPORT PRINTER
+#  REPORT PRINTER (TERMINAL)
 # ═══════════════════════════════════════════════════════
 
-W = 78  # Terminal width
+W = 78
 
-def sep(char='─', color=C.DIM):
+def sep(char='\u2500', color=C.DIM):
     print(c(char * W, color))
 
 def header(text, color=C.CYN):
     print()
-    sep('═', color)
+    sep('\u2550', color)
     print(c(f'  {text}', color, C.B))
-    sep('═', color)
+    sep('\u2550', color)
 
 def section(text, color=C.BLU):
     print()
     print(c(f'  [{text}]', color, C.B))
-    sep('─', C.DIM)
+    sep('\u2500', C.DIM)
 
 
 def print_full_report(episodes, csv_episodes, sessions, verdict):
-    """Print the complete analysis report to terminal."""
-
     rewards = np.array([e.reward for e in episodes])
     steps = np.array([e.steps for e in episodes])
     food = np.array([e.food for e in episodes])
     losses = np.array([e.loss for e in episodes])
     epsilons = np.array([e.epsilon for e in episodes])
 
-    # ══════════════════════════════════════
-    #  HEADER
-    # ══════════════════════════════════════
     print()
     print(c('=' * W, C.CYN, C.B))
-    print(c('  SLITHER.IO BOT - DEEP TRAINING PROGRESS ANALYSIS', C.CYN, C.B))
+    print(c('  SLITHER.IO BOT - DEEP TRAINING PROGRESS ANALYSIS v3', C.CYN, C.B))
     print(c('  ' + datetime.now().strftime('%Y-%m-%d %H:%M:%S'), C.DIM))
     print(c('=' * W, C.CYN, C.B))
 
-    # ══════════════════════════════════════
-    #  VERDICT (TOP)
-    # ══════════════════════════════════════
+    # === VERDICT ===
     section('LEARNING VERDICT', C.MAG)
-
-    if verdict.is_learning:
-        status = c(' LEARNING ', C.B, C.BG_GRN)
-    else:
-        status = c(' NOT LEARNING ', C.B, C.BG_RED)
-
+    status = c(' LEARNING ', C.B, C.BG_GRN) if verdict.is_learning else c(' NOT LEARNING ', C.B, C.BG_RED)
     confidence_bar = bar(verdict.confidence, 1.0, 30, color=C.GRN if verdict.confidence > 0.5 else C.RED)
-
     print(f'  Status:     {status}')
-    print(f'  Confidence: {confidence_bar} {verdict.confidence*100:.0f}%')
+    print(f'  Confidence: {confidence_bar} {verdict.confidence * 100:.0f}%')
     print(f'  Goal:       {c(verdict.goal_feasibility, C.YEL, C.B)}')
-
     if verdict.estimated_episodes_to_goal:
-        print(f'  ETA:        ~{verdict.estimated_episodes_to_goal:,} episodes to goal')
+        print(f'  ETA:        ~{verdict.estimated_episodes_to_goal:,} episodes')
 
-    # Issues
-    if verdict.issues:
-        print()
-        print(c('  CRITICAL ISSUES:', C.RED, C.B))
-        for issue in verdict.issues:
-            print(c(f'    ✗ {issue}', C.RED))
+    for label, items, color in [('CRITICAL ISSUES:', verdict.issues, C.RED),
+                                 ('WARNINGS:', verdict.warnings, C.YEL),
+                                 ('POSITIVE SIGNALS:', verdict.positives, C.GRN)]:
+        if items:
+            print()
+            sym = '\u2717' if color == C.RED else '\u26a0' if color == C.YEL else '\u2713'
+            print(c(f'  {label}', color, C.B))
+            for item in items:
+                print(c(f'    {sym} {item}', color))
 
-    if verdict.warnings:
-        print()
-        print(c('  WARNINGS:', C.YEL, C.B))
-        for w in verdict.warnings:
-            print(c(f'    ⚠ {w}', C.YEL))
-
-    if verdict.positives:
-        print()
-        print(c('  POSITIVE SIGNALS:', C.GRN, C.B))
-        for p in verdict.positives:
-            print(c(f'    ✓ {p}', C.GRN))
-
-    # ══════════════════════════════════════
-    #  TRAINING OVERVIEW
-    # ══════════════════════════════════════
+    # === OVERVIEW ===
     section('TRAINING OVERVIEW')
-
     total_episodes = len(episodes)
-    first_ep = episodes[0].number if episodes else 0
-    last_ep = episodes[-1].number if episodes else 0
-
+    hours = 0
     if episodes[0].timestamp and episodes[-1].timestamp:
-        total_time = episodes[-1].timestamp - episodes[0].timestamp
-        hours = total_time.total_seconds() / 3600
-    else:
-        hours = 0
+        hours = (episodes[-1].timestamp - episodes[0].timestamp).total_seconds() / 3600
 
     print(f'  Total Episodes:    {c(total_episodes, C.WHT, C.B)}')
-    print(f'  Episode Range:     {first_ep} -> {last_ep}')
+    print(f'  Episode Range:     {episodes[0].number} -> {episodes[-1].number}')
     print(f'  Training Time:     {hours:.1f} hours')
     print(f'  Sessions:          {len(sessions)}')
-    print(f'  Current Style:     {c(sessions[-1].style if sessions else "?", C.CYN)}')
 
-    # ══════════════════════════════════════
-    #  SESSION HISTORY
-    # ══════════════════════════════════════
-    section('SESSION HISTORY')
+    # === CURRICULUM STAGE ANALYSIS ===
+    stage_episodes = defaultdict(list)
+    for e in episodes:
+        stage_episodes[e.stage].append(e)
 
-    print(f'  {"#":<3} {"Style":<25} {"Episodes":<18} {"Avg Reward":<12} {"Avg Steps":<10} {"Eps Range":<14}')
-    sep('─', C.DIM)
+    if stage_episodes:
+        section('CURRICULUM STAGE ANALYSIS')
+        current_stage = max(stage_episodes.keys())
+        print(f'  Current Stage: {c(f"S{current_stage}", C.CYN, C.B)} ({c(STAGE_NAMES.get(current_stage, "?"), C.CYN)})')
+        print()
+        print(f'  {"Stage":<6} {"Name":<17} {"Eps":<8} {"Avg Rw":<10} {"Avg St":<10} '
+              f'{"Avg Fd":<10} {"Wall%":<7} {"Snake%":<8} {"MaxSt%":<8}')
+        sep('\u2500', C.DIM)
 
-    for i, sess in enumerate(sessions):
-        if not sess.episodes:
-            continue
-        s_rewards = [e.reward for e in sess.episodes]
-        s_steps = [e.steps for e in sess.episodes]
-        s_eps = [e.epsilon for e in sess.episodes]
+        for sn in sorted(stage_episodes.keys()):
+            eps_list = stage_episodes[sn]
+            s_causes = [e.cause for e in eps_list]
+            n = len(eps_list)
+            wp = sum(1 for x in s_causes if x == 'Wall') / n * 100
+            sp = sum(1 for x in s_causes if x == 'SnakeCollision') / n * 100
+            mp = sum(1 for x in s_causes if x == 'MaxSteps') / n * 100
+            name = STAGE_NAMES.get(sn, '?')
+            color = C.CYN if sn == current_stage else C.DIM
+            print(f'  {c(f"S{sn}", color):<14} {c(name[:16], color):<25} '
+                  f'{n:<8} {np.mean([e.reward for e in eps_list]):>8.1f}  '
+                  f'{np.mean([e.steps for e in eps_list]):>8.1f}  '
+                  f'{np.mean([e.food for e in eps_list]):>8.1f}  '
+                  f'{wp:>5.1f}% {sp:>6.1f}% {mp:>6.1f}%')
 
-        ep_range = f"{sess.start_episode}-{sess.end_episode}"
-        eps_range = f"{s_eps[0]:.3f}-{s_eps[-1]:.3f}"
+        # Promotion progress
+        metric_name, threshold, window = STAGE_PROMOTE.get(current_stage, (None, None, None))
+        if metric_name and threshold:
+            cur_eps = stage_episodes[current_stage]
+            recent = cur_eps[-min(len(cur_eps), window or 100):]
+            print()
 
-        style_color = C.CYN if i == len(sessions) - 1 else C.DIM
-        print(f'  {c(i+1, style_color):<12} {c(sess.style[:24], style_color):<34} '
-              f'{ep_range:<18} {np.mean(s_rewards):>9.1f}   {np.mean(s_steps):>7.0f}   {eps_range}')
+            if metric_name == 'compound':
+                # threshold is a dict of conditions
+                conditions = threshold
+                min_pct = 100
+                for cond_name, cond_val in conditions.items():
+                    if cond_name == 'avg_food':
+                        val = np.mean([e.food for e in recent])
+                    elif cond_name == 'avg_steps':
+                        val = np.mean([e.steps for e in recent])
+                    else:
+                        continue
+                    pct = min(val / cond_val * 100, 100)
+                    min_pct = min(min_pct, pct)
+                    ok = C.GRN if pct >= 100 else C.YEL
+                    print(f'  Promote [{cond_name}]: {c(f"{val:.1f}", ok)} / {cond_val} '
+                          f'({len(recent)}/{window} window)  {bar(pct, 100, 30)} {pct:.0f}%')
+                print(f'  Overall:   {bar(min_pct, 100, 40)} {min_pct:.0f}%')
+            else:
+                if metric_name == 'avg_food':
+                    val = np.mean([e.food for e in recent])
+                else:
+                    val = np.mean([e.steps for e in recent])
+                pct = min(val / threshold * 100, 100)
+                print(f'  Promotion: {c(metric_name, C.YEL)} = {c(f"{val:.1f}", C.WHT, C.B)} / {threshold} '
+                      f'({len(recent)}/{window} window)')
+                print(f'  Progress:  {bar(pct, 100, 40)} {pct:.0f}%')
 
-    # ══════════════════════════════════════
-    #  REWARD ANALYSIS
-    # ══════════════════════════════════════
+            if current_stage == 2:
+                wd = sum(1 for e in recent if e.cause == 'Wall') / len(recent) * 100
+                wc = C.GRN if wd < 3 else C.RED
+                print(f'  Wall death: {c(f"{wd:.1f}%", wc)} (need < 3%)')
+
+    # === REWARD ANALYSIS ===
     section('REWARD ANALYSIS')
-
     rp = compute_percentiles(rewards)
-    print(f'  Mean:    {rp["mean"]:>10.2f}    Std:  {rp["std"]:>10.2f}')
-    print(f'  Median:  {rp["p50"]:>10.2f}    Min:  {rp["min"]:>10.2f}')
-    print(f'  P95:     {rp["p95"]:>10.2f}    Max:  {rp["max"]:>10.2f}')
-
-    # Reward by time windows
-    windows = [50, 100, 500, 1000]
+    print(f'  Mean:   {rp["mean"]:>10.2f}   Std:    {rp["std"]:>10.2f}')
+    print(f'  Median: {rp["p50"]:>10.2f}   Min:    {rp["min"]:>10.2f}')
+    print(f'  P95:    {rp["p95"]:>10.2f}   Max:    {rp["max"]:>10.2f}')
     print()
-    print(f'  {"Window":<10} {"Mean Rw":<12} {"Std Rw":<12} {"Best":<12} {"Trend":<12}')
-    sep('─', C.DIM)
-
-    for w in windows:
+    print(f'  {"Window":<10} {"Mean":<11} {"Std":<11} {"Best":<11} {"Trend":<12}')
+    sep('\u2500', C.DIM)
+    for w in [50, 100, 500, 1000]:
         if len(rewards) >= w:
             wr = rewards[-w:]
             sl, r2 = linear_trend(wr)
-            trend = c("↗", C.GRN) if sl > 0.1 else (c("↘", C.RED) if sl < -0.1 else c("→", C.DIM))
-            print(f'  Last {w:<4} {np.mean(wr):>10.2f}  {np.std(wr):>10.2f}  {np.max(wr):>10.2f}  {trend} ({sl:+.3f})')
+            t = c("\u2197", C.GRN) if sl > 0.1 else (c("\u2198", C.RED) if sl < -0.1 else c("\u2192", C.DIM))
+            print(f'  Last {w:<4} {np.mean(wr):>9.2f}  {np.std(wr):>9.2f}  {np.max(wr):>9.2f}  {t} ({sl:+.3f})')
 
-    # ══════════════════════════════════════
-    #  SURVIVAL ANALYSIS
-    # ══════════════════════════════════════
+    # === SURVIVAL ===
     section('SURVIVAL ANALYSIS')
+    sp_p = compute_percentiles(steps.astype(float))
+    STEP_DUR = 2.0
+    print(f'  Mean Steps: {sp_p["mean"]:>8.1f}   Max: {sp_p["max"]:>8.0f}   P95: {sp_p["p95"]:>8.0f}')
+    avg_surv_s = sp_p["mean"] * STEP_DUR
+    avg_surv_m = avg_surv_s / 60
+    print(f'  Est. avg survival: {c(f"{avg_surv_s:.0f}s ({avg_surv_m:.1f}min)", C.YEL)}')
+    goal_pct = sp_p["max"] * STEP_DUR / 3600 * 100
+    print(f'  Goal progress:     {bar(goal_pct, 100, 30)} {goal_pct:.1f}%')
 
-    sp = compute_percentiles(steps.astype(float))
-    print(f'  Mean Steps:  {sp["mean"]:>8.1f}    Max: {sp["max"]:>8.0f}')
-    print(f'  P75 Steps:   {sp["p75"]:>8.1f}    P95: {sp["p95"]:>8.0f}')
-
-    # Duration estimation (assuming ~1 step = ~2 seconds of game time)
-    STEP_DURATION = 2.0  # seconds per step (approximate)
-    avg_duration_sec = sp["mean"] * STEP_DURATION
-    max_duration_sec = sp["max"] * STEP_DURATION
-
-    print()
-    print(f'  Estimated avg survival: {c(f"{avg_duration_sec:.0f}s ({avg_duration_sec/60:.1f} min)", C.YEL)}')
-    print(f'  Estimated max survival: {c(f"{max_duration_sec:.0f}s ({max_duration_sec/60:.1f} min)", C.CYN)}')
-    print(f'  Goal (1 hour):          {c("3600s (60 min)", C.GRN, C.B)}')
-
-    goal_pct = (max_duration_sec / 3600) * 100
-    print(f'  Progress to goal:       {bar(goal_pct, 100, 30)} {goal_pct:.1f}%')
-
-    # ══════════════════════════════════════
-    #  FOOD COLLECTION
-    # ══════════════════════════════════════
+    # === FOOD ===
     section('FOOD COLLECTION')
-
     fp = compute_percentiles(food.astype(float))
-    food_per_step = np.array([e.food_per_step for e in episodes])
-    fps_p = compute_percentiles(food_per_step)
+    fps = compute_percentiles(np.array([e.food_per_step for e in episodes]))
+    print(f'  Mean Food/Ep:   {fp["mean"]:>8.1f}   Max: {int(fp["max"])}')
+    print(f'  Mean Food/Step: {fps["mean"]:>8.4f}   Max: {fps["max"]:.4f}')
+    food_pct = int(fp["max"]) / 6000 * 100
+    print(f'  Goal progress:  {bar(food_pct, 100, 30)} {food_pct:.1f}%')
 
-    print(f'  Mean Food/Ep:    {fp["mean"]:>8.1f}    Max: {int(fp["max"])}')
-    print(f'  Mean Food/Step:  {fps_p["mean"]:>8.4f}    Max: {fps_p["max"]:.3f}')
-
-    # Food = score proxy. Goal: 6000 points
-    # In slither.io, each food gives ~1 point
-    GOAL_FOOD = 6000
-    best_food = int(fp["max"])
-    food_goal_pct = (best_food / GOAL_FOOD) * 100
-
-    print(f'  Best food collected:  {c(best_food, C.CYN, C.B)}')
-    print(f'  Goal (6000 pts):      {c(GOAL_FOOD, C.GRN, C.B)}')
-    print(f'  Progress to goal:     {bar(food_goal_pct, 100, 30)} {food_goal_pct:.1f}%')
-
-    # ══════════════════════════════════════
-    #  DEATH ANALYSIS
-    # ══════════════════════════════════════
+    # === DEATH ANALYSIS ===
     section('DEATH CAUSE ANALYSIS')
-
-    # Full history
     cause_counts = defaultdict(int)
     for e in episodes:
         cause_counts[e.cause] += 1
     total = len(episodes)
-
-    sorted_causes = sorted(cause_counts.items(), key=lambda x: x[1], reverse=True)
-
-    for cause, count in sorted_causes:
+    for cause, count in sorted(cause_counts.items(), key=lambda x: x[1], reverse=True):
         pct = count / total * 100
-        cc = C.RED if cause == 'Wall' else C.YEL if cause == 'SnakeCollision' else C.DIM
+        cc = C.RED if cause == 'Wall' else C.YEL if cause == 'SnakeCollision' else C.CYN if cause == 'MaxSteps' else C.DIM
         print(f'  {cause:<18} {count:>5} ({pct:>5.1f}%)  {bar(pct, 100, 25, color=cc)}')
 
-    # Trend in death causes (early vs recent)
-    if len(episodes) > 200:
-        early = episodes[:len(episodes)//2]
-        late = episodes[len(episodes)//2:]
-
-        early_wall = sum(1 for e in early if e.cause == 'Wall') / len(early) * 100
-        late_wall = sum(1 for e in late if e.cause == 'Wall') / len(late) * 100
-
-        early_snake = sum(1 for e in early if e.cause == 'SnakeCollision') / len(early) * 100
-        late_snake = sum(1 for e in late if e.cause == 'SnakeCollision') / len(late) * 100
-
-        print()
-        print(f'  Death cause evolution:')
-        wall_arrow = c("↘", C.GRN) if late_wall < early_wall else c("↗", C.RED)
-        snake_arrow = c("↘", C.GRN) if late_snake < early_snake else c("↗", C.RED)
-        print(f'    Wall:           {early_wall:>5.1f}% -> {late_wall:>5.1f}% {wall_arrow}')
-        print(f'    SnakeCollision: {early_snake:>5.1f}% -> {late_snake:>5.1f}% {snake_arrow}')
-
-    # ══════════════════════════════════════
-    #  TRAINING HEALTH
-    # ══════════════════════════════════════
+    # === TRAINING HEALTH ===
     section('TRAINING HEALTH')
-
     current_eps = epsilons[-1]
-    current_loss = losses[-1] if len(losses) > 0 else 0
-
-    # Epsilon
     eps_color = C.RED if current_eps > 0.5 else C.YEL if current_eps > 0.2 else C.GRN
-    print(f'  Epsilon:    {c(f"{current_eps:.4f}", eps_color)}  {bar(1-current_eps, 1.0, 20, color=C.GRN)} exploitation')
+    print(f'  Epsilon:    {c(f"{current_eps:.4f}", eps_color)}  {bar(1 - current_eps, 1.0, 20, color=C.GRN)} exploitation')
 
-    # LR from CSV
     if csv_episodes:
-        current_lr = csv_episodes[-1].lr
-        lr_color = C.RED if current_lr == 0 else C.YEL if current_lr < 1e-6 else C.GRN
-        print(f'  Learn Rate: {c(f"{current_lr:.8f}", lr_color)}', end='')
-        if current_lr == 0:
-            print(c('  *** ZERO - NO LEARNING POSSIBLE ***', C.RED, C.B))
-        else:
-            print()
+        cur_lr = csv_episodes[-1].lr
+        lr_c = C.RED if cur_lr == 0 else C.YEL if cur_lr < 1e-6 else C.GRN
+        print(f'  Learn Rate: {c(f"{cur_lr:.2e}", lr_c)}')
+        print(f'  Beta (PER): {csv_episodes[-1].beta:.4f}')
 
-        current_beta = csv_episodes[-1].beta
-        print(f'  Beta (PER): {current_beta:.4f}')
-
-    # Loss
-    print(f'  Last Loss:  {current_loss:.4f}')
+    print(f'  Last Loss:  {losses[-1]:.4f}')
     if len(losses) > 50:
-        print(f'  Avg Loss (last 50): {np.mean(losses[-50:]):.4f}')
+        print(f'  Avg Loss (50): {np.mean(losses[-50:]):.4f}')
 
-    # ══════════════════════════════════════
-    #  TREND ANALYSIS (SEGMENTED)
-    # ══════════════════════════════════════
+    # === SEGMENTED TREND ===
     section('SEGMENTED TREND ANALYSIS')
-
     segments = segment_trends(rewards, 4)
     if segments:
-        print(f'  {"Quarter":<10} {"Mean Rw":<12} {"Std":<10} {"Trend":<14} {"R²":<8}')
-        sep('─', C.DIM)
+        print(f'  {"Quarter":<10} {"Mean Rw":<12} {"Std":<10} {"Trend":<14} {"R\u00b2":<8}')
+        sep('\u2500', C.DIM)
         for seg in segments:
-            trend_str = c("↗ UP", C.GRN) if seg['slope'] > 0.5 else (c("↘ DOWN", C.RED) if seg['slope'] < -0.5 else c("→ FLAT", C.YEL))
-            print(f'  Q{seg["segment"]}        {seg["mean"]:>10.1f}  {seg["std"]:>8.1f}  {trend_str:<22} {seg["r2"]:.4f}')
+            t = c("\u2197 UP", C.GRN) if seg['slope'] > 0.5 else (c("\u2198 DOWN", C.RED) if seg['slope'] < -0.5 else c("\u2192 FLAT", C.YEL))
+            print(f'  Q{seg["segment"]}        {seg["mean"]:>10.1f}  {seg["std"]:>8.1f}  {t:<22} {seg["r2"]:.4f}')
 
-    # ══════════════════════════════════════
-    #  GOAL DISTANCE CALCULATOR
-    # ══════════════════════════════════════
-    section('GOAL DISTANCE ANALYSIS', C.MAG)
-
-    GOAL_POINTS = 6000
-    GOAL_SURVIVAL_SECS = 3600  # 1 hour
-    GOAL_SURVIVAL_STEPS = GOAL_SURVIVAL_SECS / STEP_DURATION
-
-    best_food_val = int(np.max(food))
-    avg_food_recent = np.mean(food[-min(50, len(food)):])
-    best_steps_val = int(np.max(steps))
-    avg_steps_recent = np.mean(steps[-min(50, len(steps)):])
-
-    print(f'  {"Metric":<22} {"Current Best":<16} {"Recent Avg":<16} {"Goal":<12} {"% Done":<10}')
-    sep('─', C.DIM)
-
-    pts_pct = min(best_food_val / GOAL_POINTS * 100, 100)
-    surv_pct = min(best_steps_val / GOAL_SURVIVAL_STEPS * 100, 100)
-
-    pts_color = C.GRN if pts_pct > 50 else C.YEL if pts_pct > 20 else C.RED
-    surv_color = C.GRN if surv_pct > 50 else C.YEL if surv_pct > 20 else C.RED
-
-    print(f'  {"Points (food)":<22} {best_food_val:<16} {avg_food_recent:<16.1f} {GOAL_POINTS:<12} {c(f"{pts_pct:.1f}%", pts_color)}')
-    print(f'  {"Survival (steps)":<22} {best_steps_val:<16} {avg_steps_recent:<16.1f} {int(GOAL_SURVIVAL_STEPS):<12} {c(f"{surv_pct:.1f}%", surv_color)}')
-
-    print()
-    print(f'  Points progress:   {bar(pts_pct, 100, 40, color=pts_color)} {pts_pct:.1f}%')
-    print(f'  Survival progress: {bar(surv_pct, 100, 40, color=surv_color)} {surv_pct:.1f}%')
-
-    # ══════════════════════════════════════
-    #  RECOMMENDATIONS
-    # ══════════════════════════════════════
+    # === RECOMMENDATIONS ===
     section('RECOMMENDATIONS', C.MAG)
-
     print(c(f'  {verdict.recommendation}', C.WHT))
-
-    # Additional specific recommendations
     print()
     recs = generate_specific_recommendations(episodes, csv_episodes, sessions, verdict)
     for i, rec in enumerate(recs, 1):
         print(c(f'  {i}. {rec}', C.CYN))
-
-    sep('═', C.CYN)
+    sep('\u2550', C.CYN)
     print()
 
 
 def generate_specific_recommendations(episodes, csv_episodes, sessions, verdict):
-    """Generate specific actionable recommendations."""
     recs = []
-
     if csv_episodes and csv_episodes[-1].lr == 0:
-        recs.append(
-            "URGENT: Reset learning rate. In config.py, the LR scheduler has reduced LR to 0. "
-            "Either restart with a fresh optimizer state or set a minimum LR floor (e.g., 1e-6)."
-        )
-
-    epsilons = [e.epsilon for e in episodes]
-    if epsilons[-1] > 0.3:
-        recs.append(
-            f"Epsilon is {epsilons[-1]:.3f} after {len(episodes)} episodes. "
-            f"Consider faster decay (eps_decay={int(50000)}) or lower eps_start if resuming."
-        )
-
+        recs.append("URGENT: LR=0. Reset learning rate or set min_lr floor.")
+    if episodes[-1].epsilon > 0.3:
+        recs.append(f"Epsilon {episodes[-1].epsilon:.3f} still high. Consider faster decay.")
     steps_arr = np.array([e.steps for e in episodes[-100:]])
     if np.mean(steps_arr) < 100:
-        recs.append(
-            "Average episode too short. Consider:\n"
-            "     - Reducing death penalties to avoid discouraging exploration\n"
-            "     - Adding survival bonus to incentivize staying alive"
-        )
-
+        recs.append("Episodes too short. Reduce death penalties or add survival bonus.")
     causes = [e.cause for e in episodes[-200:]]
-    wall_pct = sum(1 for c in causes if c == 'Wall') / len(causes)
+    wall_pct = sum(1 for x in causes if x == 'Wall') / len(causes)
     if wall_pct > 0.5:
-        recs.append(
-            f"Wall deaths are {wall_pct*100:.0f}% of recent deaths. The bot hits map boundaries. "
-            f"Increase wall_proximity_penalty or wall_alert_dist in reward config."
-        )
-
-    if len(sessions) > 2:
-        recs.append(
-            "Multiple session restarts detected. Each restart disrupts learning continuity. "
-            "Try to maintain consistent training runs of 10,000+ episodes."
-        )
-
-    rewards = [e.reward for e in episodes]
-    if np.mean(rewards) < 0:
-        recs.append(
-            f"Average reward is negative ({np.mean(rewards):.1f}). The bot is being penalized "
-            f"more than rewarded. Reduce penalty magnitudes or increase food_reward."
-        )
-
+        recs.append(f"Wall deaths {wall_pct*100:.0f}%. Increase wall_proximity_penalty.")
+    if np.mean([e.reward for e in episodes]) < 0:
+        recs.append("Average reward negative. Reduce penalties or boost food_reward.")
     if not recs:
-        recs.append("No critical issues detected. Continue training and monitor progress.")
-
+        recs.append("No critical issues. Continue training.")
     return recs
 
 
 # ═══════════════════════════════════════════════════════
-#  CHART GENERATION
+#  CHART GENERATION (PROFESSIONAL ANALYTICS)
 # ═══════════════════════════════════════════════════════
 
+def _setup_matplotlib():
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from matplotlib.gridspec import GridSpec
+    import matplotlib.ticker as mticker
+    plt.style.use('dark_background')
+    plt.rcParams.update({
+        'figure.facecolor': '#0d1117',
+        'axes.facecolor': '#161b22',
+        'axes.edgecolor': '#30363d',
+        'axes.labelcolor': '#c9d1d9',
+        'xtick.color': '#8b949e',
+        'ytick.color': '#8b949e',
+        'text.color': '#c9d1d9',
+        'grid.color': '#21262d',
+        'grid.alpha': 0.6,
+        'legend.facecolor': '#161b22',
+        'legend.edgecolor': '#30363d',
+        'font.size': 10,
+    })
+    return plt, GridSpec, mticker
+
+
+def _add_stage_bands(ax, ep_nums, stages):
+    """Add colored background bands per curriculum stage."""
+    prev = stages[0]
+    start = ep_nums[0]
+    for i in range(1, len(stages)):
+        if stages[i] != prev or i == len(stages) - 1:
+            end = ep_nums[i]
+            col = STAGE_COLORS_HEX.get(prev, '#888')
+            ax.axvspan(start, end, alpha=0.06, color=col)
+            start = ep_nums[i]
+            prev = stages[i]
+
+
 def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
-    """Generate comprehensive analysis charts."""
     try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        import matplotlib.patches as mpatches
-        from matplotlib.gridspec import GridSpec
+        plt, GridSpec, mticker = _setup_matplotlib()
     except ImportError:
         print(c("  matplotlib not installed, skipping charts.", C.YEL))
         return
 
-    plt.style.use('dark_background')
-
+    # Extract arrays
+    ep_nums = np.array([e.number for e in episodes])
     rewards = np.array([e.reward for e in episodes])
-    steps = np.array([e.steps for e in episodes])
-    food = np.array([e.food for e in episodes])
+    steps = np.array([e.steps for e in episodes], dtype=float)
+    food = np.array([e.food for e in episodes], dtype=float)
     losses = np.array([e.loss for e in episodes])
     epsilons = np.array([e.epsilon for e in episodes])
-    ep_nums = np.array([e.number for e in episodes])
+    stages_arr = np.array([e.stage for e in episodes])
+    causes_arr = np.array([e.cause for e in episodes])
+    food_per_step = np.array([e.food_per_step for e in episodes])
 
-    # ─── CHART 1: COMPREHENSIVE OVERVIEW (6 panels) ───
-    fig = plt.figure(figsize=(20, 14))
-    fig.suptitle('Slither.io Bot - Training Progress Analysis',
-                 fontsize=18, fontweight='bold', color='white', y=0.98)
+    # CSV-only fields
+    lr_arr = np.array([e.lr for e in episodes]) if episodes[0].lr > 0 or any(e.lr > 0 for e in episodes) else None
+    beta_arr = np.array([e.beta for e in episodes]) if any(e.beta > 0 for e in episodes) else None
 
-    gs = GridSpec(3, 2, figure=fig, hspace=0.35, wspace=0.3)
+    N = len(episodes)
+    sma_w = min(50, N // 3) if N > 30 else max(3, N // 3)
 
-    # 1. Reward History
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax1.fill_between(ep_nums, rewards, alpha=0.1, color='gray')
-    ax1.plot(ep_nums, rewards, alpha=0.15, color='gray', linewidth=0.5)
+    def _save(fig, name):
+        path = os.path.join(output_dir, name)
+        fig.savefig(path, dpi=150, facecolor=fig.get_facecolor(), bbox_inches='tight')
+        plt.close(fig)
+        print(c(f'  Chart saved: {name}', C.GRN))
 
-    if len(rewards) > 50:
-        sma50 = moving_average(rewards, 50)
-        ax1.plot(ep_nums[49:], sma50, color='#00ff88', linewidth=2, label='SMA-50')
-    if len(rewards) > 200:
-        sma200 = moving_average(rewards, 200)
-        ax1.plot(ep_nums[199:], sma200, color='#ff6600', linewidth=2, label='SMA-200')
+    # ──────────────────────────────────────────────────
+    # CHART 1: MAIN DASHBOARD (6 panels)
+    # ──────────────────────────────────────────────────
+    fig = plt.figure(figsize=(22, 16))
+    fig.suptitle('SLITHER.IO BOT - TRAINING DASHBOARD', fontsize=20, fontweight='bold', y=0.98)
+    gs = GridSpec(3, 2, figure=fig, hspace=0.32, wspace=0.25)
 
-    ax1.axhline(y=0, color='white', linestyle=':', alpha=0.3)
-    ax1.set_title('Reward History', fontsize=12, fontweight='bold')
-    ax1.set_xlabel('Episode')
-    ax1.set_ylabel('Reward')
-    ax1.legend(loc='upper left', fontsize=8)
-    ax1.grid(True, alpha=0.15)
+    # 1a. Reward with Bollinger bands
+    ax = fig.add_subplot(gs[0, 0])
+    _add_stage_bands(ax, ep_nums, stages_arr)
+    ax.plot(ep_nums, rewards, alpha=0.12, color='#484f58', linewidth=0.5)
+    if N > sma_w:
+        sma = moving_average(rewards, sma_w)
+        x_sma = ep_nums[sma_w - 1:]
+        rstd = rolling_std(rewards, sma_w)[sma_w - 1:]
+        ax.fill_between(x_sma, sma - 2 * rstd, sma + 2 * rstd, alpha=0.12, color='#58a6ff')
+        ax.plot(x_sma, sma, color='#58a6ff', linewidth=2, label=f'SMA-{sma_w}')
+        ema = exponential_ma(rewards, sma_w)
+        ax.plot(ep_nums, ema, color='#f0883e', linewidth=1.5, alpha=0.8, label=f'EMA-{sma_w}')
+    ax.axhline(0, color='#484f58', linestyle=':', linewidth=0.8)
+    ax.set_title('Reward (Bollinger Bands)', fontweight='bold')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Reward')
+    ax.legend(fontsize=8, loc='upper left')
+    ax.grid(True)
 
-    # 2. Survival Duration
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax2.plot(ep_nums, steps, alpha=0.15, color='gray', linewidth=0.5)
-    if len(steps) > 50:
-        sma = moving_average(steps.astype(float), 50)
-        ax2.plot(ep_nums[49:], sma, color='#00ccff', linewidth=2, label='Steps (SMA-50)')
-    ax2.axhline(y=1800, color='lime', linestyle='--', alpha=0.5, label='Goal: 1hr (1800 steps)')
-    ax2.set_title('Survival Duration', fontsize=12, fontweight='bold')
-    ax2.set_xlabel('Episode')
-    ax2.set_ylabel('Steps')
-    ax2.legend(loc='upper left', fontsize=8)
-    ax2.grid(True, alpha=0.15)
+    # 1b. Steps with percentile bands
+    ax = fig.add_subplot(gs[0, 1])
+    _add_stage_bands(ax, ep_nums, stages_arr)
+    ax.plot(ep_nums, steps, alpha=0.12, color='#484f58', linewidth=0.5)
+    if N > sma_w:
+        p25 = rolling_percentile(steps, sma_w, 25)
+        p50 = rolling_percentile(steps, sma_w, 50)
+        p75 = rolling_percentile(steps, sma_w, 75)
+        p95 = rolling_percentile(steps, sma_w, 95)
+        mask = ~np.isnan(p50)
+        ax.fill_between(ep_nums[mask], p25[mask], p75[mask], alpha=0.2, color='#3fb950')
+        ax.plot(ep_nums[mask], p50[mask], color='#3fb950', linewidth=2, label='Median')
+        ax.plot(ep_nums[mask], p95[mask], color='#3fb950', linewidth=1, linestyle='--', alpha=0.6, label='P95')
+    ax.set_title('Survival Duration (Percentile Bands)', fontweight='bold')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Steps')
+    ax.legend(fontsize=8, loc='upper left')
+    ax.grid(True)
 
-    # 3. Food Collection
-    ax3 = fig.add_subplot(gs[1, 0])
-    ax3.plot(ep_nums, food, alpha=0.15, color='gray', linewidth=0.5)
-    if len(food) > 50:
-        sma = moving_average(food.astype(float), 50)
-        ax3.plot(ep_nums[49:], sma, color='#ffaa00', linewidth=2, label='Food (SMA-50)')
-    ax3.axhline(y=6000, color='lime', linestyle='--', alpha=0.5, label='Goal: 6000')
-    ax3.set_title('Food Collected per Episode', fontsize=12, fontweight='bold')
-    ax3.set_xlabel('Episode')
-    ax3.set_ylabel('Food')
-    ax3.legend(loc='upper left', fontsize=8)
-    ax3.grid(True, alpha=0.15)
-
-    # 4. Loss
-    ax4 = fig.add_subplot(gs[1, 1])
-    ax4.plot(ep_nums, losses, alpha=0.15, color='gray', linewidth=0.5)
-    if len(losses) > 50:
-        sma = moving_average(losses, 50)
-        ax4.plot(ep_nums[49:], sma, color='#ff4444', linewidth=2, label='Loss (SMA-50)')
-    ax4.set_title('Training Loss', fontsize=12, fontweight='bold')
-    ax4.set_xlabel('Episode')
-    ax4.set_ylabel('Loss')
-    ax4.legend(loc='upper right', fontsize=8)
-    ax4.grid(True, alpha=0.15)
-
-    # 5. Epsilon + LR
-    ax5 = fig.add_subplot(gs[2, 0])
-    ax5.plot(ep_nums, epsilons, color='#ff6600', linewidth=1.5, label='Epsilon')
-    ax5.set_ylabel('Epsilon', color='#ff6600')
-    ax5.set_title('Exploration Rate (Epsilon)', fontsize=12, fontweight='bold')
-    ax5.set_xlabel('Episode')
-    ax5.legend(loc='upper right', fontsize=8)
-    ax5.grid(True, alpha=0.15)
-
-    # 6. Death Cause Distribution
-    ax6 = fig.add_subplot(gs[2, 1])
-    cause_counts = defaultdict(int)
-    for e in episodes:
-        cause_counts[e.cause] += 1
-
-    # Death cause over time (rolling window)
-    window_size = max(50, len(episodes) // 20)
-    cause_names = ['Wall', 'SnakeCollision', 'Unknown']
-    cause_colors = ['#ff4444', '#ffaa00', '#888888']
-
-    if len(episodes) > window_size:
-        x_points = []
-        cause_series = {cn: [] for cn in cause_names}
-
-        for i in range(0, len(episodes) - window_size, max(1, window_size // 5)):
-            window = episodes[i:i + window_size]
-            x_points.append(window[len(window)//2].number)
-            total = len(window)
-            for cn in cause_names:
-                cnt = sum(1 for e in window if e.cause == cn)
-                cause_series[cn].append(cnt / total * 100)
-
-        for cn, cc in zip(cause_names, cause_colors):
-            if cause_series[cn]:
-                ax6.plot(x_points, cause_series[cn], color=cc, linewidth=1.5, label=cn)
-        ax6.set_ylabel('% of Deaths')
-    else:
-        labels = list(cause_counts.keys())
-        sizes = list(cause_counts.values())
-        ax6.pie(sizes, labels=labels, autopct='%1.1f%%', colors=cause_colors[:len(labels)])
-
-    ax6.set_title('Death Causes Over Time', fontsize=12, fontweight='bold')
-    ax6.legend(loc='upper right', fontsize=8)
-    ax6.grid(True, alpha=0.15)
-
-    # Save
-    overview_path = os.path.join(output_dir, 'training_progress_overview.png')
-    plt.savefig(overview_path, dpi=120, facecolor='#1a1a2e', bbox_inches='tight')
-    plt.close()
-    print(c(f'  Chart saved: {overview_path}', C.GRN))
-
-    # ─── CHART 2: LEARNING DETECTION ───
-    fig2, axes = plt.subplots(2, 2, figsize=(16, 10))
-    fig2.suptitle('Learning Detection Analysis', fontsize=16, fontweight='bold', color='white')
-
-    # Reward distribution: early vs late
-    ax = axes[0, 0]
-    half = len(rewards) // 2
-    if half > 20:
-        ax.hist(rewards[:half], bins=40, alpha=0.5, color='#ff6666', label=f'First half (n={half})', density=True)
-        ax.hist(rewards[half:], bins=40, alpha=0.5, color='#66ff66', label=f'Second half (n={len(rewards)-half})', density=True)
-        ax.axvline(np.mean(rewards[:half]), color='#ff6666', linestyle='--', linewidth=2)
-        ax.axvline(np.mean(rewards[half:]), color='#66ff66', linestyle='--', linewidth=2)
-    ax.set_title('Reward Distribution: Early vs Late')
+    # 1c. Food collection
+    ax = fig.add_subplot(gs[1, 0])
+    _add_stage_bands(ax, ep_nums, stages_arr)
+    ax.plot(ep_nums, food, alpha=0.12, color='#484f58', linewidth=0.5)
+    if N > sma_w:
+        sma_f = moving_average(food, sma_w)
+        ax.plot(ep_nums[sma_w - 1:], sma_f, color='#d29922', linewidth=2, label=f'SMA-{sma_w}')
+    ax.set_title('Food Collected', fontweight='bold')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Food')
     ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.15)
+    ax.grid(True)
 
-    # Cumulative reward
+    # 1d. Loss (log scale)
+    ax = fig.add_subplot(gs[1, 1])
+    valid_loss = losses > 0
+    if np.any(valid_loss):
+        ax.plot(ep_nums[valid_loss], losses[valid_loss], alpha=0.15, color='#484f58', linewidth=0.5)
+        if np.sum(valid_loss) > sma_w:
+            sma_l = moving_average(losses[valid_loss], sma_w)
+            ax.plot(ep_nums[valid_loss][sma_w - 1:], sma_l, color='#f85149', linewidth=2, label=f'SMA-{sma_w}')
+        ax.set_yscale('log')
+    ax.set_title('Training Loss (log scale)', fontweight='bold')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Loss')
+    ax.legend(fontsize=8)
+    ax.grid(True)
+
+    # 1e. Epsilon + LR dual axis
+    ax = fig.add_subplot(gs[2, 0])
+    ax.plot(ep_nums, epsilons, color='#f0883e', linewidth=1.5, label='Epsilon')
+    ax.set_ylabel('Epsilon', color='#f0883e')
+    ax.set_xlabel('Episode')
+    ax.set_title('Epsilon & Learning Rate', fontweight='bold')
+    if lr_arr is not None and np.any(lr_arr > 0):
+        ax2 = ax.twinx()
+        ax2.plot(ep_nums, lr_arr, color='#a5d6ff', linewidth=1, alpha=0.7, label='LR')
+        ax2.set_ylabel('LR', color='#a5d6ff')
+        ax2.set_yscale('log')
+        ax2.legend(fontsize=8, loc='center right')
+    ax.legend(fontsize=8, loc='upper right')
+    ax.grid(True)
+
+    # 1f. Death cause stacked area
+    ax = fig.add_subplot(gs[2, 1])
+    w_size = max(50, N // 30)
+    if N > w_size:
+        x_pts = []
+        series = {cn: [] for cn in CAUSE_NAMES}
+        for i in range(0, N - w_size, max(1, w_size // 5)):
+            window = causes_arr[i:i + w_size]
+            x_pts.append(ep_nums[i + w_size // 2])
+            total = len(window)
+            for cn in CAUSE_NAMES:
+                series[cn].append(np.sum(window == cn) / total * 100)
+
+        bottom = np.zeros(len(x_pts))
+        for cn in CAUSE_NAMES:
+            vals = np.array(series[cn])
+            if np.any(vals > 0):
+                ax.fill_between(x_pts, bottom, bottom + vals, alpha=0.7,
+                               color=CAUSE_COLORS.get(cn, '#888'), label=cn)
+                bottom += vals
+        ax.set_ylim(0, 100)
+        ax.set_ylabel('% of Deaths')
+    ax.set_title('Death Causes (Stacked Area)', fontweight='bold')
+    ax.set_xlabel('Episode')
+    ax.legend(fontsize=7, loc='upper right')
+    ax.grid(True)
+
+    _save(fig, 'chart_01_dashboard.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 2: STAGE PROGRESSION TIMELINE
+    # ──────────────────────────────────────────────────
+    fig, axes = plt.subplots(3, 1, figsize=(20, 10), sharex=True)
+    fig.suptitle('CURRICULUM STAGE PROGRESSION', fontsize=16, fontweight='bold')
+
+    for ax_i, (data, label, color) in enumerate([
+        (steps, 'Steps', '#3fb950'), (food, 'Food', '#d29922'), (rewards, 'Reward', '#58a6ff')
+    ]):
+        ax = axes[ax_i]
+        _add_stage_bands(ax, ep_nums, stages_arr)
+        ax.plot(ep_nums, data, alpha=0.12, color='#484f58', linewidth=0.5)
+        if N > 20:
+            sma_d = moving_average(data, min(20, N // 3))
+            ax.plot(ep_nums[len(ep_nums) - len(sma_d):], sma_d, color=color, linewidth=2)
+        ax.set_ylabel(label)
+        ax.grid(True)
+
+        # Stage labels
+        prev_s = stages_arr[0]
+        start_i = 0
+        for i in range(1, len(stages_arr)):
+            if stages_arr[i] != prev_s or i == len(stages_arr) - 1:
+                mid = (ep_nums[start_i] + ep_nums[i]) / 2
+                col = STAGE_COLORS_HEX.get(prev_s, '#888')
+                ax.text(mid, ax.get_ylim()[1] * 0.9, f'S{prev_s}',
+                       ha='center', fontsize=9, color=col, fontweight='bold')
+                start_i = i
+                prev_s = stages_arr[i]
+
+    axes[-1].set_xlabel('Episode')
+    _save(fig, 'chart_02_stage_progression.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 3: PER-STAGE BOX + VIOLIN PLOTS
+    # ──────────────────────────────────────────────────
+    unique_stages = sorted(set(stages_arr))
+    if len(unique_stages) >= 1:
+        fig, axes = plt.subplots(1, 4, figsize=(22, 6))
+        fig.suptitle('PER-STAGE DISTRIBUTIONS', fontsize=16, fontweight='bold')
+
+        for ax_i, (metric_name, get_fn) in enumerate([
+            ('Reward', lambda e: e.reward),
+            ('Steps', lambda e: e.steps),
+            ('Food', lambda e: e.food),
+            ('Food/Step', lambda e: e.food_per_step),
+        ]):
+            ax = axes[ax_i]
+            data_per_stage = []
+            labels = []
+            colors = []
+            for s in unique_stages:
+                vals = [get_fn(e) for e in episodes if e.stage == s]
+                data_per_stage.append(vals)
+                labels.append(f'S{s}\n{STAGE_NAMES.get(s, "?")[:8]}')
+                colors.append(STAGE_COLORS_HEX.get(s, '#888'))
+
+            parts = ax.violinplot(data_per_stage, positions=range(len(unique_stages)),
+                                 showmeans=True, showmedians=True)
+            for i, pc in enumerate(parts['bodies']):
+                pc.set_facecolor(colors[i])
+                pc.set_alpha(0.4)
+            for key in ['cmeans', 'cmedians', 'cbars', 'cmins', 'cmaxes']:
+                if key in parts:
+                    parts[key].set_color('#c9d1d9')
+
+            # Overlay box plot
+            bp = ax.boxplot(data_per_stage, positions=range(len(unique_stages)),
+                           widths=0.15, patch_artist=True, showfliers=False)
+            for i, patch in enumerate(bp['boxes']):
+                patch.set_facecolor(colors[i])
+                patch.set_alpha(0.6)
+            for element in ['whiskers', 'caps', 'medians']:
+                for item in bp[element]:
+                    item.set_color('#c9d1d9')
+
+            ax.set_xticks(range(len(unique_stages)))
+            ax.set_xticklabels(labels, fontsize=8)
+            ax.set_title(metric_name, fontweight='bold')
+            ax.grid(True, axis='y')
+
+        plt.tight_layout()
+        _save(fig, 'chart_03_stage_distributions.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 4: HYPERPARAMETER TRACKING
+    # ──────────────────────────────────────────────────
+    fig, axes = plt.subplots(2, 2, figsize=(20, 10))
+    fig.suptitle('HYPERPARAMETER & TRAINING DYNAMICS', fontsize=16, fontweight='bold')
+
+    # Epsilon decay curve
+    ax = axes[0, 0]
+    ax.plot(ep_nums, epsilons, color='#f0883e', linewidth=1.5)
+    ax.axhline(0.08, color='#3fb950', linestyle='--', alpha=0.5, label='eps_end=0.08')
+    ax.set_title('Epsilon Decay')
+    ax.set_ylabel('Epsilon')
+    ax.set_xlabel('Episode')
+    ax.legend(fontsize=8)
+    ax.grid(True)
+
+    # Learning rate
     ax = axes[0, 1]
-    cum_reward = np.cumsum(rewards)
-    ax.plot(ep_nums, cum_reward, color='#00ff88', linewidth=1.5)
+    if lr_arr is not None:
+        ax.plot(ep_nums, lr_arr, color='#a5d6ff', linewidth=1.5)
+        ax.set_yscale('log')
+    ax.set_title('Learning Rate Schedule')
+    ax.set_ylabel('LR (log)')
+    ax.set_xlabel('Episode')
+    ax.grid(True)
+
+    # Beta (PER importance sampling)
+    ax = axes[1, 0]
+    if beta_arr is not None:
+        ax.plot(ep_nums, beta_arr, color='#d2a8ff', linewidth=1.5)
+    ax.set_title('PER Beta (Importance Sampling)')
+    ax.set_ylabel('Beta')
+    ax.set_xlabel('Episode')
+    ax.grid(True)
+
+    # Loss with EMA
+    ax = axes[1, 1]
+    if np.any(losses > 0):
+        valid = losses > 0
+        ax.plot(ep_nums[valid], losses[valid], alpha=0.1, color='#484f58', linewidth=0.5)
+        if np.sum(valid) > 20:
+            ema_l = exponential_ma(losses[valid], 50)
+            ax.plot(ep_nums[valid], ema_l, color='#f85149', linewidth=2, label='EMA-50')
+        ax.set_yscale('log')
+    ax.set_title('Loss (EMA + Raw)')
+    ax.set_ylabel('Loss (log)')
+    ax.set_xlabel('Episode')
+    ax.legend(fontsize=8)
+    ax.grid(True)
+
+    plt.tight_layout()
+    _save(fig, 'chart_04_hyperparameters.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 5a: CORRELATION SCATTER MATRIX (expanded)
+    # ──────────────────────────────────────────────────
+    fig, axes = plt.subplots(4, 3, figsize=(22, 24))
+    fig.suptitle('METRIC CORRELATIONS (Scatter Matrix)', fontsize=16, fontweight='bold')
+
+    # Prepare LR/Beta arrays for correlations (replace None with zeros)
+    lr_corr = lr_arr if lr_arr is not None else np.zeros(N)
+    beta_corr = beta_arr if beta_arr is not None else np.zeros(N)
+
+    pairs = [
+        (steps, rewards, 'Steps', 'Reward'),
+        (food, rewards, 'Food', 'Reward'),
+        (steps, food, 'Steps', 'Food'),
+        (food_per_step, rewards, 'Food/Step', 'Reward'),
+        (losses, rewards, 'Loss', 'Reward'),
+        (epsilons, rewards, 'Epsilon', 'Reward'),
+        (losses, steps, 'Loss', 'Steps'),
+        (epsilons, steps, 'Epsilon', 'Steps'),
+        (lr_corr, rewards, 'LR', 'Reward'),
+        (lr_corr, losses, 'LR', 'Loss'),
+        (food_per_step, steps, 'Food/Step', 'Steps'),
+        (epsilons, food, 'Epsilon', 'Food'),
+    ]
+
+    for idx, (xd, yd, xl, yl) in enumerate(pairs):
+        ax = axes[idx // 3, idx % 3]
+        # Color by stage
+        for s in unique_stages:
+            mask = stages_arr == s
+            ax.scatter(xd[mask], yd[mask], alpha=0.15, s=8,
+                      color=STAGE_COLORS_HEX.get(s, '#888'), label=f'S{s}')
+        # Trend line + R²
+        valid = np.isfinite(xd) & np.isfinite(yd) & (xd != 0) if xl in ('Loss', 'LR') else np.isfinite(xd) & np.isfinite(yd)
+        if np.sum(valid) > 10:
+            z = np.polyfit(xd[valid], yd[valid], 1)
+            p = np.poly1d(z)
+            x_line = np.linspace(np.min(xd[valid]), np.max(xd[valid]), 50)
+            ax.plot(x_line, p(x_line), color='#f0883e', linewidth=1.5, alpha=0.8, linestyle='--')
+            ss_res = np.sum((yd[valid] - p(xd[valid])) ** 2)
+            ss_tot = np.sum((yd[valid] - np.mean(yd[valid])) ** 2)
+            r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0
+            corr = np.corrcoef(xd[valid], yd[valid])[0, 1]
+            ax.text(0.02, 0.98, f'r={corr:.3f}  R²={r2:.3f}',
+                   transform=ax.transAxes, fontsize=8, va='top',
+                   bbox=dict(boxstyle='round,pad=0.3', facecolor='#0d1117', edgecolor='#30363d', alpha=0.9),
+                   color='#f0883e')
+        ax.set_xlabel(xl)
+        ax.set_ylabel(yl)
+        ax.set_title(f'{xl} vs {yl}', fontweight='bold')
+        ax.grid(True)
+        if idx == 0:
+            ax.legend(fontsize=7, markerscale=3)
+
+    plt.tight_layout()
+    _save(fig, 'chart_05_correlations.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 5b: CORRELATION HEATMAP MATRIX
+    # ──────────────────────────────────────────────────
+    metric_names = ['Reward', 'Steps', 'Food', 'Food/Step', 'Loss', 'Epsilon', 'LR', 'Beta']
+    metric_data = [rewards, steps.astype(float), food.astype(float), food_per_step,
+                   losses, epsilons, lr_corr, beta_corr]
+
+    n_metrics = len(metric_names)
+    corr_matrix = np.zeros((n_metrics, n_metrics))
+    for i in range(n_metrics):
+        for j in range(n_metrics):
+            valid = np.isfinite(metric_data[i]) & np.isfinite(metric_data[j])
+            if np.sum(valid) > 5 and np.std(metric_data[i][valid]) > 0 and np.std(metric_data[j][valid]) > 0:
+                corr_matrix[i, j] = np.corrcoef(metric_data[i][valid], metric_data[j][valid])[0, 1]
+            else:
+                corr_matrix[i, j] = 0.0
+
+    fig, axes = plt.subplots(1, 2, figsize=(22, 9), gridspec_kw={'width_ratios': [1.2, 1]})
+    fig.suptitle('CORRELATION ANALYSIS', fontsize=16, fontweight='bold')
+
+    # Left: Heatmap
+    ax = axes[0]
+    im = ax.imshow(corr_matrix, cmap='RdBu_r', vmin=-1, vmax=1, aspect='auto')
+    ax.set_xticks(range(n_metrics))
+    ax.set_yticks(range(n_metrics))
+    ax.set_xticklabels(metric_names, rotation=45, ha='right', fontsize=10)
+    ax.set_yticklabels(metric_names, fontsize=10)
+    # Annotate cells
+    for i in range(n_metrics):
+        for j in range(n_metrics):
+            val = corr_matrix[i, j]
+            color = '#0d1117' if abs(val) > 0.5 else '#c9d1d9'
+            ax.text(j, i, f'{val:.2f}', ha='center', va='center', fontsize=9,
+                   fontweight='bold' if abs(val) > 0.3 else 'normal', color=color)
+    fig.colorbar(im, ax=ax, shrink=0.8, label='Pearson r')
+    ax.set_title('Pearson Correlation Matrix', fontweight='bold', fontsize=12)
+
+    # Right: Top correlations ranked bar chart
+    ax = axes[1]
+    corr_pairs = []
+    for i in range(n_metrics):
+        for j in range(i + 1, n_metrics):
+            corr_pairs.append((metric_names[i], metric_names[j], corr_matrix[i, j]))
+    corr_pairs.sort(key=lambda x: abs(x[2]), reverse=True)
+    top_n = min(12, len(corr_pairs))
+    top_pairs = corr_pairs[:top_n]
+    labels = [f'{a} × {b}' for a, b, _ in top_pairs]
+    values = [v for _, _, v in top_pairs]
+    colors = ['#3fb950' if v > 0 else '#f85149' for v in values]
+    y_pos = np.arange(top_n)
+    ax.barh(y_pos, values, color=colors, alpha=0.8, edgecolor='#30363d')
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels, fontsize=9)
+    ax.set_xlabel('Pearson r', fontsize=10)
+    ax.set_title('Strongest Correlations (ranked)', fontweight='bold', fontsize=12)
+    ax.axvline(0, color='#484f58', linewidth=1)
+    ax.set_xlim(-1.05, 1.05)
+    ax.grid(True, axis='x')
+    ax.invert_yaxis()
+    # Add value labels on bars
+    for i, v in enumerate(values):
+        ax.text(v + (0.03 if v >= 0 else -0.03), i, f'{v:.3f}',
+               va='center', ha='left' if v >= 0 else 'right', fontsize=8, color='#c9d1d9')
+
+    plt.tight_layout()
+    _save(fig, 'chart_05b_correlation_heatmap.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 6: ROLLING PERFORMANCE BANDS
+    # ──────────────────────────────────────────────────
+    fig, axes = plt.subplots(3, 1, figsize=(20, 14), sharex=True)
+    fig.suptitle('ROLLING PERFORMANCE PERCENTILE BANDS', fontsize=16, fontweight='bold')
+
+    band_w = min(100, N // 4) if N > 40 else max(5, N // 3)
+
+    for ax_i, (data, label, base_color) in enumerate([
+        (rewards, 'Reward', '#58a6ff'),
+        (steps, 'Steps', '#3fb950'),
+        (food, 'Food', '#d29922'),
+    ]):
+        ax = axes[ax_i]
+        _add_stage_bands(ax, ep_nums, stages_arr)
+        ax.plot(ep_nums, data, alpha=0.08, color='#484f58', linewidth=0.5)
+
+        if N > band_w:
+            p10 = rolling_percentile(data, band_w, 10)
+            p25 = rolling_percentile(data, band_w, 25)
+            p50 = rolling_percentile(data, band_w, 50)
+            p75 = rolling_percentile(data, band_w, 75)
+            p90 = rolling_percentile(data, band_w, 90)
+            mask = ~np.isnan(p50)
+
+            ax.fill_between(ep_nums[mask], p10[mask], p90[mask], alpha=0.08, color=base_color, label='P10-P90')
+            ax.fill_between(ep_nums[mask], p25[mask], p75[mask], alpha=0.2, color=base_color, label='P25-P75')
+            ax.plot(ep_nums[mask], p50[mask], color=base_color, linewidth=2.5, label='Median')
+
+        ax.set_ylabel(label)
+        ax.legend(fontsize=8, loc='upper left')
+        ax.grid(True)
+
+    axes[-1].set_xlabel('Episode')
+    _save(fig, 'chart_06_performance_bands.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 7: DEATH ANALYSIS DEEP DIVE
+    # ──────────────────────────────────────────────────
+    fig = plt.figure(figsize=(22, 12))
+    gs = GridSpec(2, 3, figure=fig, hspace=0.35, wspace=0.3)
+    fig.suptitle('DEATH ANALYSIS DEEP DIVE', fontsize=16, fontweight='bold')
+
+    # 7a. Overall pie
+    ax = fig.add_subplot(gs[0, 0])
+    cause_counts = defaultdict(int)
+    for ca in causes_arr:
+        cause_counts[ca] += 1
+    labels_pie = []
+    sizes_pie = []
+    colors_pie = []
+    for cn in CAUSE_NAMES:
+        if cause_counts.get(cn, 0) > 0:
+            labels_pie.append(cn)
+            sizes_pie.append(cause_counts[cn])
+            colors_pie.append(CAUSE_COLORS.get(cn, '#888'))
+    # Add any unknown causes
+    for cn, cnt in cause_counts.items():
+        if cn not in CAUSE_NAMES and cnt > 0:
+            labels_pie.append(cn)
+            sizes_pie.append(cnt)
+            colors_pie.append('#666')
+    if sizes_pie:
+        wedges, texts, autotexts = ax.pie(sizes_pie, labels=labels_pie, autopct='%1.1f%%',
+                                           colors=colors_pie, textprops={'fontsize': 9})
+        for at in autotexts:
+            at.set_fontsize(8)
+    ax.set_title('Overall Death Distribution')
+
+    # 7b. Death cause per stage (grouped bar)
+    ax = fig.add_subplot(gs[0, 1:])
+    stage_cause_data = {}
+    for s in unique_stages:
+        s_causes = causes_arr[stages_arr == s]
+        total_s = len(s_causes)
+        stage_cause_data[s] = {}
+        for cn in CAUSE_NAMES:
+            stage_cause_data[s][cn] = np.sum(s_causes == cn) / max(total_s, 1) * 100
+
+    x = np.arange(len(unique_stages))
+    width = 0.15
+    for i, cn in enumerate(CAUSE_NAMES):
+        vals = [stage_cause_data.get(s, {}).get(cn, 0) for s in unique_stages]
+        if any(v > 0 for v in vals):
+            ax.bar(x + i * width, vals, width, label=cn, color=CAUSE_COLORS.get(cn, '#888'), alpha=0.8)
+
+    ax.set_xticks(x + width * 2)
+    ax.set_xticklabels([f'S{s}: {STAGE_NAMES.get(s, "?")}' for s in unique_stages], fontsize=9)
+    ax.set_ylabel('% of Deaths')
+    ax.set_title('Death Causes per Stage')
+    ax.legend(fontsize=8)
+    ax.grid(True, axis='y')
+
+    # 7c. Steps at death (histogram per cause)
+    ax = fig.add_subplot(gs[1, 0])
+    for cn in ['Wall', 'SnakeCollision', 'MaxSteps']:
+        mask = causes_arr == cn
+        if np.any(mask):
+            ax.hist(steps[mask], bins=50, alpha=0.5, color=CAUSE_COLORS.get(cn, '#888'),
+                   label=f'{cn} (n={np.sum(mask)})', density=True)
+    ax.set_title('Steps at Death (by cause)')
+    ax.set_xlabel('Steps')
+    ax.set_ylabel('Density')
+    ax.legend(fontsize=8)
+    ax.grid(True)
+
+    # 7d. Reward at death (by cause)
+    ax = fig.add_subplot(gs[1, 1])
+    data_box = []
+    labels_box = []
+    colors_box = []
+    for cn in CAUSE_NAMES:
+        mask = causes_arr == cn
+        if np.any(mask):
+            data_box.append(rewards[mask])
+            labels_box.append(cn)
+            colors_box.append(CAUSE_COLORS.get(cn, '#888'))
+    if data_box:
+        bp = ax.boxplot(data_box, labels=labels_box, patch_artist=True, showfliers=False)
+        for patch, col in zip(bp['boxes'], colors_box):
+            patch.set_facecolor(col)
+            patch.set_alpha(0.6)
+        for el in ['whiskers', 'caps', 'medians']:
+            for item in bp[el]:
+                item.set_color('#c9d1d9')
+    ax.set_title('Reward by Death Cause')
+    ax.set_ylabel('Reward')
+    ax.grid(True, axis='y')
+    plt.setp(ax.get_xticklabels(), rotation=15, fontsize=8)
+
+    # 7e. Death cause rolling heatmap
+    ax = fig.add_subplot(gs[1, 2])
+    heatmap_w = max(100, N // 20)
+    if N > heatmap_w:
+        active_causes = [cn for cn in CAUSE_NAMES if np.any(causes_arr == cn)]
+        heat_data = []
+        heat_x = []
+        for i in range(0, N - heatmap_w, max(1, heatmap_w // 10)):
+            window = causes_arr[i:i + heatmap_w]
+            total_w = len(window)
+            heat_x.append(ep_nums[i + heatmap_w // 2])
+            row = [np.sum(window == cn) / total_w * 100 for cn in active_causes]
+            heat_data.append(row)
+
+        if heat_data:
+            heat_arr = np.array(heat_data).T
+            im = ax.imshow(heat_arr, aspect='auto', cmap='YlOrRd',
+                          extent=[heat_x[0], heat_x[-1], len(active_causes) - 0.5, -0.5])
+            ax.set_yticks(range(len(active_causes)))
+            ax.set_yticklabels(active_causes, fontsize=8)
+            plt.colorbar(im, ax=ax, label='%', shrink=0.8)
+    ax.set_title('Death Cause Heatmap (time)')
+    ax.set_xlabel('Episode')
+
+    _save(fig, 'chart_07_death_analysis.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 8: FOOD EFFICIENCY DASHBOARD
+    # ──────────────────────────────────────────────────
+    fig, axes = plt.subplots(2, 2, figsize=(20, 12))
+    fig.suptitle('FOOD COLLECTION EFFICIENCY', fontsize=16, fontweight='bold')
+
+    # 8a. Food/step ratio over time
+    ax = axes[0, 0]
+    _add_stage_bands(ax, ep_nums, stages_arr)
+    ax.plot(ep_nums, food_per_step, alpha=0.12, color='#484f58', linewidth=0.5)
+    if N > sma_w:
+        sma_fps = moving_average(food_per_step, sma_w)
+        ax.plot(ep_nums[sma_w - 1:], sma_fps, color='#d29922', linewidth=2, label=f'SMA-{sma_w}')
+    ax.set_title('Food per Step (Efficiency)')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Food/Step')
+    ax.legend(fontsize=8)
+    ax.grid(True)
+
+    # 8b. Cumulative food
+    ax = axes[0, 1]
+    cum_food = np.cumsum(food)
+    ax.plot(ep_nums, cum_food, color='#d29922', linewidth=2)
+    ax.fill_between(ep_nums, cum_food, alpha=0.1, color='#d29922')
+    ax.set_title('Cumulative Food Collected')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Total Food')
+    ax.grid(True)
+
+    # 8c. Food distribution per stage
+    ax = axes[1, 0]
+    data_food_stage = []
+    labels_fs = []
+    colors_fs = []
+    for s in unique_stages:
+        vals = food[stages_arr == s]
+        data_food_stage.append(vals)
+        labels_fs.append(f'S{s}')
+        colors_fs.append(STAGE_COLORS_HEX.get(s, '#888'))
+    if data_food_stage:
+        bp = ax.boxplot(data_food_stage, labels=labels_fs, patch_artist=True, showfliers=False)
+        for patch, col in zip(bp['boxes'], colors_fs):
+            patch.set_facecolor(col)
+            patch.set_alpha(0.6)
+        for el in ['whiskers', 'caps', 'medians']:
+            for item in bp[el]:
+                item.set_color('#c9d1d9')
+    ax.set_title('Food Distribution per Stage')
+    ax.set_ylabel('Food')
+    ax.grid(True, axis='y')
+
+    # 8d. Reward vs Food scatter
+    ax = axes[1, 1]
+    for s in unique_stages:
+        mask = stages_arr == s
+        ax.scatter(food[mask], rewards[mask], alpha=0.2, s=10,
+                  color=STAGE_COLORS_HEX.get(s, '#888'), label=f'S{s}')
+    ax.set_title('Food vs Reward')
+    ax.set_xlabel('Food')
+    ax.set_ylabel('Reward')
+    ax.legend(fontsize=8, markerscale=3)
+    ax.grid(True)
+
+    plt.tight_layout()
+    _save(fig, 'chart_08_food_efficiency.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 9: REWARD DISTRIBUTIONS (HISTOGRAM + KDE)
+    # ──────────────────────────────────────────────────
+    n_stages = len(unique_stages)
+    fig, axes = plt.subplots(1, max(n_stages, 1), figsize=(6 * max(n_stages, 1), 5))
+    fig.suptitle('REWARD DISTRIBUTION PER STAGE', fontsize=16, fontweight='bold')
+    if n_stages == 1:
+        axes = [axes]
+
+    for i, s in enumerate(unique_stages):
+        ax = axes[i]
+        s_rewards = rewards[stages_arr == s]
+        col = STAGE_COLORS_HEX.get(s, '#888')
+
+        ax.hist(s_rewards, bins=min(60, max(10, len(s_rewards) // 20)),
+               color=col, alpha=0.5, density=True, edgecolor='none')
+
+        # Smoothed density curve
+        if len(s_rewards) > 20:
+            hist_vals, bin_edges = np.histogram(s_rewards, bins=100, density=True)
+            bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+            kernel = np.ones(5) / 5
+            smooth = np.convolve(hist_vals.astype(float), kernel, mode='same')
+            ax.plot(bin_centers, smooth, color=col, linewidth=2)
+
+        ax.axvline(np.mean(s_rewards), color='white', linestyle='--', linewidth=1.5,
+                  label=f'Mean: {np.mean(s_rewards):.1f}')
+        ax.axvline(np.median(s_rewards), color='#8b949e', linestyle=':', linewidth=1.5,
+                  label=f'Median: {np.median(s_rewards):.1f}')
+
+        ax.set_title(f'S{s}: {STAGE_NAMES.get(s, "?")} (n={len(s_rewards)})', fontweight='bold')
+        ax.set_xlabel('Reward')
+        ax.set_ylabel('Density')
+        ax.legend(fontsize=8)
+        ax.grid(True)
+
+    plt.tight_layout()
+    _save(fig, 'chart_09_reward_distributions.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 10: LEARNING DETECTION
+    # ──────────────────────────────────────────────────
+    fig, axes = plt.subplots(2, 2, figsize=(18, 12))
+    fig.suptitle('LEARNING DETECTION ANALYSIS', fontsize=16, fontweight='bold')
+
+    # 10a. Reward CDF: early vs late
+    ax = axes[0, 0]
+    half = N // 2
+    if half > 20:
+        for data, label, color in [
+            (sorted(rewards[:half]), f'First half (n={half})', '#f85149'),
+            (sorted(rewards[half:]), f'Second half (n={N - half})', '#3fb950'),
+        ]:
+            y = np.linspace(0, 1, len(data))
+            ax.plot(data, y, color=color, linewidth=2, label=label)
+    ax.set_title('Reward CDF: Early vs Late')
+    ax.set_xlabel('Reward')
+    ax.set_ylabel('Cumulative %')
+    ax.legend(fontsize=8)
+    ax.grid(True)
+
+    # 10b. Cumulative reward
+    ax = axes[0, 1]
+    cum = np.cumsum(rewards)
+    ax.plot(ep_nums, cum, color='#58a6ff', linewidth=2)
+    gradient_color = 'green' if cum[-1] > cum[N // 2] else 'red'
+    ax.fill_between(ep_nums, cum, alpha=0.08, color=gradient_color)
     ax.set_title('Cumulative Reward')
     ax.set_xlabel('Episode')
-    ax.grid(True, alpha=0.15)
-    # If declining = bad
-    if cum_reward[-1] < cum_reward[len(cum_reward)//2]:
-        ax.fill_between(ep_nums, cum_reward, alpha=0.1, color='red')
-    else:
-        ax.fill_between(ep_nums, cum_reward, alpha=0.1, color='green')
+    ax.grid(True)
 
-    # Steps distribution: early vs late
+    # 10c. Rolling reward variance
     ax = axes[1, 0]
-    if half > 20:
-        ax.hist(steps[:half], bins=40, alpha=0.5, color='#ff6666', label='First half', density=True)
-        ax.hist(steps[half:], bins=40, alpha=0.5, color='#66ff66', label='Second half', density=True)
-    ax.set_title('Steps Distribution: Early vs Late')
+    if N > sma_w:
+        r_std = rolling_std(rewards, sma_w)
+        ax.plot(ep_nums, r_std, color='#bc8cff', linewidth=1.5, label=f'Rolling Std ({sma_w})')
+        ax.fill_between(ep_nums, r_std, alpha=0.1, color='#bc8cff')
+    ax.set_title('Reward Volatility (Rolling Std)')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Std Dev')
     ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.15)
+    ax.grid(True)
 
-    # Session comparison
+    # 10d. Segmented trends
     ax = axes[1, 1]
-    sess_means = []
-    sess_labels = []
-    for i, sess in enumerate(sessions):
-        if sess.episodes:
-            mean_r = np.mean([e.reward for e in sess.episodes])
-            sess_means.append(mean_r)
-            label = f"S{i+1}\n{sess.style[:10]}"
-            sess_labels.append(label)
+    segs = segment_trends(rewards, min(8, N // 50)) if N > 80 else []
+    if segs:
+        for seg in segs:
+            x = np.arange(seg['start_idx'], seg['end_idx'])
+            y = rewards[seg['start_idx']:seg['end_idx']]
+            sma_seg = moving_average(y, max(3, len(y) // 5))
+            ep_seg = ep_nums[seg['start_idx']:seg['start_idx'] + len(sma_seg)]
+            col = '#3fb950' if seg['slope'] > 0.1 else '#f85149' if seg['slope'] < -0.1 else '#8b949e'
+            ax.plot(ep_seg, sma_seg, color=col, linewidth=2.5)
+            mid_ep = ep_nums[(seg['start_idx'] + seg['end_idx']) // 2]
+            ax.text(mid_ep, ax.get_ylim()[1] if ax.get_ylim()[1] != 0 else seg['mean'],
+                   f'{seg["slope"]:+.2f}', ha='center', fontsize=8, color=col, fontweight='bold')
+    ax.set_title('Segmented Reward Trends')
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Reward (SMA)')
+    ax.grid(True)
 
-    if sess_means:
-        colors_list = ['#ff6666' if m < 0 else '#66ff66' for m in sess_means]
-        ax.bar(range(len(sess_means)), sess_means, color=colors_list)
-        ax.set_xticks(range(len(sess_means)))
-        ax.set_xticklabels(sess_labels, fontsize=7)
-        ax.axhline(y=0, color='white', linestyle=':', alpha=0.3)
-    ax.set_title('Average Reward by Session')
-    ax.grid(True, alpha=0.15)
-
-    learning_path = os.path.join(output_dir, 'training_learning_detection.png')
     plt.tight_layout()
-    plt.savefig(learning_path, dpi=120, facecolor='#1a1a2e', bbox_inches='tight')
-    plt.close()
-    print(c(f'  Chart saved: {learning_path}', C.GRN))
+    _save(fig, 'chart_10_learning_detection.png')
 
-    # ─── CHART 3: GOAL PROGRESS GAUGE ───
-    fig3, axes3 = plt.subplots(1, 2, figsize=(12, 5))
-    fig3.suptitle('Goal Progress', fontsize=14, fontweight='bold', color='white')
+    # ──────────────────────────────────────────────────
+    # CHART 11: GOAL PROGRESS GAUGES
+    # ──────────────────────────────────────────────────
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    fig.suptitle('GOAL PROGRESS', fontsize=16, fontweight='bold')
 
-    # Points gauge
-    ax = axes3[0]
-    best_food_val = int(np.max(food))
-    pct = min(best_food_val / 6000 * 100, 100)
     theta = np.linspace(0, np.pi, 100)
-    ax.plot(np.cos(theta), np.sin(theta), color='#333', linewidth=15)
-    fill_theta = np.linspace(0, np.pi * pct / 100, 100)
-    color = '#ff4444' if pct < 20 else '#ffaa00' if pct < 50 else '#00ff88'
-    ax.plot(np.cos(fill_theta), np.sin(fill_theta), color=color, linewidth=15)
-    ax.text(0, 0.3, f'{best_food_val}', ha='center', fontsize=28, fontweight='bold', color='white')
-    ax.text(0, 0.05, f'/ 6000 pts', ha='center', fontsize=12, color='gray')
-    ax.text(0, -0.2, f'{pct:.1f}%', ha='center', fontsize=16, color=color)
-    ax.set_xlim(-1.3, 1.3)
-    ax.set_ylim(-0.4, 1.3)
-    ax.set_aspect('equal')
-    ax.axis('off')
-    ax.set_title('Points (Best)')
+    gauges = [
+        ('Points (Best)', int(np.max(food)), 6000, 'pts'),
+        ('Survival (Best)', int(np.max(steps)), 1800, 'steps'),
+        ('Avg Food/Ep (Last 100)', float(np.mean(food[-min(100, N):])), 50, 'food'),
+    ]
 
-    # Survival gauge
-    ax = axes3[1]
-    best_steps_val = int(np.max(steps))
-    STEP_DURATION = 2.0
-    best_min = best_steps_val * STEP_DURATION / 60
-    goal_min = 60
-    pct2 = min(best_min / goal_min * 100, 100)
-    ax.plot(np.cos(theta), np.sin(theta), color='#333', linewidth=15)
-    fill_theta2 = np.linspace(0, np.pi * pct2 / 100, 100)
-    color2 = '#ff4444' if pct2 < 20 else '#ffaa00' if pct2 < 50 else '#00ff88'
-    ax.plot(np.cos(fill_theta2), np.sin(fill_theta2), color=color2, linewidth=15)
-    ax.text(0, 0.3, f'{best_min:.1f} min', ha='center', fontsize=28, fontweight='bold', color='white')
-    ax.text(0, 0.05, f'/ 60 min', ha='center', fontsize=12, color='gray')
-    ax.text(0, -0.2, f'{pct2:.1f}%', ha='center', fontsize=16, color=color2)
-    ax.set_xlim(-1.3, 1.3)
-    ax.set_ylim(-0.4, 1.3)
-    ax.set_aspect('equal')
-    ax.axis('off')
-    ax.set_title('Survival (Best)')
+    for i, (title, val, goal, unit) in enumerate(gauges):
+        ax = axes[i]
+        pct = min(val / goal * 100, 100) if goal > 0 else 0
+        ax.plot(np.cos(theta), np.sin(theta), color='#21262d', linewidth=18)
+        fill_t = np.linspace(0, np.pi * pct / 100, 100)
+        col = '#f85149' if pct < 25 else '#d29922' if pct < 60 else '#3fb950'
+        ax.plot(np.cos(fill_t), np.sin(fill_t), color=col, linewidth=18)
+        display_val = f'{val}' if isinstance(val, int) else f'{val:.1f}'
+        ax.text(0, 0.35, display_val, ha='center', fontsize=28, fontweight='bold', color='white')
+        ax.text(0, 0.08, f'/ {goal} {unit}', ha='center', fontsize=11, color='#8b949e')
+        ax.text(0, -0.18, f'{pct:.1f}%', ha='center', fontsize=18, color=col, fontweight='bold')
+        ax.set_xlim(-1.3, 1.3)
+        ax.set_ylim(-0.35, 1.3)
+        ax.set_aspect('equal')
+        ax.axis('off')
+        ax.set_title(title, fontsize=11)
 
-    gauge_path = os.path.join(output_dir, 'training_goal_progress.png')
-    plt.savefig(gauge_path, dpi=120, facecolor='#1a1a2e', bbox_inches='tight')
-    plt.close()
-    print(c(f'  Chart saved: {gauge_path}', C.GRN))
+    _save(fig, 'chart_11_goal_gauges.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 12: HYPERPARAMETER ANALYSIS
+    # ──────────────────────────────────────────────────
+    # Stage → gamma mapping (from styles.py curriculum)
+    STAGE_GAMMA = {1: 0.8, 2: 0.9, 3: 0.95, 4: 0.99}
+    gamma_arr = np.array([STAGE_GAMMA.get(s, 0.99) for s in stages_arr])
+
+    fig = plt.figure(figsize=(24, 20))
+    fig.suptitle('HYPERPARAMETER PERFORMANCE ANALYSIS', fontsize=16, fontweight='bold')
+
+    # ── Panel 1: Parallel Coordinates ──
+    ax = fig.add_subplot(2, 2, (1, 2))  # top row, full width
+
+    # Normalize each HP/metric to [0,1] for parallel axes
+    pc_labels = ['Epsilon', 'LR', 'Gamma', 'Beta', 'Loss', 'Reward', 'Steps']
+    lr_pc = lr_arr if lr_arr is not None else np.zeros(N)
+    beta_pc = beta_arr if beta_arr is not None else np.zeros(N)
+    pc_raw = np.column_stack([epsilons, lr_pc, gamma_arr, beta_pc, losses, rewards, steps.astype(float)])
+
+    # Normalize columns to [0,1]
+    pc_norm = np.zeros_like(pc_raw)
+    for col_i in range(pc_raw.shape[1]):
+        col_min = np.nanmin(pc_raw[:, col_i])
+        col_max = np.nanmax(pc_raw[:, col_i])
+        if col_max - col_min > 1e-10:
+            pc_norm[:, col_i] = (pc_raw[:, col_i] - col_min) / (col_max - col_min)
+        else:
+            pc_norm[:, col_i] = 0.5
+
+    # Color by reward percentile
+    reward_pct = np.zeros(N)
+    sorted_idx = np.argsort(rewards)
+    for rank, idx in enumerate(sorted_idx):
+        reward_pct[idx] = rank / max(N - 1, 1)
+
+    # Sample episodes for readability (max 500 lines)
+    sample_n = min(500, N)
+    sample_idx = np.random.choice(N, sample_n, replace=False) if N > sample_n else np.arange(N)
+    sample_idx = sample_idx[np.argsort(reward_pct[sample_idx])]  # draw worst first, best on top
+
+    x_coords = np.arange(len(pc_labels))
+    for si in sample_idx:
+        color_val = reward_pct[si]
+        # Red (bad) → Yellow (mid) → Green (good)
+        if color_val < 0.5:
+            r, g, b = 0.97, 0.32 + color_val * 1.0, 0.29
+        else:
+            r, g, b = 0.97 - (color_val - 0.5) * 1.5, 0.72 + (color_val - 0.5) * 0.4, 0.29
+        r, g, b = max(0, min(1, r)), max(0, min(1, g)), max(0, min(1, b))
+        ax.plot(x_coords, pc_norm[si], color=(r, g, b), alpha=0.08, linewidth=0.8)
+
+    # Draw top 5% bold
+    top5_mask = reward_pct >= 0.95
+    for si in np.where(top5_mask)[0]:
+        ax.plot(x_coords, pc_norm[si], color='#3fb950', alpha=0.6, linewidth=1.5)
+
+    # Axis labels with value ranges
+    for i, label in enumerate(pc_labels):
+        ax.axvline(i, color='#484f58', linewidth=1, zorder=0)
+        vmin, vmax = np.nanmin(pc_raw[:, i]), np.nanmax(pc_raw[:, i])
+        ax.text(i, -0.08, f'{vmin:.4g}', ha='center', fontsize=7, color='#8b949e')
+        ax.text(i, 1.05, f'{vmax:.4g}', ha='center', fontsize=7, color='#8b949e')
+
+    ax.set_xticks(x_coords)
+    ax.set_xticklabels(pc_labels, fontsize=10, fontweight='bold')
+    ax.set_ylim(-0.15, 1.12)
+    ax.set_yticks([])
+    ax.set_title('Parallel Coordinates: HP → Performance  (green=top 5%, red=bottom)',
+                fontweight='bold', fontsize=12)
+    ax.grid(False)
+
+    # ── Panel 2: HP Sweet Spot Heatmap (Epsilon × LR → Reward) ──
+    ax = fig.add_subplot(2, 2, 3)
+
+    # Bin epsilon and LR into grid cells
+    n_bins = 15
+    valid_lr = lr_pc > 0
+    if np.sum(valid_lr) > 20:
+        eps_edges = np.linspace(np.min(epsilons[valid_lr]), np.max(epsilons[valid_lr]), n_bins + 1)
+        lr_edges = np.logspace(np.log10(max(np.min(lr_pc[valid_lr]), 1e-7)),
+                               np.log10(np.max(lr_pc[valid_lr])), n_bins + 1)
+
+        heat_grid = np.full((n_bins, n_bins), np.nan)
+        count_grid = np.zeros((n_bins, n_bins))
+        for i in range(N):
+            if not valid_lr[i]:
+                continue
+            ei = np.searchsorted(eps_edges, epsilons[i], side='right') - 1
+            li = np.searchsorted(lr_edges, lr_pc[i], side='right') - 1
+            ei = np.clip(ei, 0, n_bins - 1)
+            li = np.clip(li, 0, n_bins - 1)
+            if np.isnan(heat_grid[li, ei]):
+                heat_grid[li, ei] = 0
+            heat_grid[li, ei] += rewards[i]
+            count_grid[li, ei] += 1
+
+        # Average reward per cell
+        with np.errstate(divide='ignore', invalid='ignore'):
+            heat_avg = np.where(count_grid > 0, heat_grid / count_grid, np.nan)
+
+        im = ax.imshow(heat_avg, cmap='RdYlGn', aspect='auto', origin='lower',
+                       interpolation='nearest')
+        # Tick labels
+        eps_ticks = np.linspace(0, n_bins - 1, 5).astype(int)
+        lr_ticks = np.linspace(0, n_bins - 1, 5).astype(int)
+        ax.set_xticks(eps_ticks)
+        ax.set_xticklabels([f'{eps_edges[t]:.3f}' for t in eps_ticks], fontsize=8)
+        ax.set_yticks(lr_ticks)
+        ax.set_yticklabels([f'{lr_edges[t]:.1e}' for t in lr_ticks], fontsize=8)
+        fig.colorbar(im, ax=ax, shrink=0.8, label='Avg Reward')
+
+        # Mark best cell
+        best_flat = np.nanargmax(heat_avg)
+        best_y, best_x = np.unravel_index(best_flat, heat_avg.shape)
+        ax.plot(best_x, best_y, marker='*', color='white', markersize=15, markeredgecolor='black')
+    else:
+        ax.text(0.5, 0.5, 'Not enough LR data', ha='center', va='center',
+               transform=ax.transAxes, fontsize=12, color='#8b949e')
+
+    ax.set_xlabel('Epsilon', fontsize=10)
+    ax.set_ylabel('Learning Rate', fontsize=10)
+    ax.set_title('Sweet Spot: Epsilon × LR → Avg Reward', fontweight='bold', fontsize=12)
+
+    # ── Panel 3: Top vs Bottom HP Comparison ──
+    ax = fig.add_subplot(2, 2, 4)
+
+    pct_5 = max(int(N * 0.05), 5)
+    top_idx = np.argsort(rewards)[-pct_5:]
+    bot_idx = np.argsort(rewards)[:pct_5]
+
+    compare_metrics = {
+        'Epsilon': epsilons,
+        'LR (×1e4)': lr_pc * 1e4,
+        'Gamma': gamma_arr,
+        'Beta': beta_pc,
+        'Loss': losses,
+        'Food/Step': food_per_step,
+    }
+
+    metric_names_cmp = list(compare_metrics.keys())
+    n_m = len(metric_names_cmp)
+    x_pos = np.arange(n_m)
+    bar_w = 0.35
+
+    # Normalize each metric to [0,1] for comparison
+    top_vals_norm = []
+    bot_vals_norm = []
+    top_vals_raw = []
+    bot_vals_raw = []
+    for name, data in compare_metrics.items():
+        top_mean = np.mean(data[top_idx])
+        bot_mean = np.mean(data[bot_idx])
+        top_vals_raw.append(top_mean)
+        bot_vals_raw.append(bot_mean)
+        vmax = max(abs(top_mean), abs(bot_mean), 1e-10)
+        top_vals_norm.append(top_mean / vmax)
+        bot_vals_norm.append(bot_mean / vmax)
+
+    bars_top = ax.barh(x_pos - bar_w / 2, top_vals_norm, bar_w,
+                       color='#3fb950', alpha=0.8, label=f'Top 5% (n={pct_5})', edgecolor='#30363d')
+    bars_bot = ax.barh(x_pos + bar_w / 2, bot_vals_norm, bar_w,
+                       color='#f85149', alpha=0.8, label=f'Bottom 5% (n={pct_5})', edgecolor='#30363d')
+
+    # Add raw value labels
+    for i, (tv, bv) in enumerate(zip(top_vals_raw, bot_vals_raw)):
+        fmt = '.4f' if abs(tv) < 0.1 else '.2f' if abs(tv) < 100 else '.0f'
+        ax.text(top_vals_norm[i] + 0.02, i - bar_w / 2, f'{tv:{fmt}}',
+               va='center', fontsize=8, color='#3fb950')
+        ax.text(bot_vals_norm[i] + 0.02, i + bar_w / 2, f'{bv:{fmt}}',
+               va='center', fontsize=8, color='#f85149')
+
+    ax.set_yticks(x_pos)
+    ax.set_yticklabels(metric_names_cmp, fontsize=10)
+    ax.set_xlabel('Normalized Value', fontsize=10)
+    ax.set_title('Top 5% vs Bottom 5% Episodes: HP Snapshot', fontweight='bold', fontsize=12)
+    ax.legend(fontsize=9, loc='lower right')
+    ax.grid(True, axis='x')
+    ax.invert_yaxis()
+
+    # Add summary text box
+    top_avg_r = np.mean(rewards[top_idx])
+    bot_avg_r = np.mean(rewards[bot_idx])
+    top_avg_s = np.mean(steps[top_idx])
+    bot_avg_s = np.mean(steps[bot_idx])
+    summary = (f'Top 5%: avg_reward={top_avg_r:.1f}, avg_steps={top_avg_s:.0f}\n'
+               f'Bot 5%: avg_reward={bot_avg_r:.1f}, avg_steps={bot_avg_s:.0f}')
+    ax.text(0.98, 0.02, summary, transform=ax.transAxes, fontsize=8,
+           va='bottom', ha='right', color='#c9d1d9',
+           bbox=dict(boxstyle='round,pad=0.4', facecolor='#0d1117', edgecolor='#30363d', alpha=0.9))
+
+    plt.tight_layout()
+    _save(fig, 'chart_12_hyperparameter_analysis.png')
+
+    print(c(f'\n  Total: 13 chart files generated.', C.GRN, C.B))
 
 
 # ═══════════════════════════════════════════════════════
@@ -1191,91 +1729,123 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 # ═══════════════════════════════════════════════════════
 
 def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
-    """Generate comprehensive markdown report."""
-
     rewards = np.array([e.reward for e in episodes])
     steps = np.array([e.steps for e in episodes])
     food = np.array([e.food for e in episodes])
     losses = np.array([e.loss for e in episodes])
+    stages_arr = np.array([e.stage for e in episodes])
+    causes_arr = np.array([e.cause for e in episodes])
+    N = len(episodes)
 
     with open(output_path, 'w') as f:
-        f.write("# Slither.io Bot - Training Progress Report\n\n")
+        f.write("# Slither.io Bot - Training Progress Report v3\n\n")
         f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n")
-        f.write(f"**Total Episodes:** {len(episodes)}  \n")
+        f.write(f"**Total Episodes:** {N}  \n")
         f.write(f"**Training Sessions:** {len(sessions)}\n\n")
 
-        # Verdict
         status = "LEARNING" if verdict.is_learning else "NOT LEARNING"
-        f.write(f"## Verdict: {status} (Confidence: {verdict.confidence*100:.0f}%)\n\n")
+        f.write(f"## Verdict: {status} (Confidence: {verdict.confidence * 100:.0f}%)\n\n")
         f.write(f"**Goal Feasibility:** {verdict.goal_feasibility}\n\n")
 
-        if verdict.issues:
-            f.write("### Critical Issues\n")
-            for issue in verdict.issues:
-                f.write(f"- {issue}\n")
-            f.write("\n")
+        for label, items in [('Critical Issues', verdict.issues),
+                              ('Warnings', verdict.warnings),
+                              ('Positive Signals', verdict.positives)]:
+            if items:
+                f.write(f"### {label}\n")
+                for item in items:
+                    f.write(f"- {item}\n")
+                f.write("\n")
 
-        if verdict.warnings:
-            f.write("### Warnings\n")
-            for w in verdict.warnings:
-                f.write(f"- {w}\n")
-            f.write("\n")
+        # Stage breakdown
+        unique_stages = sorted(set(stages_arr))
+        f.write("## Curriculum Stage Breakdown\n\n")
+        f.write("| Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |\n")
+        f.write("|-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|\n")
+        for s in unique_stages:
+            mask = stages_arr == s
+            s_eps = [e for e in episodes if e.stage == s]
+            sc = causes_arr[mask]
+            n = len(s_eps)
+            wp = np.sum(sc == 'Wall') / n * 100
+            sp = np.sum(sc == 'SnakeCollision') / n * 100
+            mp = np.sum(sc == 'MaxSteps') / n * 100
+            avg_fps = np.mean([e.food_per_step for e in s_eps])
+            f.write(f"| S{s} | {STAGE_NAMES.get(s, '?')} | {n} | "
+                    f"{np.mean(rewards[mask]):.1f} | {np.mean(steps[mask]):.1f} | "
+                    f"{np.mean(food[mask]):.1f} | {avg_fps:.4f} | "
+                    f"{wp:.1f}% | {sp:.1f}% | {mp:.1f}% |\n")
+        f.write("\n")
 
-        if verdict.positives:
-            f.write("### Positive Signals\n")
-            for p in verdict.positives:
-                f.write(f"- {p}\n")
-            f.write("\n")
-
-        # Statistics
+        # Key statistics
         f.write("## Key Statistics\n\n")
-        f.write("| Metric | Mean | Std | Min | Max | P50 | P95 |\n")
-        f.write("|--------|------|-----|-----|-----|-----|-----|\n")
-
+        f.write("| Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |\n")
+        f.write("|--------|------|-----|-----|-----|--------|-----|-----|-----|\n")
         for name, data in [('Reward', rewards), ('Steps', steps.astype(float)),
-                           ('Food', food.astype(float)), ('Loss', losses)]:
+                           ('Food', food.astype(float)), ('Loss', losses),
+                           ('Food/Step', np.array([e.food_per_step for e in episodes]))]:
             p = compute_percentiles(data)
             f.write(f"| {name} | {p['mean']:.2f} | {p['std']:.2f} | {p['min']:.2f} | "
-                    f"{p['max']:.2f} | {p['p50']:.2f} | {p['p95']:.2f} |\n")
+                    f"{p['p25']:.2f} | {p['p50']:.2f} | {p['p75']:.2f} | {p['p95']:.2f} | {p['max']:.2f} |\n")
         f.write("\n")
 
-        # Goal Progress
+        # Windowed trends
+        f.write("## Windowed Trend Analysis\n\n")
+        f.write("| Window | Mean Reward | Std | Slope | R\u00b2 |\n")
+        f.write("|--------|-----------|-----|-------|----|\n")
+        for w in [50, 100, 200, 500, 1000]:
+            if N >= w:
+                wr = rewards[-w:]
+                sl, r2 = linear_trend(wr)
+                f.write(f"| Last {w} | {np.mean(wr):.2f} | {np.std(wr):.2f} | {sl:+.4f} | {r2:.4f} |\n")
+        f.write("\n")
+
+        # Death analysis
+        f.write("## Death Cause Analysis\n\n")
+        f.write("| Cause | Count | % | Avg Steps | Avg Reward |\n")
+        f.write("|-------|-------|---|-----------|------------|\n")
+        for cn in CAUSE_NAMES:
+            mask = causes_arr == cn
+            n_c = np.sum(mask)
+            if n_c > 0:
+                f.write(f"| {cn} | {n_c} | {n_c / N * 100:.1f}% | "
+                        f"{np.mean(steps[mask]):.1f} | {np.mean(rewards[mask]):.1f} |\n")
+        f.write("\n")
+
+        # Goal progress
         f.write("## Goal Progress\n\n")
-        best_food_val = int(np.max(food))
-        best_steps_val = int(np.max(steps))
-        STEP_DURATION = 2.0
-
-        f.write(f"| Target | Current Best | Goal | Progress |\n")
-        f.write(f"|--------|-------------|------|----------|\n")
-        f.write(f"| Points | {best_food_val} | 6,000 | {best_food_val/6000*100:.1f}% |\n")
-        f.write(f"| Survival | {best_steps_val*STEP_DURATION/60:.1f} min | 60 min | {best_steps_val*STEP_DURATION/3600*100:.1f}% |\n\n")
-
-        # Session History
-        f.write("## Session History\n\n")
-        f.write("| # | Style | Episodes | Avg Reward | Avg Steps |\n")
-        f.write("|---|-------|----------|------------|----------|\n")
-        for i, sess in enumerate(sessions):
-            if not sess.episodes:
-                continue
-            s_rewards = [e.reward for e in sess.episodes]
-            s_steps = [e.steps for e in sess.episodes]
-            f.write(f"| {i+1} | {sess.style} | {sess.start_episode}-{sess.end_episode} | "
-                    f"{np.mean(s_rewards):.1f} | {np.mean(s_steps):.0f} |\n")
-        f.write("\n")
+        best_food = int(np.max(food))
+        best_steps = int(np.max(steps))
+        f.write(f"| Target | Best | Goal | Progress |\n")
+        f.write(f"|--------|------|------|----------|\n")
+        f.write(f"| Points | {best_food} | 6,000 | {best_food / 6000 * 100:.1f}% |\n")
+        f.write(f"| Survival | {best_steps} steps | 1,800 steps | {best_steps / 1800 * 100:.1f}% |\n\n")
 
         # Recommendations
         f.write("## Recommendations\n\n")
         f.write(f"{verdict.recommendation}\n\n")
-
         recs = generate_specific_recommendations(episodes, csv_episodes, sessions, verdict)
         for i, rec in enumerate(recs, 1):
             f.write(f"{i}. {rec}\n\n")
 
         # Charts
         f.write("## Charts\n\n")
-        f.write("![Overview](training_progress_overview.png)\n\n")
-        f.write("![Learning Detection](training_learning_detection.png)\n\n")
-        f.write("![Goal Progress](training_goal_progress.png)\n\n")
+        chart_files = [
+            ('chart_01_dashboard.png', 'Main Dashboard'),
+            ('chart_02_stage_progression.png', 'Stage Progression'),
+            ('chart_03_stage_distributions.png', 'Per-Stage Distributions'),
+            ('chart_04_hyperparameters.png', 'Hyperparameter Tracking'),
+            ('chart_05_correlations.png', 'Metric Correlations (Scatter)'),
+            ('chart_05b_correlation_heatmap.png', 'Correlation Heatmap & Rankings'),
+            ('chart_06_performance_bands.png', 'Performance Percentile Bands'),
+            ('chart_07_death_analysis.png', 'Death Analysis'),
+            ('chart_08_food_efficiency.png', 'Food Efficiency'),
+            ('chart_09_reward_distributions.png', 'Reward Distributions'),
+            ('chart_10_learning_detection.png', 'Learning Detection'),
+            ('chart_11_goal_gauges.png', 'Goal Progress'),
+            ('chart_12_hyperparameter_analysis.png', 'Hyperparameter Analysis'),
+        ]
+        for fname, title in chart_files:
+            f.write(f"### {title}\n![{title}]({fname})\n\n")
 
     print(c(f'  Report saved: {output_path}', C.GRN))
 
@@ -1285,24 +1855,21 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
 # ═══════════════════════════════════════════════════════
 
 def main():
-    parser = argparse.ArgumentParser(description='Slither.io Bot Training Progress Analyzer')
+    parser = argparse.ArgumentParser(description='Slither.io Bot Training Progress Analyzer v3')
     parser.add_argument('--log', default=None, help='Path to train.log')
     parser.add_argument('--csv', default=None, help='Path to training_stats.csv')
     parser.add_argument('--no-charts', action='store_true', help='Skip chart generation')
     parser.add_argument('--no-report', action='store_true', help='Skip markdown report')
-    parser.add_argument('--uid', type=str, default=None, help='Filter by specific run UID')
-    parser.add_argument('--latest', action='store_true', help='Analyze only the latest UID')
+    parser.add_argument('--uid', type=str, default=None, help='Filter by run UID')
+    parser.add_argument('--latest', action='store_true', help='Analyze only latest UID')
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # Find files
     log_path = args.log or os.path.join(script_dir, 'logs', 'train.log')
     csv_path = args.csv or os.path.join(script_dir, 'training_stats.csv')
 
     print(c('\n  Loading training data...', C.CYN))
 
-    # Parse log
     episodes = []
     sessions = []
     if os.path.exists(log_path):
@@ -1312,14 +1879,12 @@ def main():
     else:
         print(c(f'  Log not found: {log_path}', C.YEL))
 
-    # Parse CSV
     csv_episodes = []
     if os.path.exists(csv_path):
         print(f'  Parsing CSV: {csv_path}')
         csv_episodes = parse_csv(csv_path)
         print(c(f'  Found {len(csv_episodes)} episodes in CSV', C.GRN))
 
-    # Use log episodes if available, otherwise CSV
     if not episodes and csv_episodes:
         episodes = csv_episodes
 
@@ -1327,7 +1892,7 @@ def main():
         print(c('\n  No training data found!', C.RED, C.B))
         return
 
-    # UID discovery and filtering (applies to CSV episodes)
+    # UID discovery
     uids = discover_uids(csv_episodes) if csv_episodes else []
     if uids and any(u[0] != 'unknown' for u in uids):
         print()
@@ -1335,7 +1900,6 @@ def main():
         for uid, count, first_ep, last_ep in uids:
             print(f'    {c(uid, C.WHT)}  episodes {first_ep}-{last_ep} ({count} eps)')
 
-        # Apply --uid or --latest filter
         if args.uid:
             matched = [u for u in uids if args.uid in u[0]]
             if matched:
@@ -1343,7 +1907,7 @@ def main():
                 csv_episodes = [e for e in csv_episodes if e.uid == target_uid]
                 if not episodes or episodes is csv_episodes:
                     episodes = csv_episodes
-                print(c(f'  Filtering by UID: {target_uid} ({len(csv_episodes)} episodes)', C.GRN))
+                print(c(f'  Filtering: {target_uid} ({len(csv_episodes)} eps)', C.GRN))
             else:
                 print(c(f'  UID "{args.uid}" not found!', C.RED))
                 return
@@ -1352,21 +1916,17 @@ def main():
             csv_episodes = [e for e in csv_episodes if e.uid == latest_uid]
             if not episodes or episodes[0].uid:
                 episodes = csv_episodes
-            print(c(f'  Using latest UID: {latest_uid} ({len(csv_episodes)} episodes)', C.GRN))
+            print(c(f'  Latest UID: {latest_uid} ({len(csv_episodes)} eps)', C.GRN))
 
-    # Assess learning
-    print(c('  Analyzing learning progress...', C.CYN))
+    print(c('  Analyzing...', C.CYN))
     verdict = assess_learning(episodes, csv_episodes, sessions)
 
-    # Print full report
     print_full_report(episodes, csv_episodes, sessions, verdict)
 
-    # Generate charts
     if not args.no_charts:
         section('GENERATING CHARTS')
         generate_charts(episodes, csv_episodes, sessions, verdict, script_dir)
 
-    # Generate markdown
     if not args.no_report:
         section('GENERATING REPORT')
         md_path = os.path.join(script_dir, 'progress_report.md')
