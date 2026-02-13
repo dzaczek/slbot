@@ -1,40 +1,38 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-13 22:14:52  
-**Total Episodes:** 91  
+**Generated:** 2026-02-13 22:19:31  
+**Total Episodes:** 160  
 **Training Sessions:** 2
 
-## Verdict: NOT LEARNING (Confidence: 50%)
+## Verdict: NOT LEARNING (Confidence: 55%)
 
 **Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
-### Warnings
-- Epsilon very high (0.830) - mostly random
-
 ### Positive Signals
-- Food collection improving (slope=0.0811/ep)
+- Food collection improving (slope=0.0190/ep)
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 91 | 71.8 | 85.5 | 25.1 | 0.7268 | 0.0% | 0.0% | 0.0% |
+| S1 | FOOD_VECTOR | 160 | 73.6 | 67.7 | 25.5 | 1.0308 | 0.0% | 0.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 71.79 | 61.90 | -97.88 | 48.16 | 76.11 | 110.07 | 146.96 | 296.85 |
-| Steps | 85.52 | 86.87 | 1.00 | 25.00 | 64.00 | 99.00 | 300.00 | 300.00 |
-| Food | 25.05 | 13.81 | 0.00 | 20.00 | 26.00 | 33.00 | 42.00 | 82.00 |
-| Loss | 2.38 | 3.94 | 0.00 | 1.20 | 1.70 | 2.51 | 3.56 | 36.36 |
-| Food/Step | 0.73 | 0.84 | 0.00 | 0.36 | 0.47 | 0.79 | 2.43 | 5.00 |
+| Reward | 73.61 | 56.29 | -97.88 | 48.58 | 68.42 | 104.56 | 160.44 | 296.85 |
+| Steps | 67.74 | 74.84 | 1.00 | 16.75 | 45.00 | 86.50 | 300.00 | 300.00 |
+| Food | 25.53 | 12.23 | 0.00 | 21.00 | 25.50 | 32.00 | 44.10 | 82.00 |
+| Loss | 2.00 | 3.04 | 0.00 | 1.12 | 1.55 | 2.23 | 3.27 | 36.36 |
+| Food/Step | 1.03 | 1.18 | 0.00 | 0.39 | 0.58 | 1.09 | 3.81 | 6.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 81.72 | 38.53 | -0.4794 | 0.0322 |
+| Last 50 | 82.72 | 53.34 | -1.5787 | 0.1824 |
+| Last 100 | 74.62 | 45.62 | +0.0277 | 0.0003 |
 
 ## Death Cause Analysis
 
@@ -52,7 +50,7 @@
 
 Fine-tune hyperparameters, increase training duration.
 
-1. Epsilon 0.830 still high. Consider faster decay.
+1. Epsilon 0.779 still high. Consider faster decay.
 
 2. Episodes too short. Reduce death penalties or add survival bonus.
 
