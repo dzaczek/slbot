@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report
 
-**Generated:** 2026-02-13 08:46:55  
-**Total Episodes:** 924  
+**Generated:** 2026-02-13 09:02:18  
+**Total Episodes:** 1126  
 **Training Sessions:** 1
 
 ## Verdict: NOT LEARNING (Confidence: 40%)
@@ -9,10 +9,10 @@
 **Goal Feasibility:** VERY UNLIKELY (<5% chance)
 
 ### Critical Issues
-- Very short episodes: avg=39 steps (dying too fast)
+- Very short episodes: avg=40 steps (dying too fast)
 
 ### Warnings
-- Rewards flat: change = 3.2 between halves
+- Rewards flat: change = 3.8 between halves
 
 ### Positive Signals
 - Loss decreasing (model converging)
@@ -22,16 +22,16 @@
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-------|--------|----------|
 | S1 | FOOD_VECTOR | 100 | 53.7 | 29.7 | 20.7 | 0.0% | 95.0% | 5.0% |
-| S2 | WALL_AVOID | 824 | 48.8 | 39.7 | 24.4 | 0.0% | 99.6% | 0.4% |
+| S2 | WALL_AVOID | 1026 | 49.2 | 40.8 | 24.5 | 0.0% | 99.7% | 0.3% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | Max | P50 | P95 |
 |--------|------|-----|-----|-----|-----|-----|
-| Reward | 49.30 | 31.53 | -16.90 | 269.43 | 43.00 | 106.52 |
-| Steps | 38.66 | 33.30 | 1.00 | 200.00 | 30.00 | 105.00 |
-| Food | 24.01 | 8.05 | 0.00 | 61.00 | 23.00 | 39.00 |
-| Loss | 15.25 | 59.28 | 0.06 | 504.77 | 1.07 | 52.00 |
+| Reward | 49.61 | 31.76 | -16.90 | 269.43 | 43.23 | 107.56 |
+| Steps | 39.78 | 34.27 | 1.00 | 200.00 | 30.00 | 107.50 |
+| Food | 24.14 | 8.10 | 0.00 | 61.00 | 23.00 | 39.00 |
+| Loss | 12.57 | 54.01 | 0.04 | 504.77 | 0.78 | 39.12 |
 
 ## Goal Progress
 
@@ -44,7 +44,7 @@
 
 | # | Style | Episodes | Avg Reward | Avg Steps |
 |---|-------|----------|------------|----------|
-| 1 | Standard (Curriculum) | 1-924 | 49.3 | 39 |
+| 1 | Standard (Curriculum) | 1-1126 | 49.6 | 40 |
 
 ## Recommendations
 
