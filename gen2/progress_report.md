@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report
 
-**Generated:** 2026-02-13 07:58:38  
-**Total Episodes:** 256  
+**Generated:** 2026-02-13 08:06:38  
+**Total Episodes:** 376  
 **Training Sessions:** 1
 
 ## Verdict: NOT LEARNING (Confidence: 45%)
@@ -9,26 +9,30 @@
 **Goal Feasibility:** UNLIKELY (5-25% chance) without tuning
 
 ### Critical Issues
-- Very short episodes: avg=34 steps (dying too fast)
+- Very short episodes: avg=33 steps (dying too fast)
 
 ### Warnings
-- Rewards flat: change = -1.2 between halves
-- Epsilon very high (0.819) - still mostly random
-- Reward in plateau (change < 1% over last 200 episodes)
+- Rewards flat: change = -1.9 between halves
 
 ### Positive Signals
-- Episodes getting longer (slope=0.078/ep)
-- Food collection improving (slope=0.0298/ep)
+- Food collection improving (slope=0.0110/ep)
 - Loss decreasing (model converging)
+
+## Curriculum Stage Breakdown
+
+| Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Wall% | Snake% | MaxSteps% |
+|-------|------|----------|------------|-----------|----------|-------|--------|----------|
+| S1 | FOOD_VECTOR | 100 | 53.7 | 29.7 | 20.7 | 0.0% | 95.0% | 5.0% |
+| S2 | WALL_AVOID | 276 | 45.4 | 34.6 | 23.7 | 0.0% | 100.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | Max | P50 | P95 |
 |--------|------|-----|-----|-----|-----|-----|
-| Reward | 49.48 | 32.45 | -16.90 | 187.71 | 43.11 | 115.60 |
-| Steps | 33.92 | 29.79 | 2.00 | 162.00 | 26.00 | 99.25 |
-| Food | 22.75 | 8.22 | 0.00 | 50.00 | 22.00 | 36.25 |
-| Loss | 52.40 | 103.79 | 0.47 | 504.77 | 12.68 | 344.51 |
+| Reward | 47.61 | 30.88 | -16.90 | 187.71 | 41.48 | 106.28 |
+| Steps | 33.30 | 29.53 | 2.00 | 162.00 | 25.00 | 98.25 |
+| Food | 22.90 | 7.69 | 0.00 | 50.00 | 22.00 | 36.00 |
+| Loss | 36.47 | 88.75 | 0.25 | 504.77 | 6.40 | 237.83 |
 
 ## Goal Progress
 
@@ -41,7 +45,7 @@
 
 | # | Style | Episodes | Avg Reward | Avg Steps |
 |---|-------|----------|------------|----------|
-| 1 | Standard (Curriculum) | 1-256 | 49.5 | 34 |
+| 1 | Standard (Curriculum) | 1-376 | 47.6 | 33 |
 
 ## Recommendations
 
@@ -50,15 +54,15 @@ Some learning signals present but not strong enough.
   2. Increase training duration significantly
   3. Consider curriculum adjustments
 
-1. Epsilon is 0.819 after 256 episodes. Consider faster decay (eps_decay=50000) or lower eps_start if resuming.
-
-2. Average episode too short. Consider:
+1. Average episode too short. Consider:
      - Reducing death penalties to avoid discouraging exploration
      - Adding survival bonus to incentivize staying alive
 
 ## Charts
 
 ![Overview](training_progress_overview.png)
+
+![Stage Progression](training_stage_progression.png)
 
 ![Learning Detection](training_learning_detection.png)
 
