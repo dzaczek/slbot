@@ -1,31 +1,34 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-13 22:08:20  
-**Total Episodes:** 12  
+**Generated:** 2026-02-13 22:09:53  
+**Total Episodes:** 24  
 **Training Sessions:** 2
 
-## Verdict: NOT LEARNING (Confidence: 10%)
+## Verdict: NOT LEARNING (Confidence: 50%)
 
-**Goal Feasibility:** 
+**Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
-### Critical Issues
-- Insufficient data (< 20 episodes)
+### Warnings
+- Epsilon very high (0.908) - mostly random
+
+### Positive Signals
+- Food collection improving (slope=0.1783/ep)
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 12 | 5.2 | 212.9 | 14.2 | 0.1735 | 0.0% | 0.0% | 0.0% |
+| S1 | FOOD_VECTOR | 24 | 43.0 | 135.1 | 20.2 | 0.4828 | 0.0% | 0.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 5.25 | 115.01 | -97.88 | -80.42 | -47.45 | 57.64 | 211.41 | 296.85 |
-| Steps | 212.92 | 118.32 | 1.00 | 89.00 | 300.00 | 300.00 | 300.00 | 300.00 |
-| Food | 14.17 | 24.16 | 0.00 | 0.00 | 0.00 | 23.75 | 56.15 | 82.00 |
-| Loss | 5.54 | 10.11 | 0.00 | 0.25 | 0.25 | 8.30 | 22.36 | 36.36 |
-| Food/Step | 0.17 | 0.29 | 0.00 | 0.00 | 0.00 | 0.33 | 0.67 | 1.00 |
+| Reward | 42.98 | 95.26 | -97.88 | -46.60 | 58.02 | 105.66 | 157.59 | 296.85 |
+| Steps | 135.08 | 118.53 | 1.00 | 31.00 | 82.50 | 300.00 | 300.00 | 300.00 |
+| Food | 20.17 | 19.77 | 0.00 | 0.00 | 21.00 | 32.25 | 40.70 | 82.00 |
+| Loss | 3.64 | 7.42 | 0.00 | 0.25 | 1.27 | 2.50 | 10.72 | 36.36 |
+| Food/Step | 0.48 | 0.70 | 0.00 | 0.00 | 0.38 | 0.57 | 0.98 | 3.50 |
 
 ## Windowed Trend Analysis
 
@@ -46,9 +49,9 @@
 
 ## Recommendations
 
+Fine-tune hyperparameters, increase training duration.
 
-
-1. Epsilon 0.941 still high. Consider faster decay.
+1. Epsilon 0.908 still high. Consider faster decay.
 
 ## Charts
 
