@@ -1145,3 +1145,33 @@
 2026-02-14 16:14:57,427 - INFO - [AUTO-SCALE] Removed agent -> 3 (CPU:34% RAM:33347MB Step:502ms)
 2026-02-14 16:15:08,939 - INFO - Ep 866 | S2:WALL_AVOID | Rw: 168.58 | St: 82 | Fd: 38 (0.463/st) | Eps: 0.183 | L: 1.3624 | Q: 14.18/44.08 | SnakeCollision | Pos:(29126,34702) Wall:9953 Enemy:32
 2026-02-14 16:15:21,505 - INFO - Ep 867 | S2:WALL_AVOID | Rw: 184.41 | St: 115 | Fd: 43 (0.374/st) | Eps: 0.183 | L: 3.5931 | Q: 14.66/42.46 | SnakeCollision | Pos:(37628,41480) Wall:3724 Enemy:72
+2026-02-14 16:15:36,604 - INFO - Ep 868 | S2:WALL_AVOID | Rw: 112.09 | St: 72 | Fd: 31 (0.431/st) | Eps: 0.182 | L: 3.5675 | Q: 14.26/39.87 | SnakeCollision | Pos:(37824,37841) Wall:6526 Enemy:36
+2026-02-14 16:15:38,716 - INFO - Ep 869 | S2:WALL_AVOID | Rw: 162.74 | St: 187 | Fd: 52 (0.278/st) | Eps: 0.182 | L: 0.8000 | Q: 16.34/36.66 | Wall | Pos:(45959,38192) Enemy:1305
+2026-02-14 16:15:55,580 - INFO - Ep 870 | S2:WALL_AVOID | Rw: 116.74 | St: 68 | Fd: 35 (0.515/st) | Eps: 0.181 | L: 4.1349 | Q: 14.34/37.71 | SnakeCollision | Pos:(31406,30758) Wall:11870 Enemy:55
+2026-02-14 16:15:55,580 - INFO - Death Stats: {'Wall': 91, 'SnakeCollision': 779, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 16:15:58,189 - INFO - Ep 871 | S2:WALL_AVOID | Rw: 288.85 | St: 182 | Fd: 69 (0.379/st) | Eps: 0.181 | L: 3.6682 | Q: 14.88/34.20 | SnakeCollision | Pos:(45955,34806) Wall:403
+2026-02-14 16:15:58,271 - INFO -   >> New Best Avg Reward: 124.32. Saved backup: best_model_20260214-ba3a5cd0_ep871_rw124.pth
+2026-02-14 16:16:08,731 - INFO - Ep 872 | S2:WALL_AVOID | Rw: 83.92 | St: 41 | Fd: 22 (0.537/st) | Eps: 0.180 | L: 3.0869 | Q: 17.44/49.12 | SnakeCollision | Pos:(28021,38656) Wall:6394 Enemy:44
+2026-02-14 16:16:08,814 - INFO -   >> New Best Avg Reward: 124.91. Saved backup: best_model_20260214-ba3a5cd0_ep872_rw124.pth
+2026-02-14 16:16:29,063 - INFO - Ep 873 | S2:WALL_AVOID | Rw: 224.73 | St: 200 | Fd: 58 (0.290/st) | Eps: 0.179 | L: 5.4559 | Q: 15.16/36.50 | Wall | Pos:(44307,40311)
+2026-02-14 16:16:29,148 - INFO -   >> New Best Avg Reward: 126.27. Saved backup: best_model_20260214-ba3a5cd0_ep873_rw126.pth
+2026-02-14 16:16:31,337 - INFO - Ep 874 | S2:WALL_AVOID | Rw: 145.56 | St: 92 | Fd: 38 (0.413/st) | Eps: 0.179 | L: 5.1384 | Q: 14.11/36.67 | SnakeCollision | Pos:(27607,30384) Wall:8600 Enemy:250
+2026-02-14 16:16:35,471 - INFO - Ep 875 | S2:WALL_AVOID | Rw: 149.27 | St: 135 | Fd: 48 (0.356/st) | Eps: 0.179 | L: 6.9487 | Q: 14.82/42.71 | Wall | Pos:(45151,38444) Wall:85
+2026-02-14 16:16:35,582 - INFO -   >> New Best Avg Reward: 126.44. Saved backup: best_model_20260214-ba3a5cd0_ep875_rw126.pth
+2026-02-14 16:17:05,663 - INFO - Configuration:
+2026-02-14 16:17:05,663 - INFO -   Style: Defensive (Safe)
+2026-02-14 16:17:05,663 - INFO -   Mode: static
+2026-02-14 16:17:05,663 - INFO -   Agents: AUTO (start=1, max=8)
+2026-02-14 16:17:05,663 - INFO -   Frame Stack: 4
+2026-02-14 16:17:05,663 - INFO -   Resolution: (64, 64)
+2026-02-14 16:17:05,663 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-14 16:17:05,663 - INFO -   LR: 0.0001
+2026-02-14 16:17:05,663 - INFO -   PER: True
+2026-02-14 16:17:05,664 - INFO - Training Run UID: 20260214-28edf8c7
+2026-02-14 16:17:06,223 - INFO -   Parent UID: 20260214-ba3a5cd0
+2026-02-14 16:17:06,223 - INFO - Resumed from episode 875
+2026-02-14 16:17:11,575 - INFO -   Curriculum Stage: 1 (SAFE)
+2026-02-14 16:17:11,576 - INFO -   Max Steps: 99999
+2026-02-14 16:17:30,245 - INFO - [AUTO-SCALE] Added agent #2 (CPU:29% RAM:41187MB Step:122ms)
+2026-02-14 16:17:32,309 - INFO - Ep 876 | S1:SAFE | Rw: 78.70 | St: 44 | Fd: 20 (0.455/st) | Eps: 0.179 | L: 0.0000 | Q: 0.00/0.00 | SnakeCollision | Pos:(40278,35356) Wall:5775 Enemy:83
+2026-02-14 16:17:42,632 - INFO - >> Target Network Updated

@@ -1,41 +1,41 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-14 16:15:28  
-**Total Episodes:** 867  
-**Training Sessions:** 1
+**Generated:** 2026-02-14 16:17:48  
+**Total Episodes:** 876  
+**Training Sessions:** 2
 
 ## Verdict: NOT LEARNING (Confidence: 45%)
 
 **Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
 ### Warnings
-- Rewards flat: change = 5.6
+- Rewards flat: change = 6.8
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 200 | 99.8 | 76.2 | 30.8 | 0.5736 | 0.0% | 0.0% | 0.0% |
-| S2 | WALL_AVOID | 667 | 110.2 | 76.7 | 31.8 | 0.6651 | 0.0% | 0.0% | 0.0% |
+| S1 | FOOD_VECTOR | 201 | 99.7 | 76.1 | 30.7 | 0.5730 | 0.0% | 0.0% | 0.0% |
+| S2 | WALL_AVOID | 675 | 110.8 | 77.2 | 31.9 | 0.6620 | 0.0% | 0.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 107.79 | 83.49 | -39.21 | 52.11 | 88.53 | 136.71 | 273.78 | 497.52 |
-| Steps | 76.57 | 56.74 | 1.00 | 34.00 | 63.00 | 105.00 | 194.70 | 337.00 |
-| Food | 31.54 | 13.97 | 0.00 | 22.00 | 28.00 | 39.00 | 59.70 | 97.00 |
-| Loss | 2.93 | 3.77 | 0.00 | 1.48 | 2.35 | 3.52 | 5.98 | 64.76 |
-| Food/Step | 0.64 | 0.70 | 0.00 | 0.36 | 0.46 | 0.64 | 1.45 | 6.33 |
+| Reward | 108.24 | 83.43 | -39.21 | 52.22 | 89.44 | 137.75 | 275.63 | 497.52 |
+| Steps | 76.95 | 56.89 | 1.00 | 34.00 | 64.00 | 105.00 | 195.50 | 337.00 |
+| Food | 31.64 | 14.02 | 0.00 | 22.00 | 28.00 | 39.00 | 60.00 | 97.00 |
+| Loss | 2.94 | 3.76 | 0.00 | 1.49 | 2.35 | 3.53 | 6.00 | 64.76 |
+| Food/Step | 0.64 | 0.70 | 0.00 | 0.36 | 0.45 | 0.63 | 1.44 | 6.33 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 116.61 | 103.97 | +1.2911 | 0.0321 |
-| Last 100 | 118.44 | 104.18 | +0.1871 | 0.0027 |
-| Last 200 | 117.53 | 97.44 | +0.0268 | 0.0003 |
-| Last 500 | 111.07 | 92.37 | +0.0295 | 0.0021 |
+| Last 50 | 127.72 | 102.81 | +1.0837 | 0.0231 |
+| Last 100 | 126.37 | 103.58 | +0.0121 | 0.0000 |
+| Last 200 | 119.07 | 97.16 | +0.0703 | 0.0017 |
+| Last 500 | 112.06 | 92.46 | +0.0348 | 0.0030 |
 
 ## Death Cause Analysis
 
@@ -95,4 +95,7 @@ Fine-tune hyperparameters, increase training duration.
 
 ### Hyperparameter Analysis
 ![Hyperparameter Analysis](chart_12_hyperparameter_analysis.png)
+
+### Active Agents Over Time
+![Active Agents Over Time](chart_15_auto_scaling.png)
 
