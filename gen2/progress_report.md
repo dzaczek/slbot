@@ -1,41 +1,45 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-14 16:24:23  
-**Total Episodes:** 923  
+**Generated:** 2026-02-14 16:43:15  
+**Total Episodes:** 1063  
 **Training Sessions:** 2
 
-## Verdict: NOT LEARNING (Confidence: 45%)
+## Verdict: NOT LEARNING (Confidence: 50%)
 
 **Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
 ### Warnings
-- Rewards flat: change = 9.9
+- Rewards flat: change = 18.1
+
+### Positive Signals
+- Epsilon low (0.137) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 248 | 108.3 | 75.4 | 30.8 | 0.5672 | 0.0% | 0.0% | 0.0% |
+| S1 | FOOD_VECTOR | 388 | 118.3 | 73.7 | 30.2 | 0.6002 | 0.0% | 0.0% | 0.0% |
 | S2 | WALL_AVOID | 675 | 110.8 | 77.2 | 31.9 | 0.6620 | 0.0% | 0.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 110.13 | 83.27 | -39.21 | 53.36 | 91.95 | 140.79 | 275.84 | 497.52 |
-| Steps | 76.74 | 56.36 | 1.00 | 35.00 | 64.00 | 105.00 | 193.90 | 337.00 |
-| Food | 31.61 | 13.87 | 0.00 | 22.00 | 28.00 | 39.00 | 59.90 | 97.00 |
-| Loss | 3.23 | 4.27 | 0.00 | 1.50 | 2.41 | 3.67 | 7.02 | 64.76 |
-| Food/Step | 0.64 | 0.68 | 0.00 | 0.36 | 0.46 | 0.62 | 1.43 | 6.33 |
+| Reward | 113.53 | 83.07 | -39.21 | 57.15 | 94.67 | 149.29 | 277.55 | 497.52 |
+| Steps | 75.93 | 55.81 | 1.00 | 34.00 | 63.00 | 104.00 | 192.00 | 337.00 |
+| Food | 31.29 | 13.60 | 0.00 | 22.00 | 28.00 | 38.00 | 58.00 | 97.00 |
+| Loss | 3.03 | 4.02 | 0.00 | 1.39 | 2.25 | 3.50 | 6.55 | 64.76 |
+| Food/Step | 0.64 | 0.68 | 0.00 | 0.36 | 0.46 | 0.64 | 1.45 | 6.33 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 144.06 | 70.11 | +0.5691 | 0.0137 |
-| Last 100 | 137.22 | 89.05 | +0.3797 | 0.0151 |
-| Last 200 | 125.91 | 90.80 | +0.2109 | 0.0180 |
-| Last 500 | 114.96 | 89.12 | +0.0737 | 0.0142 |
+| Last 50 | 124.23 | 80.10 | +0.1842 | 0.0011 |
+| Last 100 | 141.50 | 81.74 | -0.5785 | 0.0417 |
+| Last 200 | 138.97 | 76.16 | -0.0590 | 0.0020 |
+| Last 500 | 124.90 | 89.01 | +0.0664 | 0.0116 |
+| Last 1000 | 114.26 | 84.37 | +0.0400 | 0.0188 |
 
 ## Death Cause Analysis
 
