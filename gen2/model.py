@@ -100,7 +100,6 @@ class HybridDuelingDQN(nn.Module):
         self.merge = nn.Sequential(
             nn.Linear(merge_size, 512),
             nn.LeakyReLU(negative_slope=0.01),
-            nn.LayerNorm(512),
         )
 
         # --- Dueling heads (deeper than DuelingDQN) ---

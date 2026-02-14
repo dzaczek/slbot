@@ -11,6 +11,7 @@ import multiprocessing as mp
 import argparse
 from collections import deque
 import logging
+import psutil
 
 # Add gen2 to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -433,6 +434,59 @@ class SuperPatternOptimizer:
         )
         return updated
 
+class ResourceMonitor:
+    """Monitors system resources and recommends agent scaling decisions."""
+
+    def __init__(self, check_interval=15, cooldown_up=20, cooldown_down=15):
+        self.step_times = deque(maxlen=50)
+        self.check_interval = check_interval
+        self.cooldown_up = cooldown_up
+        self.cooldown_down = cooldown_down
+        self.last_check = time.time()
+        self.last_scale_time = 0  # no cooldown on first check
+
+    def record_step(self, duration):
+        self.step_times.append(duration)
+
+    def should_check(self):
+        return time.time() - self.last_check > self.check_interval
+
+    def get_metrics(self):
+        cpu = psutil.cpu_percent(interval=0.1)
+        ram = psutil.virtual_memory()
+        avg_step = sum(self.step_times) / len(self.step_times) if self.step_times else 0
+        self.last_check = time.time()
+        return {
+            'cpu_percent': cpu,
+            'ram_free_mb': ram.available / (1024 * 1024),
+            'ram_percent': ram.percent,
+            'avg_step_ms': avg_step * 1000,
+        }
+
+    def recommend(self, current_agents, metrics):
+        """Returns +1 (scale up), 0 (no change), or -1 (scale down)."""
+        now = time.time()
+        cpu = metrics['cpu_percent']
+        ram_free = metrics['ram_free_mb']
+        step_ms = metrics['avg_step_ms']
+
+        # Scale DOWN: any critical threshold breached
+        if cpu > 90 or ram_free < 500 or step_ms > 500:
+            if now - self.last_scale_time >= self.cooldown_down:
+                self.last_scale_time = now
+                return -1
+            return 0
+
+        # Scale UP: all conditions must be met
+        if cpu < 70 and ram_free > 2000 and step_ms < 200:
+            if now - self.last_scale_time >= self.cooldown_up:
+                self.last_scale_time = now
+                return 1
+            return 0
+
+        return 0
+
+
 class VecFrameStack:
     """
     Wraps SubprocVecEnv to stack frames.
@@ -507,6 +561,25 @@ class VecFrameStack:
     def close(self):
         self.venv.close()
 
+    def add_agent(self):
+        """Add a new agent dynamically. Returns stacked initial observation."""
+        obs = self.venv.add_agent()
+        mat = obs['matrix']
+        new_deque = deque(maxlen=self.k)
+        for _ in range(self.k):
+            new_deque.append(mat)
+        self.frames.append(new_deque)
+        self.num_agents += 1
+        return self._stack_obs(self.num_agents - 1, obs['sectors'])
+
+    def remove_agent(self):
+        """Remove the last agent. Returns False if only 1 agent left."""
+        if not self.venv.remove_agent():
+            return False
+        self.frames.pop()
+        self.num_agents -= 1
+        return True
+
     def set_stage(self, stage_config):
         self.venv.set_stage(stage_config)
 
@@ -560,7 +633,16 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
 class SubprocVecEnv:
     def __init__(self, num_agents, matrix_size, frame_skip, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io"):
         self.num_agents = num_agents
-        self.remotes, self.work_remotes = zip(*[mp.Pipe() for _ in range(num_agents)])
+        # Store constructor args for spawning new workers dynamically
+        self._matrix_size = matrix_size
+        self._frame_skip = frame_skip
+        self._nickname = nickname
+        self._base_url = base_url
+        self._current_stage_config = None
+
+        pipes = [mp.Pipe() for _ in range(num_agents)]
+        self.remotes = [p[0] for p in pipes]
+        work_remotes = [p[1] for p in pipes]
         self.ps = []
 
         for i in range(num_agents):
@@ -569,13 +651,13 @@ class SubprocVecEnv:
             agent_view_plus = view_plus and (i == 0) and not is_headless
             p = mp.Process(
                 target=worker,
-                args=(self.work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, frame_skip, agent_view_plus, base_url),
+                args=(work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, frame_skip, agent_view_plus, base_url),
             )
             p.daemon = True
             p.start()
             self.ps.append(p)
 
-        for remote in self.work_remotes:
+        for remote in work_remotes:
             remote.close()
 
     def reset(self):
@@ -602,10 +684,52 @@ class SubprocVecEnv:
 
     def set_stage(self, stage_config):
         """Send curriculum stage config to all workers."""
+        self._current_stage_config = stage_config
         for remote in self.remotes:
             remote.send(('set_stage', stage_config))
         for remote in self.remotes:
             remote.recv()  # Wait for ack
+
+    def add_agent(self):
+        """Spawn a new worker process dynamically. Returns initial observation."""
+        i = self.num_agents
+        remote, work_remote = mp.Pipe()
+        p = mp.Process(
+            target=worker,
+            args=(work_remote, remote, i, True, self._nickname,
+                  self._matrix_size, self._frame_skip, False, self._base_url),
+        )
+        p.daemon = True
+        p.start()
+        work_remote.close()
+        self.remotes.append(remote)
+        self.ps.append(p)
+        self.num_agents += 1
+
+        # Apply current stage config to new worker
+        if self._current_stage_config is not None:
+            remote.send(('set_stage', self._current_stage_config))
+            remote.recv()
+
+        # Reset and get initial observation
+        remote.send(('reset', None))
+        return remote.recv()
+
+    def remove_agent(self):
+        """Shut down the last worker process. Returns False if only 1 agent left."""
+        if self.num_agents <= 1:
+            return False
+        idx = self.num_agents - 1
+        try:
+            self.remotes[idx].send(('close', None))
+            self.ps[idx].join(timeout=5)
+        except Exception:
+            self.ps[idx].terminate()
+        self.remotes.pop()
+        self.ps.pop()
+        self.num_agents -= 1
+        return True
+
 
 def train(args):
     # Select Style and Model
@@ -615,7 +739,9 @@ def train(args):
     cfg = Config()
     
     # Override config with args if necessary
-    if args.num_agents > 0:
+    if args.auto_num_agents:
+        cfg.env.num_agents = 1  # Auto-scale starts with 1 agent
+    elif args.num_agents > 0:
         cfg.env.num_agents = args.num_agents
     
     if args.vision_size:
@@ -631,10 +757,18 @@ def train(args):
     # Initialize Curriculum/Style Manager
     curriculum = CurriculumManager(style_name=style_name, start_stage=args.stage if args.stage > 0 else 1)
 
+    # Auto-scaling setup
+    auto_scale = args.auto_num_agents
+    max_agents = args.max_agents
+    monitor = ResourceMonitor() if auto_scale else None
+
     logger.info(f"Configuration:")
     logger.info(f"  Style: {style_name}")
     logger.info(f"  Mode: {curriculum.mode}")
-    logger.info(f"  Agents: {cfg.env.num_agents}")
+    if auto_scale:
+        logger.info(f"  Agents: AUTO (start=1, max={max_agents})")
+    else:
+        logger.info(f"  Agents: {cfg.env.num_agents}")
     logger.info(f"  Frame Stack: {cfg.env.frame_stack}")
     logger.info(f"  Resolution: {cfg.env.resolution}")
     logger.info(f"  Model: {cfg.model.architecture} ({cfg.model.activation})")
@@ -699,14 +833,28 @@ def train(args):
     logger.info(f"  Max Steps: {max_steps_per_episode}")
     super_pattern = SuperPatternOptimizer(stage_cfg, cfg, logger)
 
-    # Initialize stats file (always append, never overwrite)
+    # Initialize stats file — update header if columns were added
+    CSV_HEADER = "UID,ParentUID,Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food,QMean,QMax,TDError,GradNorm,ActStraight,ActGentle,ActMedium,ActSharp,ActUturn,ActBoost,NumAgents\n"
     if not os.path.exists(stats_file):
         with open(stats_file, 'w') as f:
-            f.write("UID,ParentUID,Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food\n")
+            f.write(CSV_HEADER)
+    else:
+        with open(stats_file, 'r') as f:
+            old_header = f.readline()
+        if old_header.strip() != CSV_HEADER.strip():
+            # Re-write file with updated header, preserving all data rows
+            with open(stats_file, 'r') as f:
+                _ = f.readline()  # skip old header
+                data_lines = f.readlines()
+            with open(stats_file, 'w') as f:
+                f.write(CSV_HEADER)
+                f.writelines(data_lines)
+            logger.info(f"[CSV] Updated header ({old_header.strip().count(',') + 1} -> {CSV_HEADER.strip().count(',') + 1} columns)")
 
-    # LR Scheduler (Linear Warmup)
-    warmup_steps = 10000
+    # LR Scheduler (Linear Warmup) — based on batch_count, decoupled from num_agents
+    warmup_batches = 2000
     target_lr = cfg.opt.lr
+    batch_count = 0
 
     # Autonomy / Stabilization Vars
     reward_window = deque(maxlen=100)
@@ -718,6 +866,10 @@ def train(args):
     episode_rewards = [0] * cfg.env.num_agents
     episode_steps = [0] * cfg.env.num_agents
     episode_food = [0] * cfg.env.num_agents
+    # Per-episode action distribution: [straight, gentle, medium, sharp, uturn, boost]
+    episode_actions = [[0]*6 for _ in range(cfg.env.num_agents)]
+    # Running training metrics from optimize_model
+    last_metrics = {'loss': 0, 'q_mean': 0, 'q_max': 0, 'td_error_mean': 0, 'grad_norm': 0}
 
     # Death Counters
     death_stats = {"Wall": 0, "SnakeCollision": 0, "InvalidFrame": 0, "BrowserError": 0, "MaxSteps": 0}
@@ -737,7 +889,11 @@ def train(args):
         # Log
         start_episode += 1
         eps = agent.get_epsilon()
-        loss_val = getattr(train, '_last_loss', 0) or 0
+        loss_val = last_metrics.get('loss', 0)
+        q_mean = last_metrics.get('q_mean', 0)
+        q_max = last_metrics.get('q_max', 0)
+        td_err = last_metrics.get('td_error_mean', 0)
+        g_norm = last_metrics.get('grad_norm', 0)
 
         current_beta = min(1.0, agent.memory.beta_start + agent.memory.frame * (1.0 - agent.memory.beta_start) / agent.memory.beta_frames)
         lr = agent.optimizer.param_groups[0]['lr']
@@ -768,7 +924,8 @@ def train(args):
         log_msg = (f"Ep {start_episode} | S{curriculum.current_stage}:{stage_name} | "
                    f"Rw: {total_reward:.2f} | St: {total_steps_local} | "
                    f"Fd: {food_eaten} ({food_ratio:.3f}/st) | "
-                   f"Eps: {eps:.3f} | L: {loss_val:.4f} | {cause_label} | {pos_str}{wall_str}{enemy_str}")
+                   f"Eps: {eps:.3f} | L: {loss_val:.4f} | Q: {q_mean:.2f}/{q_max:.2f} | "
+                   f"{cause_label} | {pos_str}{wall_str}{enemy_str}")
 
         logger.info(log_msg)
 
@@ -776,8 +933,17 @@ def train(args):
         if start_episode % 10 == 0:
             logger.info(f"Death Stats: {death_stats}")
 
+        # Action distribution for this episode
+        act = episode_actions[agent_index]
+        act_total = max(sum(act), 1)
+        act_pcts = [a / act_total for a in act]  # [straight, gentle, medium, sharp, uturn, boost]
+
         with open(stats_file, 'a') as f:
-            f.write(f"{run_uid},{parent_uid or ''},{start_episode},{total_steps_local},{total_reward:.2f},{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause_label},{curriculum.current_stage},{food_eaten}\n")
+            f.write(f"{run_uid},{parent_uid or ''},{start_episode},{total_steps_local},{total_reward:.2f},"
+                    f"{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause_label},"
+                    f"{curriculum.current_stage},{food_eaten},"
+                    f"{q_mean:.4f},{q_max:.4f},{td_err:.4f},{g_norm:.4f},"
+                    f"{act_pcts[0]:.3f},{act_pcts[1]:.3f},{act_pcts[2]:.3f},{act_pcts[3]:.3f},{act_pcts[4]:.3f},{act_pcts[5]:.3f},{env.num_agents}\n")
 
         # Autonomy Logic (Scheduler & Watchdog)
         reward_window.append(total_reward)
@@ -803,12 +969,11 @@ def train(args):
                 episodes_since_improvement += 1
 
             if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
-                logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle exploration boost + LR reset.")
-                agent.boost_exploration(target_eps=0.3)
-                # Reset LR to initial value so the network can learn again
-                for pg in agent.optimizer.param_groups:
-                    pg['lr'] = cfg.opt.lr
-                logger.info(f"  LR reset to {cfg.opt.lr}")
+                current_eps = agent.get_epsilon()
+                new_eps = max(current_eps + 0.1, 0.3)
+                logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle eps boost: {current_eps:.3f} -> {new_eps:.3f}. LR unchanged.")
+                agent.boost_exploration(target_eps=new_eps)
+                # Do NOT reset LR — let the network keep learning at current rate
                 episodes_since_improvement = 0
 
         # SuperPattern only active from stage 3+
@@ -837,25 +1002,40 @@ def train(args):
         episode_rewards[agent_index] = 0
         episode_steps[agent_index] = 0
         episode_food[agent_index] = 0
+        episode_actions[agent_index] = [0]*6
 
     try:
         while start_episode < cfg.opt.max_episodes:
-            # LR Warmup
-            if total_steps < warmup_steps:
-                lr_scale = total_steps / warmup_steps
+            batch_count += 1
+
+            # LR Warmup (based on batch_count, independent of num_agents)
+            if batch_count < warmup_batches:
+                lr_scale = batch_count / warmup_batches
                 for param_group in agent.optimizer.param_groups:
                     param_group['lr'] = target_lr * lr_scale
 
-            # Select actions (scale steps_done by num_agents so epsilon decays per game-step, not per batch)
+            # Select actions — steps_done increments once per batch (decoupled from num_agents)
             actions = [agent.select_action(s) for s in states]
-            agent.steps_done += cfg.env.num_agents
+            agent.steps_done += 1
 
-            # Step
+            # Track action distribution per agent
+            for i, a in enumerate(actions):
+                if a == 0: episode_actions[i][0] += 1        # straight
+                elif a in (1, 2): episode_actions[i][1] += 1  # gentle
+                elif a in (3, 4): episode_actions[i][2] += 1  # medium
+                elif a in (5, 6): episode_actions[i][3] += 1  # sharp
+                elif a in (7, 8): episode_actions[i][4] += 1  # uturn
+                elif a == 9: episode_actions[i][5] += 1        # boost
+
+            # Step (with latency tracking for auto-scale)
+            step_start = time.time()
             next_states, rewards, dones, infos = env.step(actions)
+            if monitor:
+                monitor.record_step(time.time() - step_start)
 
             loss = None
 
-            for i in range(cfg.env.num_agents):
+            for i in range(env.num_agents):
                 total_steps += 1
                 episode_rewards[i] += rewards[i]
                 episode_steps[i] += 1
@@ -881,12 +1061,40 @@ def train(args):
                     agent.remember_nstep(states[i], actions[i], rewards[i], next_states[i], False, agent_id=i)
 
             # Update states
-            states = next_states
+            states = list(next_states) if not isinstance(next_states, list) else next_states
+
+            # Auto-scale agents based on system resources
+            if monitor and monitor.should_check():
+                metrics = monitor.get_metrics()
+                rec = monitor.recommend(env.num_agents, metrics)
+                if rec > 0 and env.num_agents < max_agents:
+                    new_state = env.add_agent()
+                    episode_rewards.append(0)
+                    episode_steps.append(0)
+                    episode_food.append(0)
+                    episode_actions.append([0] * 6)
+                    states.append(new_state)
+                    logger.info(f"[AUTO-SCALE] Added agent #{env.num_agents} "
+                                f"(CPU:{metrics['cpu_percent']:.0f}% "
+                                f"RAM:{metrics['ram_free_mb']:.0f}MB "
+                                f"Step:{metrics['avg_step_ms']:.0f}ms)")
+                elif rec < 0 and env.num_agents > 1:
+                    env.remove_agent()
+                    episode_rewards.pop()
+                    episode_steps.pop()
+                    episode_food.pop()
+                    episode_actions.pop()
+                    states.pop()
+                    logger.info(f"[AUTO-SCALE] Removed agent -> {env.num_agents} "
+                                f"(CPU:{metrics['cpu_percent']:.0f}% "
+                                f"RAM:{metrics['ram_free_mb']:.0f}MB "
+                                f"Step:{metrics['avg_step_ms']:.0f}ms)")
 
             # Train
-            loss = agent.optimize_model()
-            if loss is not None:
-                train._last_loss = loss
+            metrics = agent.optimize_model()
+            if metrics is not None:
+                last_metrics = metrics
+                train._last_loss = metrics['loss']
 
             # Target Update
             if total_steps % cfg.opt.target_update_freq == 0:
@@ -910,6 +1118,8 @@ if __name__ == "__main__":
     parser.add_argument("--model-path", type=str, help="Path to model checkpoint to load")
     parser.add_argument("--url", type=str, default="http://slither.io", help="Game URL (e.g. http://eslither.io)")
     parser.add_argument("--vision-size", type=int, default=0, help="Vision input size override (default: from config)")
+    parser.add_argument("--auto-num-agents", action="store_true", help="Auto-scale agents based on system resources")
+    parser.add_argument("--max-agents", type=int, default=5, help="Max agents for auto-scaling (default: 5)")
     parser.add_argument("--reset", action="store_true", help="Total reset: delete logs, CSV, checkpoints, events")
     args = parser.parse_args()
 

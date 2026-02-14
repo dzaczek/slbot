@@ -97,6 +97,18 @@ class Episode:
     beta: float = 0.0
     uid: str = ''
     parent_uid: str = ''
+    # New training metrics (alpha-4)
+    q_mean: float = 0.0
+    q_max: float = 0.0
+    td_error: float = 0.0
+    grad_norm: float = 0.0
+    act_straight: float = 0.0
+    act_gentle: float = 0.0
+    act_medium: float = 0.0
+    act_sharp: float = 0.0
+    act_uturn: float = 0.0
+    act_boost: float = 0.0
+    num_agents: int = 0
 
 @dataclass
 class TrainingSession:
@@ -124,7 +136,7 @@ EP_PATTERN = re.compile(
 
 WALL_ENEMY_PATTERN = re.compile(r'Wall:(\d+)\s*(?:Enemy:(\d+))?')
 CONFIG_STYLE_PATTERN = re.compile(r'Style: (.+)')
-CONFIG_AGENTS_PATTERN = re.compile(r'Agents: (\d+)')
+CONFIG_AGENTS_PATTERN = re.compile(r'Agents: (?:AUTO|(\d+))')
 CONFIG_LR_PATTERN = re.compile(r'LR: ([\d.e\-]+)')
 
 
@@ -159,7 +171,7 @@ def parse_log(log_path: str) -> Tuple[List[Episode], List[TrainingSession]]:
 
             m_agents = CONFIG_AGENTS_PATTERN.search(line)
             if m_agents:
-                current_agents = int(m_agents.group(1))
+                current_agents = int(m_agents.group(1)) if m_agents.group(1) else 1
                 continue
 
             m_lr = CONFIG_LR_PATTERN.search(line)
@@ -205,12 +217,25 @@ def parse_log(log_path: str) -> Tuple[List[Episode], List[TrainingSession]]:
     return episodes, sessions
 
 
+def _safe_float(parts, idx, default=0.0):
+    try:
+        return float(parts[idx]) if idx < len(parts) and parts[idx] else default
+    except (ValueError, IndexError):
+        return default
+
+def _safe_int(parts, idx, default=0):
+    try:
+        return int(parts[idx]) if idx < len(parts) and parts[idx] else default
+    except (ValueError, IndexError):
+        return default
+
 def parse_csv(csv_path: str) -> List[Episode]:
     episodes = []
     try:
         with open(csv_path, 'r') as f:
             header = f.readline().strip().split(',')
             has_uid = header[0] == 'UID'
+            has_new_metrics = len(header) >= 22  # alpha-4 extended CSV
             for line in f:
                 parts = line.strip().split(',')
                 if has_uid:
@@ -225,6 +250,18 @@ def parse_csv(csv_path: str) -> List[Episode]:
                         stage=int(parts[10]), food=int(parts[11]),
                         stage_name='',
                         food_per_step=int(parts[11]) / max(int(parts[3]), 1),
+                        # New metrics (backward-compatible: default 0.0 if missing)
+                        q_mean=_safe_float(parts, 12),
+                        q_max=_safe_float(parts, 13),
+                        td_error=_safe_float(parts, 14),
+                        grad_norm=_safe_float(parts, 15),
+                        act_straight=_safe_float(parts, 16),
+                        act_gentle=_safe_float(parts, 17),
+                        act_medium=_safe_float(parts, 18),
+                        act_sharp=_safe_float(parts, 19),
+                        act_uturn=_safe_float(parts, 20),
+                        act_boost=_safe_float(parts, 21),
+                        num_agents=_safe_int(parts, 22),
                     )
                 else:
                     if len(parts) < 10:
@@ -399,9 +436,32 @@ def assess_learning(episodes, csv_episodes, sessions):
             verdict.warnings.append(f"Rewards flat: change = {improvement:.1f}")
             score -= 5
 
+    # Q-value analysis (alpha-4 metrics)
+    q_means = np.array([e.q_mean for e in episodes])
+    if np.any(q_means != 0):
+        q_slope, q_r2 = linear_trend(q_means)
+        if q_slope > 0.01 and q_r2 > 0.05:
+            verdict.positives.append(f"Q-values increasing (slope={q_slope:.4f}, R²={q_r2:.3f})")
+            score += 10
+        elif q_slope < -0.01 and q_r2 > 0.05:
+            verdict.warnings.append(f"Q-values declining (slope={q_slope:.4f})")
+            score -= 5
+        recent_q = q_means[-min(50, len(q_means)):]
+        if np.std(recent_q) < 0.01 and np.mean(np.abs(recent_q)) > 0:
+            verdict.warnings.append(f"Q-values collapsed to constant ({np.mean(recent_q):.3f})")
+            score -= 10
+
+    # Action diversity check
+    act_straights = np.array([e.act_straight for e in episodes])
+    if np.any(act_straights != 0):
+        recent_straight = np.mean(act_straights[-min(100, len(act_straights)):])
+        if recent_straight > 0.5:
+            verdict.warnings.append(f"Action dominated by straight ({recent_straight*100:.0f}%) — poor policy diversity")
+            score -= 5
+
     reward_slope, reward_r2 = linear_trend(rewards)
     if reward_slope > 0.1 and reward_r2 > 0.05:
-        verdict.positives.append(f"Positive reward trend (slope={reward_slope:.4f}, R\u00b2={reward_r2:.3f})")
+        verdict.positives.append(f"Positive reward trend (slope={reward_slope:.4f}, R²={reward_r2:.3f})")
         score += 10
     elif reward_slope < -0.1 and reward_r2 > 0.05:
         verdict.issues.append(f"Negative reward trend (slope={reward_slope:.4f})")
@@ -677,6 +737,43 @@ def print_full_report(episodes, csv_episodes, sessions, verdict):
     print(f'  Last Loss:  {losses[-1]:.4f}')
     if len(losses) > 50:
         print(f'  Avg Loss (50): {np.mean(losses[-50:]):.4f}')
+
+    # === Q-VALUE & GRADIENT HEALTH ===
+    q_means = np.array([e.q_mean for e in episodes])
+    q_maxes = np.array([e.q_max for e in episodes])
+    td_errors = np.array([e.td_error for e in episodes])
+    grad_norms = np.array([e.grad_norm for e in episodes])
+
+    has_q = np.any(q_means != 0) or np.any(q_maxes != 0)
+    if has_q:
+        section('Q-VALUE & GRADIENT ANALYSIS')
+        n_recent = min(50, len(q_means))
+        print(f'  Q-value (mean):  last={q_means[-1]:.4f}  avg50={np.mean(q_means[-n_recent:]):.4f}  range=[{np.min(q_means):.2f}, {np.max(q_means):.2f}]')
+        print(f'  Q-value (max):   last={q_maxes[-1]:.4f}  avg50={np.mean(q_maxes[-n_recent:]):.4f}  range=[{np.min(q_maxes):.2f}, {np.max(q_maxes):.2f}]')
+        print(f'  TD-error (mean): last={td_errors[-1]:.4f}  avg50={np.mean(td_errors[-n_recent:]):.4f}')
+        print(f'  Grad norm:       last={grad_norms[-1]:.4f}  avg50={np.mean(grad_norms[-n_recent:]):.4f}  max={np.max(grad_norms):.2f}')
+
+        q_slope, q_r2 = linear_trend(q_means)
+        q_trend = c("\u2197 UP", C.GRN) if q_slope > 0.01 else (c("\u2198 DOWN", C.RED) if q_slope < -0.01 else c("\u2192 FLAT", C.YEL))
+        print(f'  Q trend:         {q_trend} (slope={q_slope:.4f}, R²={q_r2:.3f})')
+
+    # === ACTION DISTRIBUTION ===
+    act_data = {
+        'Straight': np.array([e.act_straight for e in episodes]),
+        'Gentle': np.array([e.act_gentle for e in episodes]),
+        'Medium': np.array([e.act_medium for e in episodes]),
+        'Sharp': np.array([e.act_sharp for e in episodes]),
+        'U-turn': np.array([e.act_uturn for e in episodes]),
+        'Boost': np.array([e.act_boost for e in episodes]),
+    }
+    has_act = any(np.any(v != 0) for v in act_data.values())
+    if has_act:
+        section('ACTION DISTRIBUTION (Last 100 eps)')
+        n_act = min(100, len(episodes))
+        for name, arr in act_data.items():
+            avg_pct = np.mean(arr[-n_act:]) * 100
+            color = C.RED if name == 'Straight' and avg_pct > 50 else C.CYN
+            print(f'  {name:<10} {bar(avg_pct, 100, 25, color=color)} {avg_pct:>5.1f}%')
 
     # === SEGMENTED TREND ===
     section('SEGMENTED TREND ANALYSIS')
@@ -1105,9 +1202,11 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     # CHART 5b: CORRELATION HEATMAP MATRIX
     # ──────────────────────────────────────────────────
-    metric_names = ['Reward', 'Steps', 'Food', 'Food/Step', 'Loss', 'Epsilon', 'LR', 'Beta']
+    q_arr_corr = np.array([e.q_mean for e in episodes])
+    gn_arr_corr = np.array([e.grad_norm for e in episodes])
+    metric_names = ['Reward', 'Steps', 'Food', 'Food/Step', 'Loss', 'Epsilon', 'LR', 'Beta', 'Q Mean', 'Grad Norm']
     metric_data = [rewards, steps.astype(float), food.astype(float), food_per_step,
-                   losses, epsilons, lr_corr, beta_corr]
+                   losses, epsilons, lr_corr, beta_corr, q_arr_corr, gn_arr_corr]
 
     n_metrics = len(metric_names)
     corr_matrix = np.zeros((n_metrics, n_metrics))
@@ -1721,7 +1820,307 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     plt.tight_layout()
     _save(fig, 'chart_12_hyperparameter_analysis.png')
 
-    print(c(f'\n  Total: 13 chart files generated.', C.GRN, C.B))
+    # ──────────────────────────────────────────────────
+    # CHART 13: Q-VALUE, GRADIENT & TD-ERROR ANALYSIS
+    # ──────────────────────────────────────────────────
+    # Prefer csv_episodes for Q/gradient data (log parser doesn't extract these fields)
+    q_src = csv_episodes if csv_episodes and any(e.q_mean != 0 for e in csv_episodes) else episodes
+    q_means_arr = np.array([e.q_mean for e in q_src])
+    q_maxes_arr = np.array([e.q_max for e in q_src])
+    td_errors_arr = np.array([e.td_error for e in q_src])
+    grad_norms_arr = np.array([e.grad_norm for e in q_src])
+    # Override ep_nums/rewards/stages for chart 13 scope
+    q_ep_nums = np.array([e.number for e in q_src])
+    q_rewards = np.array([e.reward for e in q_src])
+    q_stages_arr = np.array([e.stage for e in q_src])
+    q_N = len(q_src)
+    q_sma_w = min(50, q_N // 3) if q_N > 30 else max(3, q_N // 3)
+
+    has_q_data = np.any(q_means_arr != 0) or np.any(q_maxes_arr != 0)
+    if has_q_data:
+        q_unique_stages = sorted(set(q_stages_arr))
+        q_losses = np.array([e.loss for e in q_src])
+        fig = plt.figure(figsize=(24, 16))
+        fig.suptitle('Q-VALUE, TD-ERROR & GRADIENT ANALYSIS', fontsize=20, fontweight='bold', y=0.98)
+        gs = GridSpec(3, 2, figure=fig, hspace=0.35, wspace=0.25)
+
+        # 13a. Q-value mean & max over time
+        ax = fig.add_subplot(gs[0, 0])
+        _add_stage_bands(ax, q_ep_nums, q_stages_arr)
+        ax.plot(q_ep_nums, q_means_arr, alpha=0.12, color='#484f58', linewidth=0.5)
+        ax.plot(q_ep_nums, q_maxes_arr, alpha=0.08, color='#484f58', linewidth=0.5)
+        if q_N > q_sma_w:
+            sma_qm = moving_average(q_means_arr, q_sma_w)
+            sma_qx = moving_average(q_maxes_arr, q_sma_w)
+            ax.plot(q_ep_nums[q_sma_w-1:], sma_qm, color='#58a6ff', linewidth=2, label=f'Q mean (SMA-{q_sma_w})')
+            ax.plot(q_ep_nums[q_sma_w-1:], sma_qx, color='#3fb950', linewidth=2, label=f'Q max (SMA-{q_sma_w})')
+        ax.axhline(0, color='#484f58', linestyle=':', linewidth=0.8)
+        ax.set_title('Q-Values Over Time', fontweight='bold')
+        ax.set_xlabel('Episode')
+        ax.set_ylabel('Q-Value')
+        ax.legend(fontsize=8)
+        ax.grid(True)
+
+        # 13b. Q-value distribution (early vs late)
+        ax = fig.add_subplot(gs[0, 1])
+        half = q_N // 2
+        if half > 20:
+            early_q = q_means_arr[:half]
+            late_q = q_means_arr[half:]
+            bins = np.linspace(min(np.min(early_q), np.min(late_q)),
+                              max(np.max(early_q), np.max(late_q)), 50)
+            ax.hist(early_q, bins=bins, alpha=0.5, color='#f85149', density=True, label=f'Early (n={half})')
+            ax.hist(late_q, bins=bins, alpha=0.5, color='#3fb950', density=True, label=f'Late (n={q_N-half})')
+            ax.axvline(np.mean(early_q), color='#f85149', linestyle='--', linewidth=1.5)
+            ax.axvline(np.mean(late_q), color='#3fb950', linestyle='--', linewidth=1.5)
+        ax.set_title('Q-Value Distribution: Early vs Late', fontweight='bold')
+        ax.set_xlabel('Q Mean')
+        ax.set_ylabel('Density')
+        ax.legend(fontsize=8)
+        ax.grid(True)
+
+        # 13c. TD-Error over time
+        ax = fig.add_subplot(gs[1, 0])
+        _add_stage_bands(ax, q_ep_nums, q_stages_arr)
+        valid_td = td_errors_arr > 0
+        if np.any(valid_td):
+            ax.plot(q_ep_nums[valid_td], td_errors_arr[valid_td], alpha=0.12, color='#484f58', linewidth=0.5)
+            if np.sum(valid_td) > q_sma_w:
+                sma_td = moving_average(td_errors_arr[valid_td], q_sma_w)
+                ax.plot(q_ep_nums[valid_td][q_sma_w-1:], sma_td, color='#d29922', linewidth=2, label=f'SMA-{q_sma_w}')
+            ax.set_yscale('log')
+        ax.set_title('TD-Error (log scale)', fontweight='bold')
+        ax.set_xlabel('Episode')
+        ax.set_ylabel('TD Error')
+        ax.legend(fontsize=8)
+        ax.grid(True)
+
+        # 13d. Gradient Norm over time
+        ax = fig.add_subplot(gs[1, 1])
+        _add_stage_bands(ax, q_ep_nums, q_stages_arr)
+        valid_gn = grad_norms_arr > 0
+        if np.any(valid_gn):
+            ax.plot(q_ep_nums[valid_gn], grad_norms_arr[valid_gn], alpha=0.12, color='#484f58', linewidth=0.5)
+            if np.sum(valid_gn) > q_sma_w:
+                sma_gn = moving_average(grad_norms_arr[valid_gn], q_sma_w)
+                ax.plot(q_ep_nums[valid_gn][q_sma_w-1:], sma_gn, color='#f85149', linewidth=2, label=f'SMA-{q_sma_w}')
+            # Clip line
+            ax.axhline(1.0, color='#ffaa00', linestyle='--', alpha=0.6, label='grad_clip=1.0')
+        ax.set_title('Gradient Norm (pre-clip)', fontweight='bold')
+        ax.set_xlabel('Episode')
+        ax.set_ylabel('Grad Norm')
+        ax.legend(fontsize=8)
+        ax.grid(True)
+
+        # 13e. Q-value vs Reward scatter
+        ax = fig.add_subplot(gs[2, 0])
+        for s in q_unique_stages:
+            mask = q_stages_arr == s
+            ax.scatter(q_means_arr[mask], q_rewards[mask], alpha=0.15, s=8,
+                      color=STAGE_COLORS_HEX.get(s, '#888'), label=f'S{s}')
+        if np.any(q_means_arr != 0):
+            valid_qr = (q_means_arr != 0) & np.isfinite(q_rewards)
+            if np.sum(valid_qr) > 10:
+                z = np.polyfit(q_means_arr[valid_qr], q_rewards[valid_qr], 1)
+                p = np.poly1d(z)
+                x_line = np.linspace(np.min(q_means_arr[valid_qr]), np.max(q_means_arr[valid_qr]), 50)
+                ax.plot(x_line, p(x_line), color='#f0883e', linewidth=1.5, linestyle='--')
+                corr = np.corrcoef(q_means_arr[valid_qr], q_rewards[valid_qr])[0, 1]
+                ax.text(0.02, 0.98, f'r={corr:.3f}', transform=ax.transAxes, fontsize=9, va='top',
+                       bbox=dict(boxstyle='round,pad=0.3', facecolor='#0d1117', edgecolor='#30363d'),
+                       color='#f0883e')
+        ax.set_title('Q-Value vs Reward', fontweight='bold')
+        ax.set_xlabel('Q Mean')
+        ax.set_ylabel('Reward')
+        ax.legend(fontsize=7, markerscale=3)
+        ax.grid(True)
+
+        # 13f. Grad norm vs Loss scatter
+        ax = fig.add_subplot(gs[2, 1])
+        valid_gl = (grad_norms_arr > 0) & (q_losses > 0)
+        if np.any(valid_gl):
+            for s in q_unique_stages:
+                mask = (q_stages_arr == s) & valid_gl
+                ax.scatter(grad_norms_arr[mask], q_losses[mask], alpha=0.15, s=8,
+                          color=STAGE_COLORS_HEX.get(s, '#888'), label=f'S{s}')
+            ax.set_yscale('log')
+        ax.set_title('Gradient Norm vs Loss', fontweight='bold')
+        ax.set_xlabel('Grad Norm')
+        ax.set_ylabel('Loss (log)')
+        ax.legend(fontsize=7, markerscale=3)
+        ax.grid(True)
+
+        _save(fig, 'chart_13_qvalue_gradients.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 14: ACTION DISTRIBUTION ANALYSIS
+    # ──────────────────────────────────────────────────
+    # Prefer csv_episodes for action data (log parser doesn't extract these fields)
+    act_src = csv_episodes if csv_episodes and any(e.act_straight != 0 for e in csv_episodes) else episodes
+    act_ep_nums = np.array([e.number for e in act_src])
+    act_rewards = np.array([e.reward for e in act_src])
+    act_stages_arr = np.array([e.stage for e in act_src])
+    act_N = len(act_src)
+    act_unique_stages = sorted(set(act_stages_arr))
+    act_names = ['Straight', 'Gentle', 'Medium', 'Sharp', 'U-turn', 'Boost']
+    act_colors = ['#8b949e', '#58a6ff', '#3fb950', '#d29922', '#f0883e', '#f85149']
+    act_arrs = [
+        np.array([e.act_straight for e in act_src]),
+        np.array([e.act_gentle for e in act_src]),
+        np.array([e.act_medium for e in act_src]),
+        np.array([e.act_sharp for e in act_src]),
+        np.array([e.act_uturn for e in act_src]),
+        np.array([e.act_boost for e in act_src]),
+    ]
+
+    has_act_data = any(np.any(a != 0) for a in act_arrs)
+    act_sma_w = min(50, act_N // 3) if act_N > 30 else max(3, act_N // 3)
+    if has_act_data:
+        fig = plt.figure(figsize=(24, 14))
+        fig.suptitle('ACTION DISTRIBUTION ANALYSIS', fontsize=20, fontweight='bold', y=0.98)
+        gs = GridSpec(2, 3, figure=fig, hspace=0.35, wspace=0.3)
+
+        # 14a. Stacked area: action distribution over time
+        ax = fig.add_subplot(gs[0, :2])
+        _add_stage_bands(ax, act_ep_nums, act_stages_arr)
+        roll_w = max(20, act_N // 30)
+        if act_N > roll_w:
+            x_pts = []
+            smoothed = {name: [] for name in act_names}
+            for i in range(0, act_N - roll_w, max(1, roll_w // 5)):
+                x_pts.append(act_ep_nums[i + roll_w // 2])
+                for j, name in enumerate(act_names):
+                    smoothed[name].append(np.mean(act_arrs[j][i:i+roll_w]) * 100)
+            bottom = np.zeros(len(x_pts))
+            for j, name in enumerate(act_names):
+                vals = np.array(smoothed[name])
+                ax.fill_between(x_pts, bottom, bottom + vals, alpha=0.7,
+                               color=act_colors[j], label=name)
+                bottom += vals
+            ax.set_ylim(0, 100)
+        ax.set_title('Action Distribution Over Time (Stacked)', fontweight='bold')
+        ax.set_xlabel('Episode')
+        ax.set_ylabel('% of Actions')
+        ax.legend(fontsize=8, loc='upper right', ncol=3)
+        ax.grid(True)
+
+        # 14b. Overall pie chart
+        ax = fig.add_subplot(gs[0, 2])
+        overall_pcts = [np.mean(a) * 100 for a in act_arrs]
+        nonzero = [(name, pct, col) for name, pct, col in zip(act_names, overall_pcts, act_colors) if pct > 0.1]
+        if nonzero:
+            labels_p = [n for n, _, _ in nonzero]
+            sizes_p = [p for _, p, _ in nonzero]
+            colors_p = [c_ for _, _, c_ in nonzero]
+            wedges, texts, autotexts = ax.pie(sizes_p, labels=labels_p, autopct='%1.1f%%',
+                                               colors=colors_p, textprops={'fontsize': 9})
+            for at in autotexts:
+                at.set_fontsize(8)
+        ax.set_title('Overall Action Mix')
+
+        # 14c. Per-stage action bars
+        ax = fig.add_subplot(gs[1, 0])
+        x_s = np.arange(len(act_unique_stages))
+        bar_w = 0.13
+        for j, name in enumerate(act_names):
+            vals = [np.mean(act_arrs[j][act_stages_arr == s]) * 100 for s in act_unique_stages]
+            ax.bar(x_s + j * bar_w, vals, bar_w, label=name, color=act_colors[j], alpha=0.8)
+        ax.set_xticks(x_s + bar_w * 2.5)
+        ax.set_xticklabels([f'S{s}' for s in act_unique_stages])
+        ax.set_title('Action Mix per Stage')
+        ax.set_ylabel('% of Actions')
+        ax.legend(fontsize=7, ncol=2)
+        ax.grid(True, axis='y')
+
+        # 14d. Action entropy over time (diversity measure)
+        ax = fig.add_subplot(gs[1, 1])
+        entropy_arr = np.zeros(act_N)
+        for i in range(act_N):
+            probs = np.array([a[i] for a in act_arrs])
+            probs = probs[probs > 0]
+            if len(probs) > 0:
+                entropy_arr[i] = -np.sum(probs * np.log2(probs + 1e-10))
+        max_entropy = np.log2(6)  # 6 action categories
+        _add_stage_bands(ax, act_ep_nums, act_stages_arr)
+        ax.plot(act_ep_nums, entropy_arr, alpha=0.12, color='#484f58', linewidth=0.5)
+        if act_N > act_sma_w:
+            sma_ent = moving_average(entropy_arr, act_sma_w)
+            ax.plot(act_ep_nums[act_sma_w-1:], sma_ent, color='#bc8cff', linewidth=2, label=f'SMA-{act_sma_w}')
+        ax.axhline(max_entropy, color='#3fb950', linestyle='--', alpha=0.5, label=f'Max entropy ({max_entropy:.2f})')
+        ax.axhline(max_entropy * 0.5, color='#f85149', linestyle=':', alpha=0.5, label='50% diversity')
+        ax.set_title('Action Entropy (Policy Diversity)', fontweight='bold')
+        ax.set_xlabel('Episode')
+        ax.set_ylabel('Entropy (bits)')
+        ax.legend(fontsize=8)
+        ax.grid(True)
+
+        # 14e. Action vs Reward relationship
+        ax = fig.add_subplot(gs[1, 2])
+        for j, name in enumerate(act_names):
+            valid_a = act_arrs[j] > 0
+            if np.sum(valid_a) > 10:
+                corr = np.corrcoef(act_arrs[j][valid_a], act_rewards[valid_a])[0, 1]
+                ax.barh(j, corr, color=act_colors[j], alpha=0.8, edgecolor='#30363d')
+                ax.text(corr + (0.02 if corr >= 0 else -0.02), j, f'{corr:.3f}',
+                       va='center', ha='left' if corr >= 0 else 'right', fontsize=9, color='#c9d1d9')
+        ax.set_yticks(range(len(act_names)))
+        ax.set_yticklabels(act_names, fontsize=10)
+        ax.axvline(0, color='#484f58', linewidth=1)
+        ax.set_xlim(-1, 1)
+        ax.set_title('Action → Reward Correlation', fontweight='bold')
+        ax.set_xlabel('Pearson r')
+        ax.grid(True, axis='x')
+
+        _save(fig, 'chart_14_action_distribution.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 15: ACTIVE AGENTS OVER TIME (auto-scaling)
+    # ──────────────────────────────────────────────────
+    # num_agents is only in CSV data, not in log-parsed episodes
+    csv_src = csv_episodes if csv_episodes else episodes
+    csv_agents_arr = np.array([e.num_agents for e in csv_src])
+    has_agents_data = np.any(csv_agents_arr > 0)
+    if has_agents_data:
+        csv_ep_nums = np.array([e.number for e in csv_src])
+        csv_rewards = np.array([e.reward for e in csv_src])
+        csv_stages = np.array([e.stage for e in csv_src])
+        csv_N = len(csv_src)
+        csv_sma_w = min(50, csv_N // 3) if csv_N > 30 else max(3, csv_N // 3)
+
+        fig, axes = plt.subplots(2, 1, figsize=(20, 10), sharex=True,
+                                  gridspec_kw={'height_ratios': [2, 1]})
+        fig.suptitle('AUTO-SCALING: ACTIVE AGENTS', fontsize=16, fontweight='bold')
+
+        # 15a. Number of agents over time (step plot)
+        ax = axes[0]
+        _add_stage_bands(ax, csv_ep_nums, csv_stages)
+        ax.step(csv_ep_nums, csv_agents_arr, where='post', color='#58a6ff', linewidth=2, label='Active Agents')
+        ax.fill_between(csv_ep_nums, 0, csv_agents_arr, step='post', alpha=0.15, color='#58a6ff')
+        ax.set_ylabel('Active Agents')
+        ax.set_ylim(0, max(csv_agents_arr.max() + 1, 2))
+        ax.yaxis.set_major_locator(mticker.MaxNLocator(integer=True))
+        ax.legend(fontsize=10, loc='upper left')
+        ax.grid(True)
+
+        # 15b. Reward per agent (efficiency)
+        ax = axes[1]
+        _add_stage_bands(ax, csv_ep_nums, csv_stages)
+        safe_agents = np.maximum(csv_agents_arr, 1)
+        rw_per_agent = csv_rewards / safe_agents
+        ax.plot(csv_ep_nums, rw_per_agent, alpha=0.12, color='#484f58', linewidth=0.5)
+        if csv_N > csv_sma_w:
+            sma_rpa = moving_average(rw_per_agent, csv_sma_w)
+            ax.plot(csv_ep_nums[csv_sma_w-1:], sma_rpa, color='#3fb950', linewidth=2, label=f'Reward/Agent SMA-{csv_sma_w}')
+        ax.set_title('Reward per Agent (Efficiency)', fontweight='bold')
+        ax.set_xlabel('Episode')
+        ax.set_ylabel('Reward / Agent')
+        ax.axhline(0, color='#484f58', linestyle=':', linewidth=0.8)
+        ax.legend(fontsize=8)
+        ax.grid(True)
+
+        _save(fig, 'chart_15_auto_scaling.png')
+
+    print(c(f'\n  Total: up to 15 chart files generated.', C.GRN, C.B))
 
 
 # ═══════════════════════════════════════════════════════
@@ -1788,6 +2187,64 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
                     f"{p['p25']:.2f} | {p['p50']:.2f} | {p['p75']:.2f} | {p['p95']:.2f} | {p['max']:.2f} |\n")
         f.write("\n")
 
+        # Q-Value & Gradient Analysis
+        q_means_md = np.array([e.q_mean for e in episodes])
+        q_maxes_md = np.array([e.q_max for e in episodes])
+        td_errors_md = np.array([e.td_error for e in episodes])
+        grad_norms_md = np.array([e.grad_norm for e in episodes])
+        has_q_md = np.any(q_means_md != 0) or np.any(q_maxes_md != 0)
+
+        if has_q_md:
+            f.write("## Q-Value & Gradient Health\n\n")
+            f.write("| Metric | Last | Avg (50) | Min | Max | Trend |\n")
+            f.write("|--------|------|----------|-----|-----|-------|\n")
+            n_r = min(50, N)
+            for name, arr in [('Q Mean', q_means_md), ('Q Max', q_maxes_md),
+                               ('TD Error', td_errors_md), ('Grad Norm', grad_norms_md)]:
+                sl, r2 = linear_trend(arr)
+                trend = "UP" if sl > 0.01 else ("DOWN" if sl < -0.01 else "FLAT")
+                f.write(f"| {name} | {arr[-1]:.4f} | {np.mean(arr[-n_r:]):.4f} | "
+                        f"{np.min(arr):.4f} | {np.max(arr):.4f} | {trend} (slope={sl:.4f}) |\n")
+            f.write("\n")
+
+        # Action Distribution
+        act_md = {
+            'Straight': np.array([e.act_straight for e in episodes]),
+            'Gentle': np.array([e.act_gentle for e in episodes]),
+            'Medium': np.array([e.act_medium for e in episodes]),
+            'Sharp': np.array([e.act_sharp for e in episodes]),
+            'U-turn': np.array([e.act_uturn for e in episodes]),
+            'Boost': np.array([e.act_boost for e in episodes]),
+        }
+        has_act_md = any(np.any(v != 0) for v in act_md.values())
+
+        if has_act_md:
+            f.write("## Action Distribution\n\n")
+            f.write("| Action | Overall % | Last 100 % | First 100 % | Change |\n")
+            f.write("|--------|----------|-----------|------------|--------|\n")
+            n_100 = min(100, N)
+            for name, arr in act_md.items():
+                overall = np.mean(arr) * 100
+                recent = np.mean(arr[-n_100:]) * 100
+                early = np.mean(arr[:n_100]) * 100
+                change = recent - early
+                arrow = "+" if change > 0 else ""
+                f.write(f"| {name} | {overall:.1f}% | {recent:.1f}% | {early:.1f}% | {arrow}{change:.1f}% |\n")
+
+            # Entropy
+            entropy_vals = []
+            for i in range(N):
+                probs = np.array([arr[i] for arr in act_md.values()])
+                probs = probs[probs > 0]
+                if len(probs) > 0:
+                    entropy_vals.append(-np.sum(probs * np.log2(probs + 1e-10)))
+                else:
+                    entropy_vals.append(0)
+            max_ent = np.log2(6)
+            avg_ent = np.mean(entropy_vals[-n_100:])
+            f.write(f"\n**Action Entropy (last 100):** {avg_ent:.2f} / {max_ent:.2f} bits "
+                    f"({avg_ent/max_ent*100:.0f}% diversity)\n\n")
+
         # Windowed trends
         f.write("## Windowed Trend Analysis\n\n")
         f.write("| Window | Mean Reward | Std | Slope | R\u00b2 |\n")
@@ -1827,8 +2284,9 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
         for i, rec in enumerate(recs, 1):
             f.write(f"{i}. {rec}\n\n")
 
-        # Charts
+        # Charts (only include if file exists)
         f.write("## Charts\n\n")
+        chart_dir = os.path.dirname(output_path)
         chart_files = [
             ('chart_01_dashboard.png', 'Main Dashboard'),
             ('chart_02_stage_progression.png', 'Stage Progression'),
@@ -1843,9 +2301,14 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('chart_10_learning_detection.png', 'Learning Detection'),
             ('chart_11_goal_gauges.png', 'Goal Progress'),
             ('chart_12_hyperparameter_analysis.png', 'Hyperparameter Analysis'),
+            ('chart_13_qvalue_gradients.png', 'Q-Value & Gradient Analysis'),
+            ('chart_14_action_distribution.png', 'Action Distribution Analysis'),
+            ('chart_15_auto_scaling.png', 'Active Agents Over Time'),
         ]
         for fname, title in chart_files:
-            f.write(f"### {title}\n![{title}]({fname})\n\n")
+            chart_path = os.path.join(chart_dir, fname)
+            if os.path.exists(chart_path):
+                f.write(f"### {title}\n![{title}]({fname})\n\n")
 
     print(c(f'  Report saved: {output_path}', C.GRN))
 

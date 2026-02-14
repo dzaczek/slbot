@@ -63,6 +63,9 @@ while true; do
         chart_10_learning_detection.png
         chart_11_goal_gauges.png
         chart_12_hyperparameter_analysis.png
+        chart_13_qvalue_gradients.png
+        chart_14_action_distribution.png
+        chart_15_auto_scaling.png
     )
 
     added=0

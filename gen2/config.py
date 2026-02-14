@@ -27,20 +27,20 @@ class OptimizationConfig:
     weight_decay: float = 1e-5
     batch_size: int = 64
     gamma: float = 0.8             # Starting gamma (Stage 1), overridden per-stage
-    grad_clip: float = 10.0
+    grad_clip: float = 1.0
     eps_start: float = 1.0
     eps_end: float = 0.08          # Less randomness at convergence
-    eps_decay: int = 40000         # Faster transition to exploitation
+    eps_decay: int = 8000          # Calibrated for steps_done += 1 per batch
     target_update_freq: int = 500  # More frequent target updates
     max_episodes: int = 5000000
     checkpoint_every: int = 50
-    reward_scale: float = 10.0
+    reward_scale: float = 1.0
 
     # Autonomy / Stabilization
     scheduler_patience: int = 150
     scheduler_factor: float = 0.7
     scheduler_min_lr: float = 1e-5
-    adaptive_eps_patience: int = 200
+    adaptive_eps_patience: int = 500
     super_pattern_enabled: bool = True
     super_pattern_window: int = 50
     super_pattern_wall_ratio: float = 0.55

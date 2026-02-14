@@ -2,8 +2,8 @@ import numpy as np
 import random
 from collections import namedtuple
 
-# Standard transition tuple
-Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state', 'done'))
+# Standard transition tuple (gamma added for n-step consistency across stage changes)
+Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state', 'done', 'gamma'))
 
 class SumTree:
     """

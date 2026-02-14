@@ -65,14 +65,8 @@ class DDQNAgent:
             weight_decay=config.opt.weight_decay
         )
 
-        # Learning Rate Scheduler (Autonomy)
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer,
-            mode='max',
-            factor=config.opt.scheduler_factor,
-            patience=config.opt.scheduler_patience,
-            min_lr=config.opt.scheduler_min_lr
-        )
+        # LR scheduler removed — ReduceLROnPlateau is incompatible with RL
+        # (rolling reward is too noisy to detect a real plateau early in training)
 
         if config.buffer.prioritized:
             self.memory = PrioritizedReplayBuffer(
@@ -104,8 +98,8 @@ class DDQNAgent:
             np.exp(-1. * self.steps_done / self.config.opt.eps_decay)
 
     def step_scheduler(self, metric):
-        """Update LR based on metric (e.g. avg reward)."""
-        self.scheduler.step(metric)
+        """No-op: LR scheduler removed (incompatible with RL)."""
+        pass
 
     def boost_exploration(self, target_eps=0.5):
         """Resets steps_done to boost epsilon back to target_eps."""
@@ -155,12 +149,16 @@ class DDQNAgent:
         else:
             return random.randrange(10)
 
-    def remember(self, state, action, reward, next_state, done):
+    def remember(self, state, action, reward, next_state, done, gamma=None):
         """
         Stores transition with compression.
         state/next_state: dict {'matrix': (12,H,W) float32, 'sectors': (75,) float32}
         Stored as: (matrix_u8, sectors_f32) tuple for memory efficiency.
+        gamma: the gamma used to compute n-step return (stored for consistency across stage changes).
         """
+        if gamma is None:
+            gamma = self.current_gamma
+
         if isinstance(state, dict):
             state_compressed = (
                 (state['matrix'] * 255).astype(np.uint8),
@@ -175,7 +173,7 @@ class DDQNAgent:
             state_compressed = (state * 255).astype(np.uint8)
             next_compressed = (next_state * 255).astype(np.uint8)
 
-        self.memory.push(state_compressed, action, reward, next_compressed, done)
+        self.memory.push(state_compressed, action, reward, next_compressed, done, gamma)
 
     def set_gamma(self, gamma):
         """Set gamma for current curriculum stage."""
@@ -209,18 +207,21 @@ class DDQNAgent:
         # Oldest transition provides (state, action)
         state_0, action_0, _, _, _ = buf[0]
 
+        # Snapshot gamma at write time — stored in PER for consistency
+        gamma_used = self.current_gamma
+
         # Compute n-step discounted return: R = r1 + gamma*r2 + gamma^2*r3
         R = 0.0
         last_next_state = None
         last_done = False
         for i, (_, _, r, ns, d) in enumerate(buf):
-            R += (self.current_gamma ** i) * r
+            R += (gamma_used ** i) * r
             last_next_state = ns
             last_done = d
             if d:
                 break
 
-        self.remember(state_0, action_0, R, last_next_state, last_done)
+        self.remember(state_0, action_0, R, last_next_state, last_done, gamma=gamma_used)
 
     def _flush_nstep(self, agent_id):
         """Flush all remaining transitions at episode end."""
@@ -236,17 +237,18 @@ class DDQNAgent:
         # Sample
         transitions, idxs, is_weights = self.memory.sample(self.config.opt.batch_size)
 
-        # Unzip
-        batch_state, batch_action, batch_reward, batch_next, batch_done = zip(*transitions)
+        # Unzip (6-element tuples: state, action, reward, next_state, done, gamma)
+        batch_state, batch_action, batch_reward, batch_next, batch_done, batch_gamma = zip(*transitions)
 
         action_batch = torch.tensor(batch_action, dtype=torch.long).unsqueeze(1).to(self.device)
         reward_batch = torch.tensor(batch_reward, dtype=torch.float32).to(self.device)
         done_batch = torch.tensor(batch_done, dtype=torch.float32).to(self.device)
         weights_batch = torch.tensor(is_weights, dtype=torch.float32).to(self.device)
+        gamma_batch = torch.tensor(batch_gamma, dtype=torch.float32).to(self.device)
 
-        # Reward scaling
+        # Reward scaling (scale=1.0 preserves signal, clamp [-30,30] to preserve n-step returns)
         reward_scale = max(self.config.opt.reward_scale, 1.0)
-        norm_rewards = torch.clamp(reward_batch / reward_scale, -5.0, 5.0)
+        norm_rewards = torch.clamp(reward_batch / reward_scale, -30.0, 30.0)
 
         if self.use_hybrid:
             # Unpack tuples: (matrix_u8, sectors_f32)
@@ -260,7 +262,8 @@ class DDQNAgent:
             with torch.no_grad():
                 next_actions = self.policy_net(n_matrices, n_sectors).max(1)[1].unsqueeze(1)
                 next_q_values = self.target_net(n_matrices, n_sectors).gather(1, next_actions).squeeze(1)
-                gamma_n = self.current_gamma ** self.n_step
+                # Use per-transition gamma from PER (consistent with n-step return computation)
+                gamma_n = gamma_batch ** self.n_step
                 expected_q_values = (next_q_values * gamma_n * (1 - done_batch)) + norm_rewards
         else:
             # Legacy: plain uint8 arrays
@@ -272,11 +275,12 @@ class DDQNAgent:
             with torch.no_grad():
                 next_actions = self.policy_net(next_batch).max(1)[1].unsqueeze(1)
                 next_q_values = self.target_net(next_batch).gather(1, next_actions).squeeze(1)
-                gamma_n = self.current_gamma ** self.n_step
+                gamma_n = gamma_batch ** self.n_step
                 expected_q_values = (next_q_values * gamma_n * (1 - done_batch)) + norm_rewards
 
         # TD Error for PER
-        td_errors = (q_values.squeeze(1) - expected_q_values).abs().detach().cpu().numpy()
+        td_errors_raw = (q_values.squeeze(1) - expected_q_values).detach()
+        td_errors = td_errors_raw.abs().cpu().numpy()
         self.memory.update_priorities(idxs, td_errors)
 
         # Loss with IS weights
@@ -285,12 +289,23 @@ class DDQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
 
-        # Gradient Clipping
-        nn.utils.clip_grad_norm_(self.policy_net.parameters(), self.config.opt.grad_clip)
+        # Gradient norm BEFORE clipping (diagnostic)
+        grad_norm = nn.utils.clip_grad_norm_(self.policy_net.parameters(), self.config.opt.grad_clip)
 
         self.optimizer.step()
 
-        return loss.item()
+        # Collect training metrics
+        with torch.no_grad():
+            q_vals_np = q_values.squeeze(1).detach().cpu().numpy()
+            metrics = {
+                'loss': loss.item(),
+                'q_mean': float(np.mean(q_vals_np)),
+                'q_max': float(np.max(q_vals_np)),
+                'td_error_mean': float(np.mean(td_errors)),
+                'grad_norm': float(grad_norm) if isinstance(grad_norm, (int, float)) else float(grad_norm.item()) if hasattr(grad_norm, 'item') else float(grad_norm),
+            }
+
+        return metrics
 
     def update_target(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())

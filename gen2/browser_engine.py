@@ -510,10 +510,66 @@ class SlitherBrowser:
                 if (typeof window.grd !== 'undefined' && window.grd > 1000) {{
                     mapCenterX = window.grd;
                     mapCenterY = window.grd;
-                    mapRadius = window.grd * 0.98;
-                    boundarySource = 'grd';
-                    boundaryType = 'circle';
                     possibleMapVars['grd'] = window.grd;
+
+                    // Probe for eslither.io / modded server boundary vars
+                    var foundSpecific = false;
+
+                    // bsr = border/server radius (eslither)
+                    if (typeof window.bsr !== 'undefined' && window.bsr > 1000) {{
+                        mapRadius = window.bsr;
+                        boundarySource = 'bsr';
+                        foundSpecific = true;
+                        possibleMapVars['bsr'] = window.bsr;
+                    }}
+                    // Some mods expose 'border' directly
+                    if (!foundSpecific && typeof window.border !== 'undefined' && window.border > 1000) {{
+                        mapRadius = window.border;
+                        boundarySource = 'border';
+                        foundSpecific = true;
+                        possibleMapVars['border'] = window.border;
+                    }}
+                    // game_radius / arena_size
+                    if (!foundSpecific && typeof window.game_radius !== 'undefined' && window.game_radius > 1000) {{
+                        mapRadius = window.game_radius;
+                        boundarySource = 'game_radius';
+                        foundSpecific = true;
+                        possibleMapVars['game_radius'] = window.game_radius;
+                    }}
+                    if (!foundSpecific && typeof window.arena_size !== 'undefined' && window.arena_size > 1000) {{
+                        mapRadius = window.arena_size;
+                        boundarySource = 'arena_size';
+                        foundSpecific = true;
+                        possibleMapVars['arena_size'] = window.arena_size;
+                    }}
+
+                    // Check cst (server scale factor) — eslither uses grd*cst as real radius
+                    if (!foundSpecific && typeof window.cst !== 'undefined' && window.cst > 0.1 && window.cst < 0.95) {{
+                        mapRadius = window.grd * window.cst;
+                        boundarySource = 'grd*cst';
+                        foundSpecific = true;
+                        possibleMapVars['cst'] = window.cst;
+                        possibleMapVars['grd*cst'] = mapRadius;
+                    }}
+
+                    // Fallback: grd * 0.98 (works for standard slither.io where cst~1.0)
+                    if (!foundSpecific) {{
+                        mapRadius = window.grd * 0.98;
+                        boundarySource = 'grd';
+                    }}
+                    boundaryType = 'circle';
+
+                    // Log additional candidate vars for diagnostics
+                    var probeVars = ['bsr','bsc','border','game_radius','arena_size','rfbx','rfby',
+                                     'mcp','mcx','mcy','bmx','bmy','bmr','gla','glr','cst','msc'];
+                    for (var pi = 0; pi < probeVars.length; pi++) {{
+                        var pv = probeVars[pi];
+                        try {{
+                            if (typeof window[pv] !== 'undefined') {{
+                                possibleMapVars[pv] = window[pv];
+                            }}
+                        }} catch(e) {{}}
+                    }}
                 }} else {{
                     boundarySource = 'default';
                     boundaryType = 'circle';
@@ -687,19 +743,30 @@ class SlitherBrowser:
         """
         try:
             is_playing = self.driver.execute_script("""
-                return (window.slither !== undefined && window.slither !== null) && 
+                return (window.slither !== undefined && window.slither !== null) &&
                        (!window.dead_mtm || window.dead_mtm === -1)
             """)
-            
+
             if not is_playing:
                 log("[RESTART] Not playing. Reconnecting...")
                 self._handle_login()
             else:
                 log("[RESTART] Forcing new connection...")
                 self.driver.execute_script("if (window.connect) window.connect();")
-            
+
             time.sleep(0.5)
             self.inject_override_script()
+
+            # Diagnostic: scan game variables on restart
+            try:
+                scan = self.scan_game_variables()
+                if scan:
+                    log("[MAP SCAN] Game variables after restart:")
+                    for section in ['specific', 'numeric']:
+                        if section in scan:
+                            log(f"  {section}: {scan[section]}")
+            except Exception as e:
+                log(f"[MAP SCAN] Failed: {e}")
             
         except Exception as e:
             log(f"[RESTART] Error: {e}. Refreshing page...")
@@ -946,8 +1013,20 @@ class SlitherBrowser:
             if (typeof window.grd !== 'undefined' && window.grd > 1000) {
                 mapCenterX = window.grd;
                 mapCenterY = window.grd;
-                mapRadius = window.grd * 0.98;  // Confirmed by reference bots
-                boundarySource = 'grd';
+                // Probe eslither.io / modded server boundary vars
+                if (typeof window.bsr !== 'undefined' && window.bsr > 1000) {
+                    mapRadius = window.bsr; boundarySource = 'bsr';
+                } else if (typeof window.border !== 'undefined' && window.border > 1000) {
+                    mapRadius = window.border; boundarySource = 'border';
+                } else if (typeof window.game_radius !== 'undefined' && window.game_radius > 1000) {
+                    mapRadius = window.game_radius; boundarySource = 'game_radius';
+                } else if (typeof window.arena_size !== 'undefined' && window.arena_size > 1000) {
+                    mapRadius = window.arena_size; boundarySource = 'arena_size';
+                } else if (typeof window.cst !== 'undefined' && window.cst > 0.1 && window.cst < 0.95) {
+                    mapRadius = window.grd * window.cst; boundarySource = 'grd*cst';
+                } else {
+                    mapRadius = window.grd * 0.98; boundarySource = 'grd';
+                }
             } else {
                 mapCenterX = 21600;
                 mapCenterY = 21600;

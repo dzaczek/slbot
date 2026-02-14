@@ -40,6 +40,10 @@ class SlitherEnv:
         # Wall tracking - stores actual dist_to_wall from JS (pbx vertices)
         self.last_dist_to_wall = 99999
         self.near_wall_frames = 0
+
+        # Auto-calibration: collect death positions to detect real map radius
+        self._wall_death_samples = []  # list of dist_from_center at suspected wall deaths
+        self._radius_calibrated = False
         
         # Track previous length to detect food eating
         self.prev_length = 0
@@ -138,14 +142,14 @@ class SlitherEnv:
         # We ignore JS dist_to_wall to fix false positives with polygon logic
         # and enforce Python radial logic.
         
-        # Update map params if they look reasonable (standard slither.io: ~21600)
+        # Update map params if they look reasonable (supports eslither ~32k, standard ~21600)
         mr = data.get('map_radius')
-        if mr and math.isfinite(mr) and 15000 < mr < 30000:
+        if mr and math.isfinite(mr) and 5000 < mr < 100000:
              self.map_radius = mr
 
         cx = data.get('map_center_x')
         cy = data.get('map_center_y')
-        if cx and cy and math.isfinite(cx) and math.isfinite(cy) and cx > 10000:
+        if cx and cy and math.isfinite(cx) and math.isfinite(cy) and cx > 1000:
              self.map_center_x = cx
              self.map_center_y = cy
 
@@ -331,9 +335,9 @@ class SlitherEnv:
         
         # Classification logic
         # Wider buffers to account for frame_skip=4 movement distance
-        COLLISION_BUFFER = 120
+        COLLISION_BUFFER = 60
         WALL_BUFFER = 120
-        
+
         cause = "SnakeCollision"
         penalty = self.death_snake_penalty
 
@@ -342,25 +346,47 @@ class SlitherEnv:
              cause = "Wall"
              penalty = self.death_wall_penalty
 
-        # Priority 2: High confidence Enemy Collision
+        # Priority 2: Near wall AND no close enemy → Wall death
+        elif dist_to_wall_py <= (head_radius + WALL_BUFFER) and (min_enemy_dist == float('inf') or min_enemy_dist > 500):
+             cause = "Wall"
+             penalty = self.death_wall_penalty
+
+        # Priority 3: High confidence Enemy Collision (close enemy)
         elif min_enemy_dist != float('inf') and min_enemy_dist <= (head_radius + COLLISION_BUFFER):
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
 
-        # Priority 3: Proximity to wall (if no enemy hit detected)
-        elif dist_to_wall_py <= (head_radius + WALL_BUFFER):
+        # Priority 4: Near wall with nearby enemy — heuristic: if wall < 200 and enemy > 500, prefer Wall
+        elif dist_to_wall_py < 200 and (min_enemy_dist == float('inf') or min_enemy_dist > 500):
              cause = "Wall"
              penalty = self.death_wall_penalty
 
-        # Priority 4: Must be snake collision (only 2 death types in slither.io)
+        # Priority 5: Default → SnakeCollision
         else:
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
 
         min_enemy_display = min_enemy_dist if min_enemy_dist != float('inf') else -1
         enemy_detected = min_enemy_dist != float('inf')
-        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) NearestEnemy={min_enemy_display:.0f} EnemyDetected={enemy_detected} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
-        
+        dist_from_center = math.hypot(mx - self.map_center_x, my - self.map_center_y)
+        print(f"DEBUG DEATH: Pos=({mx:.0f},{my:.0f}) DistFromCenter={dist_from_center:.0f} MapRadius={self.map_radius:.0f} NearestEnemy={min_enemy_display:.0f} EnemyDetected={enemy_detected} WallDistPY={dist_to_wall_py:.0f} -> {cause} ({penalty})")
+
+        # Auto-calibrate map radius from wall death positions
+        # If no enemies nearby, death was likely a wall hit — use position as upper bound
+        if not self._radius_calibrated and not enemy_detected and dist_from_center > 1000:
+            self._wall_death_samples.append(dist_from_center)
+            print(f"  [RADIUS CALIBRATION] Sample #{len(self._wall_death_samples)}: dist_from_center={dist_from_center:.0f}")
+
+            if len(self._wall_death_samples) >= 3:
+                # Use the minimum death distance as the real radius (with small buffer)
+                estimated_radius = min(self._wall_death_samples) - 100
+                if estimated_radius < self.map_radius * 0.8:  # Only apply if significantly smaller
+                    old_radius = self.map_radius
+                    self.map_radius = estimated_radius
+                    self._radius_calibrated = True
+                    print(f"  [RADIUS CALIBRATION] Map radius adjusted: {old_radius:.0f} -> {estimated_radius:.0f} "
+                          f"(from {len(self._wall_death_samples)} samples: {[round(s) for s in self._wall_death_samples]})")
+
         return penalty, cause
 
     def reset(self):
