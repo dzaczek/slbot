@@ -1,18 +1,19 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-14 21:46:08  
-**Total Episodes:** 1789  
+**Generated:** 2026-02-14 22:10:16  
+**Total Episodes:** 2046  
 **Training Sessions:** 11
 
-## Verdict: NOT LEARNING (Confidence: 50%)
+## Verdict: NOT LEARNING (Confidence: 45%)
 
 **Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
 ### Warnings
-- Rewards flat: change = 18.0
+- Rewards flat: change = 30.6
+- Loss very high (20.46) - unstable
 
 ### Positive Signals
-- Epsilon low (0.109) - exploiting policy
+- Epsilon low (0.097) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
@@ -21,27 +22,27 @@
 | S1 | FOOD_VECTOR | 773 | 89.9 | 59.9 | 24.9 | 0.5461 | 0.0% | 0.0% | 0.0% |
 | S2 | WALL_AVOID | 688 | 111.7 | 77.5 | 32.1 | 0.6594 | 0.0% | 0.0% | 0.0% |
 | S3 | ENEMY_AVOID | 292 | 191.1 | 89.2 | 33.7 | 0.9742 | 0.0% | 0.0% | 0.0% |
-| S4 | MASS_MANAGEMENT | 36 | 242.2 | 96.5 | 40.9 | 0.6129 | 0.0% | 0.0% | 0.0% |
+| S4 | MASS_MANAGEMENT | 293 | 205.4 | 99.7 | 38.3 | 0.8789 | 0.0% | 0.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 117.88 | 154.46 | -50.00 | 47.04 | 93.16 | 157.61 | 310.50 | 1476.21 |
-| Steps | 72.22 | 71.59 | 1.00 | 24.00 | 57.00 | 101.00 | 194.60 | 500.00 |
-| Food | 29.44 | 17.21 | 0.00 | 21.00 | 28.00 | 39.00 | 60.00 | 97.00 |
-| Loss | 18.88 | 102.28 | 0.00 | 1.48 | 2.57 | 4.30 | 12.60 | 996.87 |
-| Food/Step | 0.66 | 0.91 | 0.00 | 0.34 | 0.45 | 0.65 | 2.00 | 14.67 |
+| Reward | 128.23 | 224.78 | -7111.38 | 52.55 | 103.03 | 174.78 | 356.19 | 1476.21 |
+| Steps | 75.72 | 130.15 | 1.00 | 25.00 | 58.00 | 101.00 | 198.75 | 5000.00 |
+| Food | 30.51 | 17.92 | 0.00 | 21.00 | 28.00 | 40.00 | 63.00 | 128.00 |
+| Loss | 18.01 | 95.71 | 0.00 | 1.64 | 2.90 | 5.54 | 21.01 | 996.87 |
+| Food/Step | 0.69 | 0.97 | 0.00 | 0.34 | 0.46 | 0.67 | 2.16 | 14.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 426.32 | 435.48 | -16.7362 | 0.3076 |
-| Last 100 | 370.50 | 450.75 | +0.8692 | 0.0031 |
-| Last 200 | 251.69 | 352.38 | +1.8856 | 0.0954 |
-| Last 500 | 146.18 | 253.02 | +0.7565 | 0.1862 |
-| Last 1000 | 126.43 | 193.10 | +0.1211 | 0.0328 |
+| Last 50 | 63.18 | 1031.20 | -8.5327 | 0.0143 |
+| Last 100 | 149.64 | 740.67 | -3.7811 | 0.0217 |
+| Last 200 | 200.89 | 539.97 | -1.1712 | 0.0157 |
+| Last 500 | 213.04 | 412.72 | +0.0254 | 0.0001 |
+| Last 1000 | 143.62 | 309.34 | +0.2075 | 0.0375 |
 
 ## Death Cause Analysis
 
@@ -52,8 +53,8 @@
 
 | Target | Best | Goal | Progress |
 |--------|------|------|----------|
-| Points | 97 | 6,000 | 1.6% |
-| Survival | 500 steps | 1,800 steps | 27.8% |
+| Points | 128 | 6,000 | 2.1% |
+| Survival | 5000 steps | 1,800 steps | 277.8% |
 
 ## Recommendations
 
