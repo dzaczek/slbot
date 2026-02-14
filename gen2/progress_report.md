@@ -1,18 +1,18 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-14 21:37:57  
-**Total Episodes:** 1710  
-**Training Sessions:** 8
+**Generated:** 2026-02-14 21:41:47  
+**Total Episodes:** 1747  
+**Training Sessions:** 10
 
 ## Verdict: NOT LEARNING (Confidence: 50%)
 
 **Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
 ### Warnings
-- Rewards flat: change = -9.4
+- Rewards flat: change = 6.9
 
 ### Positive Signals
-- Epsilon low (0.117) - exploiting policy
+- Epsilon low (0.113) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
@@ -20,27 +20,27 @@
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
 | S1 | FOOD_VECTOR | 773 | 89.9 | 59.9 | 24.9 | 0.5461 | 0.0% | 0.0% | 0.0% |
 | S2 | WALL_AVOID | 688 | 111.7 | 77.5 | 32.1 | 0.6594 | 0.0% | 0.0% | 0.0% |
-| S3 | ENEMY_AVOID | 249 | 118.6 | 62.6 | 34.6 | 0.9728 | 0.0% | 0.0% | 0.0% |
+| S3 | ENEMY_AVOID | 286 | 170.1 | 80.6 | 33.8 | 0.9935 | 0.0% | 0.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 102.87 | 96.38 | -50.00 | 45.33 | 91.27 | 151.92 | 281.42 | 531.78 |
-| Steps | 67.39 | 57.19 | 1.00 | 23.00 | 56.00 | 97.00 | 186.55 | 337.00 |
-| Food | 29.23 | 16.99 | 0.00 | 21.00 | 27.00 | 39.00 | 60.00 | 97.00 |
-| Loss | 19.47 | 104.58 | 0.00 | 1.44 | 2.50 | 4.16 | 13.01 | 996.87 |
-| Food/Step | 0.65 | 0.87 | 0.00 | 0.34 | 0.45 | 0.65 | 2.00 | 14.67 |
+| Reward | 111.63 | 140.10 | -50.00 | 45.97 | 91.55 | 153.79 | 292.33 | 1417.15 |
+| Steps | 70.25 | 67.02 | 1.00 | 23.00 | 56.00 | 98.50 | 190.00 | 500.00 |
+| Food | 29.22 | 17.13 | 0.00 | 21.00 | 27.00 | 39.00 | 60.00 | 97.00 |
+| Loss | 19.19 | 103.48 | 0.00 | 1.47 | 2.54 | 4.24 | 12.71 | 996.87 |
+| Food/Step | 0.66 | 0.92 | 0.00 | 0.34 | 0.45 | 0.65 | 2.00 | 14.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 114.02 | 117.93 | +0.0821 | 0.0001 |
-| Last 100 | 117.08 | 121.97 | +0.1596 | 0.0014 |
-| Last 200 | 124.19 | 120.47 | -0.0452 | 0.0005 |
-| Last 500 | 70.43 | 117.91 | +0.4137 | 0.2564 |
-| Last 1000 | 100.33 | 105.90 | -0.0315 | 0.0074 |
+| Last 50 | 405.87 | 532.25 | +10.6420 | 0.0833 |
+| Last 100 | 270.61 | 412.24 | +5.3802 | 0.1419 |
+| Last 200 | 194.85 | 310.37 | +1.7956 | 0.1116 |
+| Last 500 | 110.24 | 224.66 | +0.6953 | 0.1996 |
+| Last 1000 | 115.91 | 171.75 | +0.0564 | 0.0090 |
 
 ## Death Cause Analysis
 
@@ -52,13 +52,13 @@
 | Target | Best | Goal | Progress |
 |--------|------|------|----------|
 | Points | 97 | 6,000 | 1.6% |
-| Survival | 337 steps | 1,800 steps | 18.7% |
+| Survival | 500 steps | 1,800 steps | 27.8% |
 
 ## Recommendations
 
 Fine-tune hyperparameters, increase training duration.
 
-1. Episodes too short. Reduce death penalties or add survival bonus.
+1. No critical issues. Continue training.
 
 ## Charts
 
