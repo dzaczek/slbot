@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-14 00:36:18  
-**Total Episodes:** 1911  
+**Generated:** 2026-02-14 01:36:29  
+**Total Episodes:** 2397  
 **Training Sessions:** 3
 
 ## Verdict: NOT LEARNING (Confidence: 35%)
@@ -9,10 +9,10 @@
 **Goal Feasibility:** VERY UNLIKELY (<5%)
 
 ### Critical Issues
-- Very short episodes: avg=44 steps
+- Very short episodes: avg=50 steps
 
 ### Warnings
-- Rewards flat: change = 2.1
+- Rewards flat: change = 23.1
 
 ## Curriculum Stage Breakdown
 
@@ -20,27 +20,27 @@
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
 | S1 | FOOD_VECTOR | 200 | 76.8 | 64.8 | 26.1 | 1.0802 | 0.0% | 0.0% | 0.0% |
 | S2 | WALL_AVOID | 1645 | 50.0 | 40.0 | 23.7 | 1.2389 | 0.0% | 0.0% | 0.0% |
-| S3 | ENEMY_AVOID | 66 | 97.2 | 86.5 | 31.7 | 0.7355 | 0.0% | 0.0% | 0.0% |
+| S3 | ENEMY_AVOID | 552 | 94.8 | 72.8 | 28.8 | 0.7330 | 0.0% | 0.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 54.45 | 43.16 | -97.88 | 30.26 | 43.50 | 66.00 | 134.00 | 441.72 |
-| Steps | 44.19 | 46.85 | 1.00 | 13.00 | 29.00 | 59.00 | 128.00 | 369.00 |
-| Food | 24.25 | 8.89 | 0.00 | 20.00 | 23.00 | 27.00 | 41.00 | 91.00 |
-| Loss | 2.17 | 1.60 | 0.00 | 1.19 | 1.96 | 2.87 | 4.62 | 36.36 |
-| Food/Step | 1.20 | 1.24 | 0.00 | 0.44 | 0.75 | 1.36 | 4.00 | 7.00 |
+| Reward | 62.56 | 51.69 | -97.88 | 32.01 | 47.66 | 76.80 | 166.06 | 441.72 |
+| Steps | 49.62 | 50.52 | 1.00 | 15.00 | 33.00 | 65.00 | 151.20 | 369.00 |
+| Food | 25.09 | 9.45 | 0.00 | 21.00 | 23.00 | 28.00 | 43.20 | 91.00 |
+| Loss | 1.95 | 1.52 | 0.00 | 0.98 | 1.65 | 2.59 | 4.35 | 36.36 |
+| Food/Step | 1.11 | 1.18 | 0.00 | 0.42 | 0.67 | 1.20 | 3.80 | 7.00 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 90.69 | 81.33 | +1.3100 | 0.0540 |
-| Last 100 | 96.47 | 75.57 | -0.0270 | 0.0001 |
-| Last 200 | 104.67 | 76.73 | -0.1177 | 0.0078 |
-| Last 500 | 66.85 | 60.52 | +0.1838 | 0.1921 |
-| Last 1000 | 54.57 | 47.53 | +0.0610 | 0.1371 |
+| Last 50 | 78.73 | 48.69 | +1.0129 | 0.0901 |
+| Last 100 | 78.24 | 55.56 | +0.1114 | 0.0034 |
+| Last 200 | 91.61 | 68.43 | -0.2370 | 0.0400 |
+| Last 500 | 94.78 | 68.40 | -0.0572 | 0.0146 |
+| Last 1000 | 79.91 | 65.37 | +0.0598 | 0.0698 |
 
 ## Death Cause Analysis
 
@@ -58,9 +58,7 @@
 
 Major changes needed: LR, reward structure, curriculum.
 
-1. Epsilon 0.310 still high. Consider faster decay.
-
-2. Episodes too short. Reduce death penalties or add survival bonus.
+1. Episodes too short. Reduce death penalties or add survival bonus.
 
 ## Charts
 
