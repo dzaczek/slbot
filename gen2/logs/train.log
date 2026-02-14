@@ -1626,3 +1626,264 @@
 2026-02-14 17:26:24,885 - INFO -   Parent UID: 20260214-28edf8c7
 2026-02-14 17:26:24,885 - INFO - Resumed from episode 1216
 2026-02-14 17:26:24,885 - INFO -   Stage: 1 (FOOD_VECTOR)
+2026-02-14 17:56:46,135 - INFO - Configuration:
+2026-02-14 17:56:46,136 - INFO -   Style: Standard (Curriculum)
+2026-02-14 17:56:46,136 - INFO -   Mode: curriculum
+2026-02-14 17:56:46,136 - INFO -   Agents: 1
+2026-02-14 17:56:46,136 - INFO -   Frame Stack: 4
+2026-02-14 17:56:46,136 - INFO -   Resolution: (64, 64)
+2026-02-14 17:56:46,136 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-14 17:56:46,136 - INFO -   LR: 0.0001
+2026-02-14 17:56:46,136 - INFO -   PER: True
+2026-02-14 17:56:46,136 - INFO -   Backend: websocket
+2026-02-14 17:56:46,136 - INFO - Training Run UID: 20260214-bbf82c5f
+2026-02-14 17:56:46,644 - INFO -   Parent UID: 20260214-28edf8c7
+2026-02-14 17:56:46,644 - INFO - Resumed from episode 1216
+2026-02-14 17:56:46,644 - INFO -   Stage: 1 (FOOD_VECTOR)
+2026-02-14 17:57:07,226 - INFO -   Curriculum Stage: 1 (FOOD_VECTOR)
+2026-02-14 17:57:07,227 - INFO -   Max Steps: 300
+2026-02-14 18:40:29,753 - INFO - Configuration:
+2026-02-14 18:40:29,754 - INFO -   Style: Defensive (Safe)
+2026-02-14 18:40:29,754 - INFO -   Mode: static
+2026-02-14 18:40:29,754 - INFO -   Agents: 1
+2026-02-14 18:40:29,754 - INFO -   Frame Stack: 4
+2026-02-14 18:40:29,754 - INFO -   Resolution: (64, 64)
+2026-02-14 18:40:29,754 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-14 18:40:29,754 - INFO -   LR: 0.0001
+2026-02-14 18:40:29,754 - INFO -   PER: True
+2026-02-14 18:40:29,754 - INFO -   Backend: websocket
+2026-02-14 18:40:29,754 - INFO - Training Run UID: 20260214-bcb20110
+2026-02-14 18:40:30,287 - INFO -   Parent UID: 20260214-28edf8c7
+2026-02-14 18:40:30,287 - INFO - Resumed from episode 1216
+2026-02-14 18:40:50,886 - INFO -   Curriculum Stage: 1 (SAFE)
+2026-02-14 18:40:50,886 - INFO -   Max Steps: 99999
+2026-02-14 19:02:42,803 - INFO - Configuration:
+2026-02-14 19:02:42,803 - INFO -   Style: Defensive (Safe)
+2026-02-14 19:02:42,804 - INFO -   Mode: static
+2026-02-14 19:02:42,804 - INFO -   Agents: 1
+2026-02-14 19:02:42,804 - INFO -   Frame Stack: 4
+2026-02-14 19:02:42,804 - INFO -   Resolution: (64, 64)
+2026-02-14 19:02:42,804 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-14 19:02:42,804 - INFO -   LR: 0.0001
+2026-02-14 19:02:42,804 - INFO -   PER: True
+2026-02-14 19:02:42,804 - INFO -   Backend: websocket
+2026-02-14 19:02:42,804 - INFO - Training Run UID: 20260214-a75e80ac
+2026-02-14 19:02:43,368 - INFO -   Parent UID: 20260214-28edf8c7
+2026-02-14 19:02:43,368 - INFO - Resumed from episode 1216
+2026-02-14 19:03:03,914 - INFO -   Curriculum Stage: 1 (SAFE)
+2026-02-14 19:03:03,914 - INFO -   Max Steps: 99999
+2026-02-14 19:04:30,456 - INFO - Ep 1217 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:05:13,685 - INFO - Ep 1218 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:05:56,729 - INFO - Ep 1219 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:06:39,955 - INFO - Ep 1220 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:06:39,955 - INFO - Death Stats: {'Wall': 4, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 19:07:23,184 - INFO - Ep 1221 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:08:06,404 - INFO - Ep 1222 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:08:49,625 - INFO - Ep 1223 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:09:32,846 - INFO - Ep 1224 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:10:16,079 - INFO - Ep 1225 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:10:59,302 - INFO - Ep 1226 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:11:42,532 - INFO - Ep 1227 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:12:25,754 - INFO - Ep 1228 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:13:09,004 - INFO - Ep 1229 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:13:52,230 - INFO - Ep 1230 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:13:52,230 - INFO - Death Stats: {'Wall': 14, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 19:14:35,401 - INFO - Ep 1231 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:15:18,637 - INFO - Ep 1232 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:16:01,862 - INFO - Ep 1233 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:16:45,082 - INFO - Ep 1234 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:17:28,311 - INFO - Ep 1235 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:18:11,536 - INFO - Ep 1236 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:18:54,773 - INFO - Ep 1237 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:19:37,807 - INFO - Ep 1238 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:20:21,035 - INFO - Ep 1239 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:21:04,261 - INFO - Ep 1240 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:21:04,261 - INFO - Death Stats: {'Wall': 24, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 19:21:47,498 - INFO - Ep 1241 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:22:30,724 - INFO - Ep 1242 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:23:13,949 - INFO - Ep 1243 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:23:57,023 - INFO - Ep 1244 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:24:40,196 - INFO - Ep 1245 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:25:23,414 - INFO - Ep 1246 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:26:06,449 - INFO - Ep 1247 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:26:49,671 - INFO - Ep 1248 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:27:32,889 - INFO - Ep 1249 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:28:16,118 - INFO - Ep 1250 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:28:16,118 - INFO - Death Stats: {'Wall': 34, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 19:28:59,407 - INFO - Ep 1251 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:29:42,639 - INFO - Ep 1252 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:30:25,859 - INFO - Ep 1253 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:31:09,099 - INFO - Ep 1254 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:31:52,316 - INFO - Ep 1255 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:32:35,566 - INFO - Ep 1256 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:33:18,803 - INFO - Ep 1257 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:34:02,028 - INFO - Ep 1258 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:34:45,061 - INFO - Ep 1259 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:35:28,286 - INFO - Ep 1260 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:35:28,286 - INFO - Death Stats: {'Wall': 44, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 19:36:11,502 - INFO - Ep 1261 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:36:54,732 - INFO - Ep 1262 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:37:37,952 - INFO - Ep 1263 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:38:21,165 - INFO - Ep 1264 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:39:04,385 - INFO - Ep 1265 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:39:47,597 - INFO - Ep 1266 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:40:30,823 - INFO - Ep 1267 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:41:13,860 - INFO - Ep 1268 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:41:57,077 - INFO - Ep 1269 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:42:40,318 - INFO - Ep 1270 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:42:40,318 - INFO - Death Stats: {'Wall': 54, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 19:43:23,543 - INFO - Ep 1271 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:44:06,764 - INFO - Ep 1272 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:44:50,009 - INFO - Ep 1273 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:45:33,043 - INFO - Ep 1274 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:46:16,259 - INFO - Ep 1275 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:46:59,464 - INFO - Ep 1276 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:47:42,693 - INFO - Ep 1277 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:48:25,910 - INFO - Ep 1278 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:49:09,155 - INFO - Ep 1279 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:49:52,180 - INFO - Ep 1280 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:49:52,181 - INFO - Death Stats: {'Wall': 64, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 19:50:35,710 - INFO - Ep 1281 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 996.8656 | Q: 1.55/2.10 | Wall | Pos:(0,0)
+2026-02-14 19:51:18,996 - INFO - Ep 1282 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 962.3551 | Q: 1.48/2.06 | Wall | Pos:(0,0)
+2026-02-14 19:52:02,296 - INFO - Ep 1283 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 955.7908 | Q: 1.37/1.98 | Wall | Pos:(0,0)
+2026-02-14 19:52:45,591 - INFO - Ep 1284 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 958.5495 | Q: 1.44/1.87 | Wall | Pos:(0,0)
+2026-02-14 19:53:28,865 - INFO - Ep 1285 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 943.2226 | Q: 1.18/1.73 | Wall | Pos:(0,0)
+2026-02-14 19:54:12,122 - INFO - Ep 1286 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 930.5867 | Q: 0.97/1.55 | Wall | Pos:(0,0)
+2026-02-14 19:54:55,379 - INFO - Ep 1287 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 925.2308 | Q: 0.90/1.35 | Wall | Pos:(0,0)
+2026-02-14 19:55:38,671 - INFO - Ep 1288 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 915.4177 | Q: 0.75/1.12 | Wall | Pos:(0,0)
+2026-02-14 19:56:21,962 - INFO - Ep 1289 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 891.6684 | Q: 0.33/0.88 | Wall | Pos:(0,0)
+2026-02-14 19:57:05,254 - INFO - Ep 1290 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 884.2345 | Q: 0.23/0.60 | Wall | Pos:(0,0)
+2026-02-14 19:57:05,254 - INFO - Death Stats: {'Wall': 74, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 19:57:48,537 - INFO - Ep 1291 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 862.1982 | Q: -0.16/0.31 | Wall | Pos:(0,0)
+2026-02-14 19:58:31,808 - INFO - Ep 1292 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 839.3790 | Q: -0.55/0.00 | Wall | Pos:(0,0)
+2026-02-14 19:59:15,091 - INFO - Ep 1293 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 826.5798 | Q: -0.75/-0.33 | Wall | Pos:(0,0)
+2026-02-14 19:59:58,362 - INFO - Ep 1294 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 802.1298 | Q: -1.20/-0.68 | Wall | Pos:(0,0)
+2026-02-14 20:00:41,645 - INFO - Ep 1295 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 778.6515 | Q: -1.64/-1.04 | Wall | Pos:(0,0)
+2026-02-14 20:01:24,908 - INFO - Ep 1296 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 760.7150 | Q: -1.95/-1.41 | Wall | Pos:(0,0)
+2026-02-14 20:02:07,995 - INFO - Ep 1297 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 737.2199 | Q: -2.38/-1.81 | Wall | Pos:(0,0)
+2026-02-14 20:02:51,278 - INFO - Ep 1298 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 721.3416 | Q: -2.65/-2.21 | Wall | Pos:(0,0)
+2026-02-14 20:03:34,571 - INFO - Ep 1299 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 705.6510 | Q: -2.97/-2.62 | Wall | Pos:(0,0)
+2026-02-14 20:04:17,861 - INFO - Ep 1300 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 676.2854 | Q: -3.50/-3.05 | Wall | Pos:(0,0)
+2026-02-14 20:04:17,861 - INFO - Death Stats: {'Wall': 84, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 20:05:01,178 - INFO - Ep 1301 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 650.6888 | Q: -4.02/-3.49 | Wall | Pos:(0,0)
+2026-02-14 20:05:44,445 - INFO - Ep 1302 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 627.4561 | Q: -4.48/-3.94 | Wall | Pos:(0,0)
+2026-02-14 20:06:27,719 - INFO - Ep 1303 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 611.1411 | Q: -4.78/-4.40 | Wall | Pos:(0,0)
+2026-02-14 20:07:11,020 - INFO - Ep 1304 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 585.6697 | Q: -5.32/-4.87 | Wall | Pos:(0,0)
+2026-02-14 20:07:54,299 - INFO - Ep 1305 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 558.0111 | Q: -5.90/-5.35 | Wall | Pos:(0,0)
+2026-02-14 20:08:37,596 - INFO - Ep 1306 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 538.2106 | Q: -6.32/-5.83 | Wall | Pos:(0,0)
+2026-02-14 20:09:20,686 - INFO - Ep 1307 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 513.3499 | Q: -6.88/-6.33 | Wall | Pos:(0,0)
+2026-02-14 20:10:03,977 - INFO - Ep 1308 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 489.6747 | Q: -7.40/-6.83 | Wall | Pos:(0,0)
+2026-02-14 20:10:47,256 - INFO - Ep 1309 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 481.5640 | Q: -7.58/-7.34 | Wall | Pos:(0,0)
+2026-02-14 20:11:30,532 - INFO - Ep 1310 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 454.3544 | Q: -8.19/-7.85 | Wall | Pos:(0,0)
+2026-02-14 20:11:30,532 - INFO - Death Stats: {'Wall': 94, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 20:12:13,835 - INFO - Ep 1311 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 429.9924 | Q: -8.77/-8.37 | Wall | Pos:(0,0)
+2026-02-14 20:12:57,112 - INFO - Ep 1312 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 402.8039 | Q: -9.44/-8.90 | Wall | Pos:(0,0)
+2026-02-14 20:13:40,393 - INFO - Ep 1313 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 394.6207 | Q: -9.69/-9.44 | Wall | Pos:(0,0)
+2026-02-14 20:14:23,677 - INFO - Ep 1314 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 372.3421 | Q: -10.27/-9.99 | Wall | Pos:(0,0)
+2026-02-14 20:15:06,956 - INFO - Ep 1315 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 346.2083 | Q: -10.95/-10.54 | Wall | Pos:(0,0)
+2026-02-14 20:15:50,240 - INFO - Ep 1316 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 326.2053 | Q: -11.49/-11.09 | Wall | Pos:(0,0)
+2026-02-14 20:16:33,520 - INFO - Ep 1317 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 306.5426 | Q: -11.99/-11.64 | Wall | Pos:(0,0)
+2026-02-14 20:17:16,826 - INFO - Ep 1318 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 285.9615 | Q: -12.59/-12.21 | Wall | Pos:(0,0)
+2026-02-14 20:18:00,114 - INFO - Ep 1319 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 269.1800 | Q: -13.08/-12.78 | Wall | Pos:(0,0)
+2026-02-14 20:18:43,390 - INFO - Ep 1320 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 254.2340 | Q: -13.62/-13.36 | Wall | Pos:(0,0)
+2026-02-14 20:18:43,390 - INFO - Death Stats: {'Wall': 104, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 20:19:26,678 - INFO - Ep 1321 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 229.6516 | Q: -14.37/-13.94 | Wall | Pos:(0,0)
+2026-02-14 20:20:09,784 - INFO - Ep 1322 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 211.6499 | Q: -14.97/-14.54 | Wall | Pos:(0,0)
+2026-02-14 20:20:53,063 - INFO - Ep 1323 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 196.0024 | Q: -15.49/-15.14 | Wall | Pos:(0,0)
+2026-02-14 20:21:36,343 - INFO - Ep 1324 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 180.9048 | Q: -16.04/-15.75 | Wall | Pos:(0,0)
+2026-02-14 20:22:19,453 - INFO - Ep 1325 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 162.9690 | Q: -16.73/-16.37 | Wall | Pos:(0,0)
+2026-02-14 20:23:02,729 - INFO - Ep 1326 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 148.6148 | Q: -17.32/-16.99 | Wall | Pos:(0,0)
+2026-02-14 20:23:46,000 - INFO - Ep 1327 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 133.8701 | Q: -17.94/-17.61 | Wall | Pos:(0,0)
+2026-02-14 20:24:29,277 - INFO - Ep 1328 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 118.4458 | Q: -18.64/-18.24 | Wall | Pos:(0,0)
+2026-02-14 20:25:12,555 - INFO - Ep 1329 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 108.9377 | Q: -19.16/-18.87 | Wall | Pos:(0,0)
+2026-02-14 20:25:55,830 - INFO - Ep 1330 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 96.0185 | Q: -19.72/-19.51 | Wall | Pos:(0,0)
+2026-02-14 20:25:55,830 - INFO - Death Stats: {'Wall': 114, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 20:26:39,115 - INFO - Ep 1331 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 84.2041 | Q: -20.37/-20.15 | Wall | Pos:(0,0)
+2026-02-14 20:27:22,401 - INFO - Ep 1332 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 71.5111 | Q: -21.09/-20.80 | Wall | Pos:(0,0)
+2026-02-14 20:28:05,687 - INFO - Ep 1333 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 59.9225 | Q: -21.72/-21.46 | Wall | Pos:(0,0)
+2026-02-14 20:28:48,963 - INFO - Ep 1334 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 50.6515 | Q: -22.47/-22.12 | Wall | Pos:(0,0)
+2026-02-14 20:29:32,058 - INFO - Ep 1335 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 43.5251 | Q: -22.92/-22.80 | Wall | Pos:(0,0)
+2026-02-14 20:30:15,342 - INFO - Ep 1336 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 33.0962 | Q: -23.83/-23.48 | Wall | Pos:(0,0)
+2026-02-14 20:30:58,630 - INFO - Ep 1337 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 25.1338 | Q: -24.46/-24.16 | Wall | Pos:(0,0)
+2026-02-14 20:31:41,924 - INFO - Ep 1338 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 19.8614 | Q: -24.99/-24.86 | Wall | Pos:(0,0)
+2026-02-14 20:32:25,216 - INFO - Ep 1339 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 16.0685 | Q: -25.75/-25.56 | Wall | Pos:(0,0)
+2026-02-14 20:33:08,508 - INFO - Ep 1340 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 9.1465 | Q: -26.51/-26.27 | Wall | Pos:(0,0)
+2026-02-14 20:33:08,508 - INFO - Death Stats: {'Wall': 124, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 20:33:51,795 - INFO - Ep 1341 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 6.8546 | Q: -27.12/-26.99 | Wall | Pos:(0,0)
+2026-02-14 20:34:35,086 - INFO - Ep 1342 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 2.9860 | Q: -27.80/-27.72 | Wall | Pos:(0,0)
+2026-02-14 20:35:18,379 - INFO - Ep 1343 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.117 | L: 2.1423 | Q: -28.49/-28.45 | Wall | Pos:(0,0)
+2026-02-14 20:36:01,676 - INFO - Ep 1344 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 0.6056 | Q: -29.41/-29.18 | Wall | Pos:(0,0)
+2026-02-14 20:36:44,956 - INFO - Ep 1345 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 0.3295 | Q: -30.18/-29.92 | Wall | Pos:(0,0)
+2026-02-14 20:37:28,045 - INFO - Ep 1346 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 0.8207 | Q: -30.93/-30.52 | Wall | Pos:(0,0)
+2026-02-14 20:38:11,345 - INFO - Ep 1347 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 1.6739 | Q: -31.50/-30.99 | Wall | Pos:(0,0)
+2026-02-14 20:38:54,595 - INFO - Ep 1348 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 2.1116 | Q: -31.89/-31.34 | Wall | Pos:(0,0)
+2026-02-14 20:39:37,882 - INFO - Ep 1349 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 2.5014 | Q: -32.12/-31.59 | Wall | Pos:(0,0)
+2026-02-14 20:40:21,162 - INFO - Ep 1350 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 2.3124 | Q: -32.09/-31.74 | Wall | Pos:(0,0)
+2026-02-14 20:40:21,163 - INFO - Death Stats: {'Wall': 134, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 20:41:04,448 - INFO - Ep 1351 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 2.1767 | Q: -32.11/-31.79 | Wall | Pos:(0,0)
+2026-02-14 20:41:47,720 - INFO - Ep 1352 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 2.1554 | Q: -32.09/-31.77 | Wall | Pos:(0,0)
+2026-02-14 20:42:30,948 - INFO - Ep 1353 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 2.3771 | Q: -32.20/-31.67 | Wall | Pos:(0,0)
+2026-02-14 20:43:14,205 - INFO - Ep 1354 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 3.1885 | Q: -31.84/-31.50 | Wall | Pos:(0,0)
+2026-02-14 20:43:57,487 - INFO - Ep 1355 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 1.4191 | Q: -31.62/-31.27 | Wall | Pos:(0,0)
+2026-02-14 20:44:22,659 - INFO - Configuration:
+2026-02-14 20:44:22,659 - INFO -   Style: Standard (Curriculum)
+2026-02-14 20:44:22,659 - INFO -   Mode: curriculum
+2026-02-14 20:44:22,659 - INFO -   Agents: 1
+2026-02-14 20:44:22,659 - INFO -   Frame Stack: 4
+2026-02-14 20:44:22,659 - INFO -   Resolution: (64, 64)
+2026-02-14 20:44:22,659 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-14 20:44:22,659 - INFO -   LR: 0.0001
+2026-02-14 20:44:22,659 - INFO -   PER: True
+2026-02-14 20:44:22,659 - INFO -   Backend: selenium
+2026-02-14 20:44:22,659 - INFO - Training Run UID: 20260214-19de79cb
+2026-02-14 20:44:29,081 - INFO -   Curriculum Stage: 1 (FOOD_VECTOR)
+2026-02-14 20:44:29,081 - INFO -   Max Steps: 300
+2026-02-14 20:44:40,778 - INFO - Ep 1356 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 1.1072 | Q: -31.37/-30.98 | Wall | Pos:(0,0)
+2026-02-14 20:45:06,404 - INFO - Ep 1 | S1:FOOD_VECTOR | Rw: 277.75 | St: 300 | Fd: 66 (0.220/st) | Eps: 0.966 | L: 2.5500 | Q: -2.72/5.19 | MaxSteps | Pos:(42378,28927) Wall:3522 Enemy:1150
+2026-02-14 20:45:24,037 - INFO - Ep 1357 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 1.4317 | Q: -31.03/-30.65 | Wall | Pos:(0,0)
+2026-02-14 20:45:24,910 - INFO - >> Target Network Updated
+2026-02-14 20:45:34,644 - INFO - Ep 2 | S1:FOOD_VECTOR | Rw: 287.46 | St: 300 | Fd: 73 (0.243/st) | Eps: 0.934 | L: 1.3073 | Q: 1.58/10.26 | MaxSteps | Pos:(45444,34712) Wall:922 Enemy:976
+2026-02-14 20:46:07,288 - INFO - Ep 1358 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 0.4211 | Q: -30.59/-30.27 | Wall | Pos:(0,0)
+2026-02-14 20:46:50,584 - INFO - Ep 1359 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 0.3487 | Q: -30.25/-29.85 | Wall | Pos:(0,0)
+2026-02-14 20:47:33,863 - INFO - Ep 1360 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 0.4393 | Q: -29.78/-29.40 | Wall | Pos:(0,0)
+2026-02-14 20:47:33,863 - INFO - Death Stats: {'Wall': 144, 'SnakeCollision': 0, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-14 20:48:17,148 - INFO - Ep 1361 | S1:SAFE | Rw: -50.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.116 | L: 0.6564 | Q: -29.63/-29.09 | Wall | Pos:(0,0)
+2026-02-14 21:02:07,525 - INFO - Configuration:
+2026-02-14 21:02:07,527 - INFO -   Style: Standard (Curriculum)
+2026-02-14 21:02:07,527 - INFO -   Mode: curriculum
+2026-02-14 21:02:07,527 - INFO -   Agents: AUTO (start=1, max=10)
+2026-02-14 21:02:07,527 - INFO -   Frame Stack: 4
+2026-02-14 21:02:07,527 - INFO -   Resolution: (64, 64)
+2026-02-14 21:02:07,527 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-14 21:02:07,527 - INFO -   LR: 0.0001
+2026-02-14 21:02:07,528 - INFO -   PER: True
+2026-02-14 21:02:07,528 - INFO -   Backend: websocket
+2026-02-14 21:02:07,528 - INFO - Training Run UID: 20260214-3bc61260
+2026-02-14 21:02:08,003 - INFO -   Parent UID: 20260214-28edf8c7
+2026-02-14 21:02:08,003 - INFO - Resumed from episode 1001
+2026-02-14 21:02:08,003 - INFO -   Stage: 1 (FOOD_VECTOR)
+2026-02-14 21:02:28,556 - INFO -   Curriculum Stage: 1 (FOOD_VECTOR)
+2026-02-14 21:02:28,557 - INFO -   Max Steps: 300
+2026-02-14 21:03:54,923 - INFO - Ep 1002 | S1:FOOD_VECTOR | Rw: -15.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.146 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 21:04:38,081 - INFO - Ep 1003 | S1:FOOD_VECTOR | Rw: -15.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.146 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 21:05:21,416 - INFO - Ep 1004 | S1:FOOD_VECTOR | Rw: -15.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.146 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 21:06:04,597 - INFO - Ep 1005 | S1:FOOD_VECTOR | Rw: -15.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.146 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 21:06:47,946 - INFO - Ep 1006 | S1:FOOD_VECTOR | Rw: -15.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.146 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 21:07:31,276 - INFO - Ep 1007 | S1:FOOD_VECTOR | Rw: -15.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.146 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 21:08:14,632 - INFO - Ep 1008 | S1:FOOD_VECTOR | Rw: -15.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.146 | L: 0.0000 | Q: 0.00/0.00 | Wall | Pos:(0,0)
+2026-02-14 21:10:15,462 - INFO - Configuration:
+2026-02-14 21:10:15,463 - INFO -   Style: Standard (Curriculum)
+2026-02-14 21:10:15,463 - INFO -   Mode: curriculum
+2026-02-14 21:10:15,463 - INFO -   Agents: AUTO (start=1, max=8)
+2026-02-14 21:10:15,463 - INFO -   Frame Stack: 4
+2026-02-14 21:10:15,463 - INFO -   Resolution: (64, 64)
+2026-02-14 21:10:15,463 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-14 21:10:15,463 - INFO -   LR: 0.0001
+2026-02-14 21:10:15,463 - INFO -   PER: True
+2026-02-14 21:10:15,463 - INFO -   Backend: selenium
+2026-02-14 21:10:15,464 - INFO - Training Run UID: 20260214-983b599a
+2026-02-14 21:10:15,932 - INFO -   Parent UID: 20260214-28edf8c7
+2026-02-14 21:10:15,933 - INFO - Resumed from episode 1001
+2026-02-14 21:10:15,933 - INFO -   Stage: 1 (FOOD_VECTOR)
+2026-02-14 21:10:21,289 - INFO -   Curriculum Stage: 1 (FOOD_VECTOR)
+2026-02-14 21:10:21,290 - INFO -   Max Steps: 300

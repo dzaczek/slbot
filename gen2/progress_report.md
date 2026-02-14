@@ -1,45 +1,49 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-14 17:43:24  
-**Total Episodes:** 1216  
-**Training Sessions:** 2
+**Generated:** 2026-02-14 21:10:33  
+**Total Episodes:** 1370  
+**Training Sessions:** 5
 
-## Verdict: NOT LEARNING (Confidence: 50%)
+## Verdict: NOT LEARNING (Confidence: 5%)
 
-**Goal Feasibility:** UNLIKELY (5-25%) without tuning
+**Goal Feasibility:** IMPOSSIBLE with current setup
+
+### Critical Issues
+- CRITICAL: Learning Rate = 0.0 - Model CANNOT learn!
 
 ### Warnings
-- Rewards flat: change = 22.9
+- Rewards flat: change = -13.9
+- Loss very high (40.84) - unstable
 
 ### Positive Signals
-- Epsilon low (0.117) - exploiting policy
+- Epsilon low (0.146) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 541 | 123.2 | 71.5 | 30.0 | 0.6239 | 0.0% | 0.0% | 0.0% |
+| S1 | FOOD_VECTOR | 695 | 86.2 | 56.7 | 23.5 | 0.4863 | 0.0% | 0.0% | 0.0% |
 | S2 | WALL_AVOID | 675 | 110.8 | 77.2 | 31.9 | 0.6620 | 0.0% | 0.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 116.32 | 82.19 | -39.21 | 59.71 | 98.72 | 155.22 | 280.79 | 497.52 |
-| Steps | 74.65 | 54.71 | 1.00 | 34.00 | 63.00 | 102.00 | 189.00 | 337.00 |
-| Food | 31.07 | 13.32 | 0.00 | 22.00 | 28.00 | 38.00 | 57.00 | 97.00 |
-| Loss | 2.94 | 3.80 | 0.00 | 1.39 | 2.22 | 3.39 | 6.40 | 64.76 |
-| Food/Step | 0.65 | 0.68 | 0.00 | 0.36 | 0.46 | 0.65 | 1.50 | 6.33 |
+| Reward | 98.29 | 93.42 | -50.00 | 43.77 | 89.12 | 144.47 | 274.27 | 497.52 |
+| Steps | 66.81 | 57.20 | 1.00 | 24.00 | 55.00 | 96.00 | 185.55 | 337.00 |
+| Food | 27.68 | 15.98 | 0.00 | 21.00 | 27.00 | 36.00 | 56.00 | 97.00 |
+| Loss | 23.06 | 116.54 | 0.00 | 1.29 | 2.20 | 3.56 | 19.74 | 996.87 |
+| Food/Step | 0.57 | 0.67 | 0.00 | 0.33 | 0.43 | 0.60 | 1.40 | 6.33 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 120.93 | 57.08 | -0.9656 | 0.0596 |
-| Last 100 | 129.44 | 62.09 | -0.4447 | 0.0427 |
-| Last 200 | 133.45 | 75.23 | -0.0941 | 0.0052 |
-| Last 500 | 130.90 | 82.00 | +0.0425 | 0.0056 |
-| Last 1000 | 120.09 | 86.82 | +0.0378 | 0.0158 |
+| Last 50 | -31.80 | 65.32 | +1.3054 | 0.0832 |
+| Last 100 | -40.90 | 47.07 | +0.4362 | 0.0716 |
+| Last 200 | -7.36 | 79.37 | -0.7630 | 0.3081 |
+| Last 500 | 81.63 | 106.68 | -0.4769 | 0.4163 |
+| Last 1000 | 96.72 | 100.75 | -0.1019 | 0.0853 |
 
 ## Death Cause Analysis
 
@@ -55,9 +59,11 @@
 
 ## Recommendations
 
-Fine-tune hyperparameters, increase training duration.
+Fix critical issues: LR, rewards, episode length.
 
-1. Episodes too short. Reduce death penalties or add survival bonus.
+1. URGENT: LR=0. Reset learning rate or set min_lr floor.
+
+2. Episodes too short. Reduce death penalties or add survival bonus.
 
 ## Charts
 
