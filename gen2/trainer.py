@@ -463,22 +463,34 @@ class ResourceMonitor:
             'avg_step_ms': avg_step * 1000,
         }
 
-    def recommend(self, current_agents, metrics):
+    def recommend(self, current_agents, metrics, backend="selenium"):
         """Returns +1 (scale up), 0 (no change), or -1 (scale down)."""
         now = time.time()
         cpu = metrics['cpu_percent']
         ram_free = metrics['ram_free_mb']
         step_ms = metrics['avg_step_ms']
 
+        # Backend-aware thresholds
+        if backend == "websocket":
+            step_down_threshold = 100   # ms
+            step_up_threshold = 50      # ms
+            ram_down_threshold = 200    # MB (WS uses ~5MB/agent vs ~500MB)
+            ram_up_threshold = 500
+        else:
+            step_down_threshold = 500
+            step_up_threshold = 200
+            ram_down_threshold = 500
+            ram_up_threshold = 2000
+
         # Scale DOWN: any critical threshold breached
-        if cpu > 90 or ram_free < 500 or step_ms > 500:
+        if cpu > 90 or ram_free < ram_down_threshold or step_ms > step_down_threshold:
             if now - self.last_scale_time >= self.cooldown_down:
                 self.last_scale_time = now
                 return -1
             return 0
 
         # Scale UP: all conditions must be met
-        if cpu < 70 and ram_free > 2000 and step_ms < 200:
+        if cpu < 70 and ram_free > ram_up_threshold and step_ms < step_up_threshold:
             if now - self.last_scale_time >= self.cooldown_up:
                 self.last_scale_time = now
                 return 1
@@ -583,15 +595,15 @@ class VecFrameStack:
     def set_stage(self, stage_config):
         self.venv.set_stage(stage_config)
 
-def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, frame_skip, view_plus=False, base_url="http://slither.io"):
+def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, frame_skip, view_plus=False, base_url="http://slither.io", backend="selenium", ws_server_url=""):
     parent_remote.close()
-    
+
     picard_names = [
         "Picard", "Riker", "Data", "Worf", "Troi", "LaForge",
         "Crusher", "Q", "Seven", "Raffi", "Rios", "Jurati"
     ]
     chosen_name = f"{random.choice(picard_names)}_{worker_id}"
-    
+
     try:
         env = SlitherEnv(
             headless=headless,
@@ -600,6 +612,8 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
             view_plus=view_plus,
             base_url=base_url,
             frame_skip=frame_skip,
+            backend=backend,
+            ws_server_url=ws_server_url,
         )
 
         while True:
@@ -631,13 +645,15 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
         remote.close()
 
 class SubprocVecEnv:
-    def __init__(self, num_agents, matrix_size, frame_skip, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io"):
+    def __init__(self, num_agents, matrix_size, frame_skip, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io", backend="selenium", ws_server_url=""):
         self.num_agents = num_agents
         # Store constructor args for spawning new workers dynamically
         self._matrix_size = matrix_size
         self._frame_skip = frame_skip
         self._nickname = nickname
         self._base_url = base_url
+        self._backend = backend
+        self._ws_server_url = ws_server_url
         self._current_stage_config = None
 
         pipes = [mp.Pipe() for _ in range(num_agents)]
@@ -651,7 +667,7 @@ class SubprocVecEnv:
             agent_view_plus = view_plus and (i == 0) and not is_headless
             p = mp.Process(
                 target=worker,
-                args=(work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, frame_skip, agent_view_plus, base_url),
+                args=(work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, frame_skip, agent_view_plus, base_url, backend, ws_server_url),
             )
             p.daemon = True
             p.start()
@@ -697,7 +713,8 @@ class SubprocVecEnv:
         p = mp.Process(
             target=worker,
             args=(work_remote, remote, i, True, self._nickname,
-                  self._matrix_size, self._frame_skip, False, self._base_url),
+                  self._matrix_size, self._frame_skip, False, self._base_url,
+                  self._backend, self._ws_server_url),
         )
         p.daemon = True
         p.start()
@@ -747,6 +764,10 @@ def train(args):
     if args.vision_size:
         cfg.env.resolution = (args.vision_size, args.vision_size)
 
+    # Backend selection
+    cfg.browser_backend = args.backend
+    cfg.ws_server_url = args.ws_server_url
+
     # Paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
     checkpoint_path = os.path.join(base_dir, 'checkpoint.pth')
@@ -774,6 +795,9 @@ def train(args):
     logger.info(f"  Model: {cfg.model.architecture} ({cfg.model.activation})")
     logger.info(f"  LR: {cfg.opt.lr}")
     logger.info(f"  PER: {cfg.buffer.prioritized}")
+    logger.info(f"  Backend: {cfg.browser_backend}")
+    if cfg.ws_server_url:
+        logger.info(f"  WS Server: {cfg.ws_server_url}")
 
     # Generate unique Run UID
     run_uid = generate_uid()
@@ -788,7 +812,9 @@ def train(args):
         view_first=args.view or args.view_plus,
         view_plus=args.view_plus,
         nickname="AI_Opt",
-        base_url=args.url
+        base_url=args.url,
+        backend=cfg.browser_backend,
+        ws_server_url=cfg.ws_server_url,
     )
     env = VecFrameStack(raw_env, k=cfg.env.frame_stack)
 
@@ -1066,7 +1092,7 @@ def train(args):
             # Auto-scale agents based on system resources
             if monitor and monitor.should_check():
                 metrics = monitor.get_metrics()
-                rec = monitor.recommend(env.num_agents, metrics)
+                rec = monitor.recommend(env.num_agents, metrics, backend=cfg.browser_backend)
                 if rec > 0 and env.num_agents < max_agents:
                     new_state = env.add_agent()
                     episode_rewards.append(0)
@@ -1120,6 +1146,8 @@ if __name__ == "__main__":
     parser.add_argument("--vision-size", type=int, default=0, help="Vision input size override (default: from config)")
     parser.add_argument("--auto-num-agents", action="store_true", help="Auto-scale agents based on system resources")
     parser.add_argument("--max-agents", type=int, default=5, help="Max agents for auto-scaling (default: 5)")
+    parser.add_argument("--backend", choices=["selenium", "websocket"], default="selenium", help="Browser backend: selenium (default) or websocket")
+    parser.add_argument("--ws-server-url", type=str, default="", help="WebSocket server URL override (e.g. ws://1.2.3.4:444/slither)")
     parser.add_argument("--reset", action="store_true", help="Total reset: delete logs, CSV, checkpoints, events")
     args = parser.parse_args()
 

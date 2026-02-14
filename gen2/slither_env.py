@@ -10,13 +10,25 @@ plt.switch_backend('Agg')
 
 # Add parent directory to path to import browser_engine
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from browser_engine import SlitherBrowser
 from coord_transform import world_to_grid
+
+
+def _create_browser(backend, headless, nickname, base_url, ws_server_url=""):
+    """Factory: create SlitherBrowser using selected backend."""
+    if backend == "websocket":
+        from browser_engine_ws import SlitherBrowser
+        return SlitherBrowser(headless=headless, nickname=nickname,
+                              base_url=base_url, ws_server_url=ws_server_url)
+    else:
+        from browser_engine import SlitherBrowser
+        return SlitherBrowser(headless=headless, nickname=nickname,
+                              base_url=base_url)
 from matplotlib.path import Path as MplPath
 
 class SlitherEnv:
-    def __init__(self, headless=True, nickname="MatrixBot", matrix_size=84, view_plus=False, base_url="http://slither.io", frame_skip=4):
-        self.browser = SlitherBrowser(headless=headless, nickname=nickname, base_url=base_url)
+    def __init__(self, headless=True, nickname="MatrixBot", matrix_size=84, view_plus=False, base_url="http://slither.io", frame_skip=4, backend="selenium", ws_server_url=""):
+        self.backend = backend
+        self.browser = _create_browser(backend, headless, nickname, base_url, ws_server_url)
         # Fixed Map Constants (Standard Slither.io)
         self.MAP_RADIUS = 21600
         self.MAP_CENTER_X = 21600
@@ -53,6 +65,9 @@ class SlitherEnv:
         
         # Frame skip - repeat action for N frames
         self.frame_skip = frame_skip
+
+        # Cached post-action data from previous step (avoids extra get_game_data call)
+        self._cached_data = None
 
         # === CURRICULUM REWARD PARAMETERS (set by trainer via set_curriculum_stage) ===
         self.food_reward = 10.0       # Stage 1 default: high food reward
@@ -396,9 +411,11 @@ class SlitherEnv:
         self.invalid_frame_count = 0
         self.steps_in_episode = 0
         self.prev_enemy_dist = None
+        self._cached_data = None  # Clear cache on reset
         
         # One-time game variable scan
         if not self._map_vars_printed:
+            self._map_vars_printed = True  # Set BEFORE scan to prevent re-runs
             scan = self.browser.scan_game_variables()
             if scan:
                 print("\n" + "="*60)
@@ -496,8 +513,12 @@ class SlitherEnv:
         elif action == 8:  angle_change =  1.8   # ~103 deg
         elif action == 9:  boost = 1
 
-        # Get current state before action
-        data = self.browser.get_game_data()
+        # Get current state before action (use cache from previous step if available)
+        if self._cached_data is not None:
+            data = self._cached_data
+            self._cached_data = None
+        else:
+            data = self.browser.get_game_data()
 
         # Robust check (Validation Logic from tsrgy0)
         if not data:
@@ -566,11 +587,17 @@ class SlitherEnv:
         else:
             current_food_dist = None
 
-        # Execute action with FRAME SKIP (repeat action for multiple frames)
+        # Execute action — single send + consolidated wait
+        # The game reads xm/ym each frame, so setting once is sufficient.
+        # Previously: 4 × (send_action + 20ms) = 4 execute_script calls + 80ms sleep
+        # Now: 1 combined send+read + 1 sleep = saves 4 execute_script round-trips
         target_ang = current_ang + angle_change
-        for _ in range(self.frame_skip):
+        if hasattr(self.browser, 'send_action_get_data'):
+            # Combined: send action + read pre-wait state in ONE call
+            self.browser.send_action_get_data(target_ang, boost)
+        else:
             self.browser.send_action(target_ang, boost)
-            time.sleep(0.02)
+        time.sleep(self.frame_skip * 0.010)  # ~40ms for frame_skip=4
 
         # Get new state after action
         data = self.browser.get_game_data()
@@ -685,6 +712,9 @@ class SlitherEnv:
         self.prev_length = new_len
         self.prev_food_dist = new_food_dist
         self.prev_enemy_dist = min_enemy_dist
+
+        # Cache post-action data for next step's pre-action read
+        self._cached_data = data
 
         return state, reward, False, {
             "length": new_len,

@@ -57,6 +57,7 @@ class SlitherBrowser:
         # Initialize driver
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.set_page_load_timeout(30)
+        self._fast_getstate_injected = False
         log(f"[BROWSER] Connecting to {self.base_url}...")
         self.driver.get(self.base_url)
         time.sleep(3)
@@ -127,6 +128,7 @@ class SlitherBrowser:
                 if is_playing:
                     log("[LOGIN] Game started!")
                     self.inject_override_script()
+                    self.inject_fast_getstate()
                     return True
                 time.sleep(0.5)
             
@@ -171,6 +173,199 @@ class SlitherBrowser:
             self.driver.execute_script(js_code)
         except Exception as e:
             log(f"[OVERRIDE] Failed: {e}")
+
+    def inject_fast_getstate(self):
+        """
+        Inject persistent getGameState() JS function once.
+        Subsequent get_game_data() calls just invoke it by name instead of
+        sending ~8KB of JS each time. Also injects sendActionAndGetState()
+        for combined action+read in one round-trip.
+        """
+        js = """
+        window._botGetState = function() {
+            var MAX_FOODS = %d;
+            var MAX_ENEMIES = %d;
+            var MAX_BODY_PTS = %d;
+
+            var hasSnake = (window.slither !== undefined && window.slither !== null &&
+                            typeof window.slither.xx === 'number' && typeof window.slither.yy === 'number');
+            var isDeadFlag = (window.slither && typeof window.slither.dead !== 'undefined') ? window.slither.dead : false;
+            var deadMtm = window.dead_mtm;
+            var deadMtmActive = !(deadMtm === undefined || deadMtm === null || deadMtm === -1 || deadMtm === 0);
+            var playing = hasSnake && !isDeadFlag && !deadMtmActive;
+
+            if (!playing) {
+                return { dead: true, in_menu: document.querySelector('#nick, #playh .btnt') !== null };
+            }
+
+            var canvas = document.getElementById('mc') || document.querySelector('canvas');
+            var canvasW = canvas ? canvas.width : 800;
+            var canvasH = canvas ? canvas.height : 600;
+            var gsc = window.gsc || 0.9;
+            var viewWidth = canvasW / gsc;
+            var viewHeight = canvasH / gsc;
+            var viewRadius = Math.max(viewWidth, viewHeight) / 2;
+
+            var my_pts = [];
+            if (window.slither.pts) {
+                var ptsLen = window.slither.pts.length;
+                var trimCount = Math.floor(ptsLen * 0.15) + Math.floor((window.slither.sp || 5.7) * 2.0);
+                var startIndex = Math.min(ptsLen - 1, trimCount);
+                var step = Math.max(1, Math.floor(ptsLen / MAX_BODY_PTS));
+                for (var j = startIndex; j < ptsLen && my_pts.length < MAX_BODY_PTS; j += step) {
+                    var p = window.slither.pts[j];
+                    if (p.xx !== undefined) my_pts.push([p.xx, p.yy]);
+                    else if (p.x !== undefined) my_pts.push([p.x, p.y]);
+                }
+            }
+
+            var my_snake = {
+                x: window.slither.xx, y: window.slither.yy,
+                ang: window.slither.ang, sp: window.slither.sp,
+                sc: window.slither.sc,
+                len: window.slither.pts ? window.slither.pts.length : 0,
+                pts: my_pts
+            };
+
+            var visible_foods = [];
+            if (window.foods && window.foods.length) {
+                var myX = my_snake.x, myY = my_snake.y;
+                var viewRadSq = viewRadius * viewRadius * 1.2;
+                var foodList = [];
+                for (var i = 0; i < window.foods.length && foodList.length < MAX_FOODS * 2; i++) {
+                    var f = window.foods[i];
+                    if (f) {
+                        var fx = (typeof f.xx === 'number') ? f.xx : (typeof f.x === 'number') ? f.x : (typeof f.rx === 'number') ? f.rx : null;
+                        var fy = (typeof f.yy === 'number') ? f.yy : (typeof f.y === 'number') ? f.y : (typeof f.ry === 'number') ? f.ry : null;
+                        if (fx === null || fy === null) continue;
+                        var dx = fx - myX, dy = fy - myY;
+                        var dist = dx*dx + dy*dy;
+                        if (dist < viewRadSq) foodList.push([fx, fy, f.sz || 1, dist]);
+                    }
+                }
+                foodList.sort(function(a, b) { return a[3] - b[3]; });
+                for (var i = 0; i < Math.min(foodList.length, MAX_FOODS); i++)
+                    visible_foods.push([foodList[i][0], foodList[i][1], foodList[i][2]]);
+            }
+
+            var visible_enemies = [];
+            var totalSlithers = window.slithers ? window.slithers.length : 0;
+            if (window.slithers && window.slithers.length) {
+                var myX = my_snake.x, myY = my_snake.y;
+                var searchRadSq = viewRadius * viewRadius * 25;
+                var viewRadSq2 = viewRadius * viewRadius * 2.0;
+                var enemyList = [];
+                for (var i = 0; i < window.slithers.length; i++) {
+                    var s = window.slithers[i];
+                    if (s === window.slither || !s || !s.pts) continue;
+                    var minDist = Infinity, hasVisiblePart = false;
+                    var hdx = (s.xx||0)-myX, hdy = (s.yy||0)-myY;
+                    var headDist = hdx*hdx+hdy*hdy;
+                    if (headDist < viewRadSq2) hasVisiblePart = true;
+                    minDist = Math.min(minDist, headDist);
+                    if (!hasVisiblePart && s.pts.length > 0) {
+                        var ptsLen = s.pts.length;
+                        var trimCount2 = Math.floor(ptsLen*0.1)+Math.floor((s.sp||5.7)*2.0);
+                        var startIndex2 = Math.min(ptsLen-1, trimCount2);
+                        var step2 = Math.max(1, Math.floor(ptsLen/40));
+                        for (var j = startIndex2; j < ptsLen; j += step2) {
+                            var p = s.pts[j];
+                            var px = p.xx !== undefined ? p.xx : (p.x||0);
+                            var py = p.yy !== undefined ? p.yy : (p.y||0);
+                            var bdx = px-myX, bdy = py-myY;
+                            var bodyDist = bdx*bdx+bdy*bdy;
+                            if (bodyDist < viewRadSq2) { hasVisiblePart = true; break; }
+                            minDist = Math.min(minDist, bodyDist);
+                        }
+                    }
+                    if (hasVisiblePart || minDist < searchRadSq)
+                        enemyList.push([s, minDist, hasVisiblePart ? 0 : 1]);
+                }
+                enemyList.sort(function(a,b) { if(a[2]!==b[2])return a[2]-b[2]; return a[1]-b[1]; });
+                for (var i = 0; i < Math.min(enemyList.length, MAX_ENEMIES); i++) {
+                    var s = enemyList[i][0];
+                    var pts = [];
+                    if (s.pts) {
+                        var ptsLen = s.pts.length;
+                        var trimCount3 = Math.floor(ptsLen*0.15)+Math.floor((s.sp||5.7)*2.0);
+                        var startIndex3 = Math.min(ptsLen-1, trimCount3);
+                        var step3 = Math.max(1, Math.floor(ptsLen/MAX_BODY_PTS));
+                        for (var j = startIndex3; j < ptsLen && pts.length < MAX_BODY_PTS; j += step3) {
+                            var p = s.pts[j];
+                            var px = p.xx !== undefined ? p.xx : (p.x||0);
+                            var py = p.yy !== undefined ? p.yy : (p.y||0);
+                            var pdx = px-myX, pdy = py-myY;
+                            if (pdx*pdx+pdy*pdy < searchRadSq) pts.push([px, py]);
+                        }
+                    }
+                    visible_enemies.push({ id:s.id, x:s.xx||0, y:s.yy||0, ang:s.ang||0, sp:s.sp||0, sc:s.sc||1, pts:pts });
+                }
+            }
+
+            // Map boundary (simplified: circle via grd)
+            var mapCenterX = 21600, mapCenterY = 21600, mapRadius = 21600;
+            var boundaryType = 'circle', boundarySource = 'default';
+            if (typeof window.grd !== 'undefined' && window.grd > 1000) {
+                mapCenterX = window.grd; mapCenterY = window.grd;
+                if (typeof window.bsr !== 'undefined' && window.bsr > 1000) { mapRadius = window.bsr; boundarySource = 'bsr'; }
+                else if (typeof window.cst !== 'undefined' && window.cst > 0.1 && window.cst < 0.95) { mapRadius = window.grd*window.cst; boundarySource = 'grd*cst'; }
+                else { mapRadius = window.grd * 0.98; boundarySource = 'grd'; }
+            }
+            var distFromCenter = Math.sqrt(Math.pow(my_snake.x-mapCenterX,2)+Math.pow(my_snake.y-mapCenterY,2));
+            var distToWall = mapRadius - distFromCenter;
+            if (distToWall > mapRadius) distToWall = mapRadius;
+            if (distToWall < -500) distToWall = -500;
+
+            return {
+                dead: false, self: my_snake, foods: visible_foods, enemies: visible_enemies,
+                view_radius: viewRadius, gsc: gsc, dist_to_wall: distToWall,
+                dist_from_center: distFromCenter, map_radius: mapRadius,
+                map_center_x: mapCenterX, map_center_y: mapCenterY,
+                boundary_type: boundaryType, boundary_vertices: [],
+                debug: {
+                    total_slithers: totalSlithers, visible_enemies: visible_enemies.length,
+                    total_foods: window.foods ? window.foods.length : 0,
+                    visible_foods: visible_foods.length,
+                    dist_to_wall: Math.round(distToWall),
+                    dist_from_center: Math.round(distFromCenter),
+                    snake_x: Math.round(my_snake.x), snake_y: Math.round(my_snake.y),
+                    boundary_source: boundarySource, boundary_type: boundaryType,
+                    map_vars: {}
+                }
+            };
+        };
+
+        // Combined: set action + return current state in one call
+        window._botActAndRead = function(ang, boost) {
+            if (window.slither) {
+                var canvas = document.getElementById('mc') || document.querySelector('canvas');
+                var w = canvas ? canvas.width : 800;
+                var h = canvas ? canvas.height : 600;
+                var centerX = w/2, centerY = h/2;
+                window.xm = centerX + Math.cos(ang) * 300;
+                window.ym = centerY + Math.sin(ang) * 300;
+                if (typeof window.mx !== 'undefined') window.mx = window.xm;
+                if (typeof window.my !== 'undefined') window.my = window.ym;
+                if (boost) {
+                    window.accelerating = true;
+                    if (window.setAcceleration) window.setAcceleration(1);
+                } else {
+                    window.accelerating = false;
+                    if (window.setAcceleration) window.setAcceleration(0);
+                }
+            }
+            return window._botGetState();
+        };
+
+        console.log("SlitherBot: Fast getState injected.");
+        """ % (self.MAX_FOODS, self.MAX_ENEMIES, self.MAX_BODY_PTS)
+        try:
+            self.driver.execute_script(js)
+            self._fast_getstate_injected = True
+            log("[BROWSER] Fast getState injected.")
+        except Exception as e:
+            self._fast_getstate_injected = False
+            log(f"[BROWSER] Fast getState injection failed: {e}")
 
     def scan_game_variables(self):
         """
@@ -680,7 +875,11 @@ class SlitherBrowser:
         return getGameState();
         """
         try:
-            result = self.driver.execute_script(fetch_js)
+            # Use fast injected function if available (~30 bytes vs ~8KB of JS)
+            if getattr(self, '_fast_getstate_injected', False):
+                result = self.driver.execute_script("return window._botGetState();")
+            else:
+                result = self.driver.execute_script(fetch_js)
             if result is None:
                 return {"dead": True}
             return result
@@ -737,6 +936,24 @@ class SlitherBrowser:
         except:
             pass
 
+    def send_action_get_data(self, angle, boost):
+        """
+        Combined: send action AND read game state in ONE execute_script call.
+        Saves one Selenium round-trip per step (~10-15ms).
+        """
+        is_boost = 1 if boost > 0.5 else 0
+        if getattr(self, '_fast_getstate_injected', False):
+            try:
+                return self.driver.execute_script(
+                    f"return window._botActAndRead({angle},{is_boost});"
+                )
+            except:
+                return {"dead": True}
+        else:
+            # Fallback: separate calls
+            self.send_action(angle, boost)
+            return self.get_game_data()
+
     def force_restart(self):
         """
         Resets the game state.
@@ -756,17 +973,7 @@ class SlitherBrowser:
 
             time.sleep(0.5)
             self.inject_override_script()
-
-            # Diagnostic: scan game variables on restart
-            try:
-                scan = self.scan_game_variables()
-                if scan:
-                    log("[MAP SCAN] Game variables after restart:")
-                    for section in ['specific', 'numeric']:
-                        if section in scan:
-                            log(f"  {section}: {scan[section]}")
-            except Exception as e:
-                log(f"[MAP SCAN] Failed: {e}")
+            self.inject_fast_getstate()
             
         except Exception as e:
             log(f"[RESTART] Error: {e}. Refreshing page...")
@@ -774,6 +981,7 @@ class SlitherBrowser:
             time.sleep(3)
             self._handle_login()
             self.inject_override_script()
+            self.inject_fast_getstate()
 
     def inject_view_plus_overlay(self):
         """

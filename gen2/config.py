@@ -68,3 +68,5 @@ class Config:
     model: ModelConfig = field(default_factory=ModelConfig)
     opt: OptimizationConfig = field(default_factory=OptimizationConfig)
     buffer: ReplayBufferConfig = field(default_factory=ReplayBufferConfig)
+    browser_backend: str = "selenium"  # "selenium" | "websocket"
+    ws_server_url: str = ""            # Override: "ws://1.2.3.4:444/slither"

@@ -1,95 +1,189 @@
-# Gen2: Matrix-Based Slither.io Bot
+# Gen2: Slither.io Deep RL Bot
 
-> **Status: Under Repair**
-> The current implementation has known issues with death classification and map boundaries. A comprehensive repair plan has been established.
-> See [REPAIR_PLAN.md](REPAIR_PLAN.md) for details on the ongoing work.
-
-A Deep Reinforcement Learning agent for Slither.io using a Dueling DQN architecture with Prioritized Experience Replay (PER).
+A Deep Reinforcement Learning agent for Slither.io using a Hybrid Dueling DQN architecture with Prioritized Experience Replay (PER), egocentric observation, and curriculum learning.
 
 ## Architecture
 
-### Model (`gen2/model.py`)
-- **Type**: Dueling Deep Q-Network (Dueling DQN).
-- **Input**: `(Batch, 12, 84, 84)`
-  - **Spatial**: 84x84 grid with 3 channels (Food, Danger/Enemies, Self).
-  - **Temporal**: Stack of 4 frames (handled by `VecFrameStack`), resulting in 12 input channels.
-- **CNN Backbone**:
-  - Conv2d: 32 filters, 8x8 kernel, stride 4.
-  - Conv2d: 64 filters, 4x4 kernel, stride 2.
-  - Conv2d: 64 filters, 3x3 kernel, stride 1.
+### Model (`model.py`) — HybridDuelingDQN
+- **Hybrid Input**:
+  - **CNN Branch**: 64x64 matrix, 4-frame stack (12 input channels)
+    - Conv2d: 32 filters, 8x8, stride 4
+    - Conv2d: 64 filters, 4x4, stride 2
+    - Conv2d: 64 filters, 3x3, stride 1
+    - Flatten: 1024
+  - **Sector Branch**: 75-float vector (24 egocentric sectors x 3 features + 3 globals)
+    - FC 75 → 128 → 128
+  - **Merge**: concat(1152) → 512 → Dueling heads
 - **Dueling Heads**:
-  - **Advantage Stream**: FC 512 -> Action Space (6).
-  - **Value Stream**: FC 512 -> 1.
-  - **Aggregation**: `Q = V + (A - mean(A))`.
+  - Advantage: 512 → 10 actions
+  - Value: 512 → 1
+  - Q = V + (A - mean(A))
+- **Activation**: LeakyReLU throughout
 
 ### Algorithm
-- **Policy**: Double DQN (DDQN) to reduce maximization bias.
-- **Replay Buffer**: Prioritized Experience Replay (PER) using a SumTree structure to sample high-error transitions more frequently.
-- **Optimization**: AdamW optimizer with Gradient Clipping (max_norm=10).
+- **Double DQN** to reduce maximization bias
+- **Prioritized Experience Replay** (PER) with SumTree
+- **N-step returns** with variable gamma stored in replay buffer
+- **AdamW** optimizer, fixed LR=1e-4, gradient clipping (max_norm=1)
 
-## Environment (`gen2/slither_env.py`)
+### Observation
+- **Matrix** (3 channels, 64x64): Food / Danger / Self — egocentric (heading = up)
+- **Sectors** (75 floats): 24 sectors x 15° x (food_score, obstacle_score, obstacle_type) + 3 globals
+- Frame stack of 4 → 12-channel CNN input
 
-The environment interfaces with the Slither.io game via Selenium and injected JavaScript.
+### Action Space (10 discrete)
+| Action | Description | Angle |
+|--------|-------------|-------|
+| 0 | Straight | 0° |
+| 1-2 | Gentle L/R | ~20° |
+| 3-4 | Medium L/R | ~40° |
+| 5-6 | Sharp L/R | ~69° |
+| 7-8 | U-turn L/R | ~103° |
+| 9 | Boost | - |
 
-### Observation Space
-A 3-channel matrix (84x84) representing the agent's local view:
-1. **Channel 0 (Food)**: Pellet locations (value 1.0).
-2. **Channel 1 (Danger)**: Enemy snake bodies/heads (0.5/1.0) and Map Boundaries (1.0).
-3. **Channel 2 (Self)**: Own snake body/head (0.5/1.0).
+## Environment (`slither_env.py`)
 
-*Note: The view radius is dynamic. The matrix scales to fit the game's zoom level.*
+### Browser Engine (`browser_engine.py`)
+Selenium-based headless Chrome automation with injected JavaScript bridge.
 
-### Action Space (Discrete: 6)
-0. **Straight**: Maintain current heading.
-1. **Turn Left (Small)**: ~40 degrees.
-2. **Turn Right (Small)**: ~40 degrees.
-3. **Turn Left (Big)**: ~103 degrees.
-4. **Turn Right (Big)**: ~103 degrees.
-5. **Boost**: Activate speed boost (consumes mass).
+**Optimizations** (v2.0):
+- Persistent JS function injection — `_botGetState()` and `_botActAndRead()` injected once at startup, subsequent calls send ~30 bytes instead of ~8KB inline JS
+- Combined action+read in single `execute_script` call
+- Data caching between steps (reuses post-action data as next pre-action state)
+- Single-send frame skip (1 send + 40ms wait vs 4x send + 80ms)
+- **Step time: ~52ms** (was ~110ms, 2.1x improvement)
 
-### Reward System (Curriculum Learning)
-The agent progresses through stages defined in `gen2/trainer.py`:
-1. **Stage 1 (EAT)**: High reward for food (+10), penalty for death (-15). Goal: Learn to gather mass.
-2. **Stage 2 (SURVIVE)**: Increased death penalties (-100 wall, -20 enemy). Goal: Avoid collision.
-3. **Stage 3 (GROW)**: Long-term survival and length maximization.
+### Egocentric Rotation
+All observations are rotated so the snake's heading points "up" in the matrix. This ensures consistent input regardless of absolute direction.
 
-Threat awareness shaping is applied in later stages: the agent receives a small penalty when it gets too close to walls or enemy bodies/heads (configurable via `wall_alert_dist`, `enemy_alert_dist`, and proximity penalty values in `gen2/styles.py`).
+### Sensor Features
+- **Map Boundary**: Circle boundary via `grd` (map grid radius), `cst` (custom scale)
+- **Food**: Up to 300 items, sorted by distance, within view radius
+- **Enemies**: Up to 50 snakes with up to 150 body points each, expanded search radius (5x view)
+- **Wall Distance**: Calculated from snake position and map radius
 
-## Key Technical Features
+## Training (`trainer.py`)
 
-### Sensor Logic (`gen2/browser_engine.py`)
-- **Map Boundary**: Uses precise Polygon Boundary X (`window.pbx`) data from the game server if available, falling back to the exact Game Radius (`window.grd`). This eliminates "phantom wall" deaths caused by inaccurate safety buffers.
-- **Snake Detection**:
-  - Iterates `window.slithers` with an expanded search radius (5x view) to populate the matrix with off-screen enemies.
-  - Supports up to 50 concurrent enemies (increased from legacy 15) to prevent "invisible snake" collisions in crowded areas.
-- **Performance**: Game rendering is disabled/optimized via JS injection to maximize FPS for the headless browser.
+### Curriculum Learning
+Progression through stages with configurable reward parameters:
 
-### Visualization
-- **View Plus**: A client-side canvas overlay (`--view-plus`) renders the agent's perception grid (Food/Enemies/Wall) in real-time at 60fps on top of the game view.
+| Stage | Name | Focus | Max Steps |
+|-------|------|-------|-----------|
+| 1 | FOOD_VECTOR | Eat food, basic movement | 300 |
+| 2 | WALL_AVOID | Wall avoidance + food | 500 |
+| 3 | SURVIVE | Full survival + growth | 1000+ |
+
+Promotion criteria: compound (avg_steps threshold AND wall_death rate).
+
+### Styles (`styles.py`)
+Training styles with different reward configurations:
+- **Standard** (Curriculum) — progressive difficulty
+- **Aggressive** — high food reward, low survival
+- **Defensive** — high survival, wall avoidance
+- **Explorer** — exploration bonus
+
+### Multi-Agent Training
+- `SubprocVecEnv` for parallel agents (multiprocessing)
+- Auto-scaling based on CPU/RAM/step-time metrics
+- Each agent runs in a separate Chrome instance
+
+### Backend Selection
+```bash
+# Selenium (default)
+python trainer.py --backend selenium
+
+# WebSocket (experimental — currently blocked by server anti-bot)
+python trainer.py --backend websocket --ws-server-url ws://IP:PORT/slither
+```
+
+### UID System
+Each training run gets a unique ID (`YYYYMMDD-8hexchars`). Stored in checkpoints and CSV for lineage tracking.
 
 ## Usage
 
 ### Prerequisites
-- Python 3.8+
-- `pip install torch selenium numpy pandas plotext`
-- Chrome/Chromium installed.
+- Python 3.10+
+- Chrome/Chromium installed
+- Dependencies:
+```bash
+pip install torch selenium numpy pandas matplotlib
+```
 
 ### Training
-Run the vectorized trainer (default 1 agent):
 ```bash
-python gen2/trainer.py
+# Basic (1 agent, Selenium)
+python trainer.py
+
+# Multiple agents with auto-scaling
+python trainer.py --num_agents 3 --auto-num-agents --max-agents 10
+
+# With visualization
+python trainer.py --view-plus
+
+# Resume from checkpoint
+python trainer.py --resume
+
+# Force curriculum stage
+python trainer.py --stage 2
+
+# Custom game server
+python trainer.py --url http://slither.io
+
+# Fresh start (delete all logs/checkpoints)
+python trainer.py --reset
 ```
 
-### Options
-- `--num_agents N`: Run `N` parallel browser instances.
-- `--view`: Show the browser window for the first agent (others headless).
-- `--view-plus`: Show browser + Debug Overlay (Perception Grid).
-- `--resume`: Load checkpoint from `gen2/checkpoint.pth`.
-- `--stage N`: Force start at specific curriculum stage (1, 2, or 3).
+### CLI Options
+| Flag | Description |
+|------|-------------|
+| `--num_agents N` | Number of parallel browser agents |
+| `--view` | Show browser for first agent |
+| `--view-plus` | Browser + debug overlay |
+| `--resume` | Load from `checkpoint.pth` |
+| `--stage N` | Force curriculum stage (1/2/3) |
+| `--style-name NAME` | Training style |
+| `--url URL` | Game server URL |
+| `--vision-size N` | Override resolution |
+| `--backend selenium\|websocket` | Browser backend |
+| `--ws-server-url URL` | WebSocket server override |
+| `--auto-num-agents` | Enable auto-scaling |
+| `--max-agents N` | Max agents for auto-scale |
+| `--reset` | Full reset (logs, CSV, checkpoints) |
 
-### Monitoring
-Training stats are logged to `gen2/training_stats.csv`.
-Visualize progress:
+### Analysis
 ```bash
-python gen2/analyze_matrix.py
+# Generate training progress report with charts
+python training_progress_analyzer.py --latest
+
+# Filter by run UID
+python training_progress_analyzer.py --uid 20260214-a3f7b2c1
 ```
+
+## File Structure
+
+| File | Description |
+|------|-------------|
+| `trainer.py` | Main training loop, SubprocVecEnv, auto-scaling |
+| `agent.py` | DQN agent (select_action, optimize_model) |
+| `model.py` | HybridDuelingDQN network |
+| `slither_env.py` | RL environment (obs processing, rewards, curriculum) |
+| `browser_engine.py` | Selenium Chrome automation + JS bridge |
+| `browser_engine_ws.py` | WebSocket browser adapter (experimental) |
+| `ws_engine.py` | Native WebSocket client (experimental) |
+| `ws_protocol.py` | Binary protocol encoding/decoding |
+| `config.py` | Configuration dataclasses |
+| `styles.py` | Training style definitions |
+| `per.py` | Prioritized Experience Replay (SumTree) |
+| `coord_transform.py` | World-to-grid coordinate transforms |
+| `training_progress_analyzer.py` | Training analysis + chart generation |
+| `training_stats.csv` | Episode-level training metrics |
+
+## Performance
+
+| Metric | Value |
+|--------|-------|
+| Step time (Selenium optimized) | ~52ms |
+| Step time (Selenium original) | ~110ms |
+| RAM per agent (Selenium) | ~500MB |
+| Agents per machine (8GB RAM) | 5-10 |
+| Training speed (1 agent) | ~19 steps/sec |
