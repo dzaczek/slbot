@@ -10396,3 +10396,28 @@
 2026-02-15 14:32:49,095 - INFO - Ep 6019 | S3:ENEMY_AVOID | Rw: 270.57 | St: 81 | Fd: 35 (0.432/st) | Eps: 0.224 | L: 27.6515 | Q: 86.80/139.55 | SnakeCollision | Pos:(34963,37569) Wall:8427 Enemy:73
 2026-02-15 14:32:53,063 - INFO - Ep 6020 | S3:ENEMY_AVOID | Rw: 126.09 | St: 44 | Fd: 21 (0.477/st) | Eps: 0.224 | L: 70.7137 | Q: 82.19/135.84 | SnakeCollision | Pos:(33070,38243) Wall:8280 Enemy:576
 2026-02-15 14:32:53,064 - INFO - Death Stats: {'Wall': 63, 'SnakeCollision': 926, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 15:11:02,484 - INFO - Configuration:
+2026-02-15 15:11:02,484 - INFO -   Style: Standard (Curriculum)
+2026-02-15 15:11:02,484 - INFO -   Mode: curriculum
+2026-02-15 15:11:02,485 - INFO -   Agents: AUTO (start=1, max=8)
+2026-02-15 15:11:02,485 - INFO -   Frame Stack: 4
+2026-02-15 15:11:02,485 - INFO -   Resolution: (64, 64)
+2026-02-15 15:11:02,485 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-15 15:11:02,485 - INFO -   LR: 0.0001
+2026-02-15 15:11:02,485 - INFO -   PER: True
+2026-02-15 15:11:02,485 - INFO -   Backend: selenium
+2026-02-15 15:11:02,485 - INFO - Training Run UID: 20260215-578144f6
+2026-02-15 15:11:03,343 - INFO -   Parent UID: 20260215-c09717fe
+2026-02-15 15:11:03,344 - INFO - Resumed from episode 6000
+2026-02-15 15:11:03,344 - INFO -   Stage: 3 (ENEMY_AVOID)
+2026-02-15 15:11:08,737 - INFO -   Curriculum Stage: 3 (ENEMY_AVOID)
+2026-02-15 15:11:08,738 - INFO -   Max Steps: 1000
+2026-02-15 15:11:27,906 - INFO - [AUTO-SCALE] Added agent #2 (CPU:26% RAM:39919MB Step:56ms)
+2026-02-15 15:11:30,172 - INFO - Ep 6001 | S3:ENEMY_AVOID | Rw: 104.67 | St: 71 | Fd: 19 (0.268/st) | Eps: 0.233 | L: 282.0206 | Q: 94.19/119.12 | SnakeCollision | Pos:(29568,29927) Wall:10025 Enemy:700
+2026-02-15 15:11:58,214 - INFO - [AUTO-SCALE] Added agent #3 (CPU:34% RAM:39126MB Step:68ms)
+2026-02-15 15:12:00,513 - INFO - Ep 6002 | S3:ENEMY_AVOID | Rw: 387.20 | St: 172 | Fd: 57 (0.331/st) | Eps: 0.230 | L: 67.6526 | Q: 63.78/103.60 | SnakeCollision | Pos:(38852,31900) Wall:7661 Enemy:747
+2026-02-15 15:12:08,544 - INFO - Ep 6003 | S3:ENEMY_AVOID | Rw: 54.05 | St: 33 | Fd: 16 (0.485/st) | Eps: 0.229 | L: 55.9048 | Q: 66.65/107.29 | SnakeCollision | Pos:(36223,25970) Wall:6460 Enemy:39
+2026-02-15 15:12:14,701 - INFO - Ep 6004 | S3:ENEMY_AVOID | Rw: 61.81 | St: 53 | Fd: 16 (0.302/st) | Eps: 0.229 | L: 130.3512 | Q: 64.17/102.89 | SnakeCollision | Pos:(38277,27261) Wall:6201 Enemy:52
+2026-02-15 15:12:28,757 - INFO - [AUTO-SCALE] Added agent #4 (CPU:36% RAM:39075MB Step:145ms)
+2026-02-15 15:12:31,035 - INFO - Ep 6005 | S3:ENEMY_AVOID | Rw: 671.01 | St: 256 | Fd: 72 (0.281/st) | Eps: 0.228 | L: 52.4455 | Q: 62.35/102.09 | SnakeCollision | Pos:(44164,37774) Wall:1261
+2026-02-15 15:12:31,035 - INFO - Ep 6006 | S3:ENEMY_AVOID | Rw: 132.54 | St: 52 | Fd: 30 (0.577/st) | Eps: 0.228 | L: 52.4455 | Q: 62.35/102.09 | SnakeCollision | Pos:(30565,28936) Wall:9874 Enemy:292
