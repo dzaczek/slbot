@@ -50,22 +50,6 @@ while true; do
         progress_report.md
         logs/train.log
         logs/app.log
-        chart_01_dashboard.png
-        chart_02_stage_progression.png
-        chart_03_stage_distributions.png
-        chart_04_hyperparameters.png
-        chart_05_correlations.png
-        chart_05b_correlation_heatmap.png
-        chart_06_performance_bands.png
-        chart_07_death_analysis.png
-        chart_08_food_efficiency.png
-        chart_09_reward_distributions.png
-        chart_10_learning_detection.png
-        chart_11_goal_gauges.png
-        chart_12_hyperparameter_analysis.png
-        chart_13_qvalue_gradients.png
-        chart_14_action_distribution.png
-        chart_15_auto_scaling.png
     )
 
     added=0
@@ -75,6 +59,14 @@ while true; do
             git -C "$REPO_ROOT" add -f "gen2/$f" 2>&1
             added=$((added + 1))
         fi
+    done
+
+    # Auto-add all chart PNGs (catches new charts automatically)
+    for png in "$SCRIPT_DIR"/chart_*.png; do
+        [[ -f "$png" ]] || continue
+        fname="$(basename "$png")"
+        git -C "$REPO_ROOT" add -f "gen2/$fname" 2>&1
+        added=$((added + 1))
     done
     log "Staged $added files"
 

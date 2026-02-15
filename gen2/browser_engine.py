@@ -23,14 +23,17 @@ class SlitherBrowser:
     MAX_ENEMIES = 50     # Max enemy snakes to process (Increased to fix invisible snakes)
     MAX_BODY_PTS = 150   # Max body points per enemy (increased for better visibility)
     
-    def __init__(self, headless=True, nickname="NEATBot", base_url="http://slither.io"):
+    def __init__(self, headless=True, nickname="NEATBot", base_url="http://slither.io",
+                 use_cdp=False):
         self.nickname = nickname
         self.base_url = base_url
+        self._use_cdp = use_cdp
+        self._cdp = None  # CDPInterceptor instance (if use_cdp=True)
         self.options = Options()
-        
+
         if headless:
             self.options.add_argument("--headless=new")
-            
+
         self.options.add_argument("--mute-audio")
         self.options.add_argument("--disable-gpu")
         self.options.add_argument("--disable-dev-shm-usage")
@@ -38,7 +41,7 @@ class SlitherBrowser:
         self.options.add_argument("--disable-extensions")
         self.options.add_argument("--disable-infobars")
         self.options.add_argument("--disable-notifications")
-        
+
         # Performance optimizations
         self.options.add_argument("--disable-software-rasterizer")
         self.options.add_argument("--disable-background-networking")
@@ -46,14 +49,19 @@ class SlitherBrowser:
         self.options.add_argument("--disable-translate")
         self.options.add_argument("--metrics-recording-only")
         self.options.add_argument("--no-first-run")
-        
+
+        # CDP interception requires DevTools access
+        if use_cdp:
+            self.options.add_argument("--remote-debugging-port=0")
+            self.options.add_argument("--remote-allow-origins=*")
+
         # Disable images for faster loading (optional - might affect gameplay detection)
         prefs = {
             "profile.managed_default_content_settings.images": 2,
             "profile.default_content_setting_values.notifications": 2
         }
         self.options.add_experimental_option("prefs", prefs)
-        
+
         # Initialize driver
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.set_page_load_timeout(30)
@@ -61,6 +69,20 @@ class SlitherBrowser:
         log(f"[BROWSER] Connecting to {self.base_url}...")
         self.driver.get(self.base_url)
         time.sleep(3)
+        # Start CDP network monitoring early so we capture WebSocket creation events
+        if self._use_cdp:
+            self._init_cdp_monitoring()
+
+    def _init_cdp_monitoring(self):
+        """Initialize CDP connection and enable Network monitoring (before login)."""
+        try:
+            from cdp_intercept import CDPInterceptor
+            self._cdp = CDPInterceptor(self.driver)
+            self._cdp.start()
+            log("[CDP] Early monitoring started (waiting for game WS)")
+        except Exception as e:
+            log(f"[CDP] Failed to start early monitoring: {e}")
+            self._cdp = None
 
     def _handle_login(self):
         """
@@ -129,6 +151,7 @@ class SlitherBrowser:
                     log("[LOGIN] Game started!")
                     self.inject_override_script()
                     self.inject_fast_getstate()
+                    self._start_cdp_if_enabled()
                     return True
                 time.sleep(0.5)
             
@@ -138,6 +161,20 @@ class SlitherBrowser:
         except Exception as e:
             log(f"[LOGIN] Error: {e}")
             return False
+
+    def _start_cdp_if_enabled(self):
+        """Wait for CDP interceptor to detect game WS and become active."""
+        if not self._use_cdp or not self._cdp:
+            return
+        # Give CDP time to receive frames, then try to identify our snake
+        for i in range(30):  # Up to 3 seconds
+            if self._cdp._frames_received > 10:
+                if self._cdp.try_activate():
+                    return
+            time.sleep(0.1)
+        log(f"[CDP] Not yet active — frames={self._cdp._frames_received} "
+            f"ws_detected={self._cdp._game_ws_request_id is not None} "
+            f"snakes={len(self._cdp.state.snakes)} init={self._cdp._init_received.is_set()}")
 
     def inject_override_script(self):
         """
@@ -875,6 +912,14 @@ class SlitherBrowser:
         return getGameState();
         """
         try:
+            # CDP path: read from Python memory (instant, no Selenium round-trip)
+            if self._cdp and self._cdp.active:
+                return self._cdp.get_game_data()
+            # Try lazy activation if CDP is receiving frames but not yet active
+            if self._cdp and self._cdp._frames_received > 10 and not self._cdp.state.playing:
+                self._cdp.try_activate()
+                if self._cdp.active:
+                    return self._cdp.get_game_data()
             # Use fast injected function if available (~30 bytes vs ~8KB of JS)
             if getattr(self, '_fast_getstate_injected', False):
                 result = self.driver.execute_script("return window._botGetState();")
@@ -932,15 +977,23 @@ class SlitherBrowser:
         }}
         """
         try:
+            # CDP path: send via DevTools (faster, ~1-2ms vs ~10-15ms)
+            if self._cdp and self._cdp.active:
+                self._cdp.send_action(angle, boost)
+                return
             self.driver.execute_script(control_js)
         except:
             pass
 
     def send_action_get_data(self, angle, boost):
         """
-        Combined: send action AND read game state in ONE execute_script call.
-        Saves one Selenium round-trip per step (~10-15ms).
+        Combined: send action AND read game state in ONE call.
+        CDP: action via DevTools + state from memory (~1ms total).
+        Selenium: combined JS call (~10-15ms).
         """
+        # CDP path: instant
+        if self._cdp and self._cdp.active:
+            return self._cdp.send_action_get_data(angle, boost)
         is_boost = 1 if boost > 0.5 else 0
         if getattr(self, '_fast_getstate_injected', False):
             try:
@@ -950,7 +1003,6 @@ class SlitherBrowser:
             except:
                 return {"dead": True}
         else:
-            # Fallback: separate calls
             self.send_action(angle, boost)
             return self.get_game_data()
 
@@ -974,7 +1026,10 @@ class SlitherBrowser:
             time.sleep(0.5)
             self.inject_override_script()
             self.inject_fast_getstate()
-            
+            # Reset CDP state so it picks up the new game WS connection
+            if self._cdp:
+                self._cdp.reset()
+
         except Exception as e:
             log(f"[RESTART] Error: {e}. Refreshing page...")
             self.driver.refresh()

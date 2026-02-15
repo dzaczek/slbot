@@ -16,9 +16,10 @@ from coord_transform import world_to_grid
 def _create_browser(backend, headless, nickname, base_url, ws_server_url=""):
     """Factory: create SlitherBrowser using selected backend."""
     if backend == "websocket":
-        from browser_engine_ws import SlitherBrowser
+        # CDP hybrid: Chrome handles anti-bot, CDP intercepts WS frames for speed
+        from browser_engine import SlitherBrowser
         return SlitherBrowser(headless=headless, nickname=nickname,
-                              base_url=base_url, ws_server_url=ws_server_url)
+                              base_url=base_url, use_cdp=True)
     else:
         from browser_engine import SlitherBrowser
         return SlitherBrowser(headless=headless, nickname=nickname,
@@ -597,7 +598,12 @@ class SlitherEnv:
             self.browser.send_action_get_data(target_ang, boost)
         else:
             self.browser.send_action(target_ang, boost)
-        time.sleep(self.frame_skip * 0.010)  # ~40ms for frame_skip=4
+        if self.backend == "websocket":
+            # CDP: send is fire-and-forget (~1ms), state reads from memory (instant)
+            # Just wait for server to process action + push updates
+            time.sleep(self.frame_skip * 0.008)  # ~32ms for frame_skip=4
+        else:
+            time.sleep(self.frame_skip * 0.010)  # ~40ms for frame_skip=4
 
         # Get new state after action
         data = self.browser.get_game_data()

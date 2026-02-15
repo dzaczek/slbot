@@ -109,6 +109,7 @@ class Episode:
     act_uturn: float = 0.0
     act_boost: float = 0.0
     num_agents: int = 0
+    global_idx: int = 0
 
 @dataclass
 class TrainingSession:
@@ -131,6 +132,7 @@ EP_PATTERN = re.compile(
     r'Ep (\d+) \| S(\d+):(\w+) \| '
     r'Rw: ([\-\d.]+) \| St: (\d+) \| Fd: (\d+) \(([\d.]+)/st\) \| '
     r'Eps: ([\d.]+) \| L: ([\d.]+) \| '
+    r'(?:Q: [\d.\-]+/[\d.\-]+ \| )?'
     r'(\w+)'
 )
 
@@ -281,16 +283,175 @@ def parse_csv(csv_path: str) -> List[Episode]:
     return episodes
 
 
-def discover_uids(episodes: List[Episode]) -> List[Tuple[str, int, int, int]]:
+def discover_uids(episodes: List[Episode]) -> List[Tuple[str, str, int, int, int]]:
+    """Return [(uid, parent_uid, count, first_ep, last_ep), ...]"""
     uid_map = OrderedDict()
     for ep in episodes:
         uid = ep.uid or 'unknown'
         if uid not in uid_map:
-            uid_map[uid] = {'count': 0, 'first': ep.number, 'last': ep.number}
+            uid_map[uid] = {'parent': ep.parent_uid or '', 'count': 0,
+                            'first': ep.number, 'last': ep.number}
         uid_map[uid]['count'] += 1
         uid_map[uid]['last'] = max(uid_map[uid]['last'], ep.number)
         uid_map[uid]['first'] = min(uid_map[uid]['first'], ep.number)
-    return [(uid, info['count'], info['first'], info['last']) for uid, info in uid_map.items()]
+    return [(uid, info['parent'], info['count'], info['first'], info['last'])
+            for uid, info in uid_map.items()]
+
+
+def _print_uid_tree(uids: List[Tuple[str, str, int, int, int]]):
+    """Print a tree visualization of UID lineage."""
+    # Build parent→children mapping
+    uid_info = {u[0]: u for u in uids}
+    children = defaultdict(list)
+    roots = []
+    for uid, parent, count, first, last in uids:
+        if parent and parent in uid_info:
+            children[parent].append(uid)
+        else:
+            roots.append(uid)
+
+    def _print_node(uid, prefix='', is_last=True):
+        info = uid_info[uid]
+        connector = '\u2514\u2500\u2500 ' if is_last else '\u251c\u2500\u2500 '
+        line_prefix = prefix + connector if prefix else '    '
+        _, _, count, first, last = info
+        uid_short = uid.split('-', 1)[-1] if '-' in uid else uid[:8]
+        print(f'{line_prefix}{c(uid_short, C.WHT)}  eps {first}-{last}  ({count} eps)')
+        kids = sorted(children.get(uid, []), key=lambda u: uid_info[u][3])
+        for i, child in enumerate(kids):
+            ext = '    ' if is_last else '\u2502   '
+            _print_node(child, prefix + (ext if prefix else '    '), i == len(kids) - 1)
+
+    print(c('  UID Tree:', C.CYN, C.B))
+    for i, root in enumerate(roots):
+        _print_node(root)
+
+
+def _get_ancestor_chain(target_uid: str, episodes: List[Episode]) -> set:
+    """Get set of UIDs forming the ancestor chain from root to target_uid."""
+    # Build uid→parent mapping
+    uid_parent = {}
+    for ep in episodes:
+        uid = ep.uid or 'unknown'
+        if uid not in uid_parent:
+            uid_parent[uid] = ep.parent_uid or ''
+    # Walk up from target
+    chain = {target_uid}
+    current = target_uid
+    while current in uid_parent and uid_parent[current] and uid_parent[current] in uid_parent:
+        current = uid_parent[current]
+        chain.add(current)
+    return chain
+
+
+def _find_longest_chain(uids: List[Tuple[str, str, int, int, int]]) -> set:
+    """Find the longest lineage chain (root→deepest leaf with most episodes)."""
+    uid_info = {u[0]: u for u in uids}
+    children = defaultdict(list)
+    roots = []
+    for uid, parent, count, first, last in uids:
+        if parent and parent in uid_info:
+            children[parent].append(uid)
+        else:
+            roots.append(uid)
+
+    # DFS to find the chain with most total episodes
+    def _chain_episodes(uid):
+        """Return (total_eps, chain_uids) for the best path from uid to a leaf."""
+        info = uid_info[uid]
+        total = info[2]  # count
+        best_sub_total = 0
+        best_sub_chain = []
+        for child in children.get(uid, []):
+            sub_total, sub_chain = _chain_episodes(child)
+            if sub_total > best_sub_total:
+                best_sub_total = sub_total
+                best_sub_chain = sub_chain
+        return total + best_sub_total, [uid] + best_sub_chain
+
+    best_total = 0
+    best_chain = []
+    for root in roots:
+        total, chain = _chain_episodes(root)
+        if total > best_total:
+            best_total = total
+            best_chain = chain
+    return set(best_chain)
+
+
+def build_lineage_chain(episodes: List[Episode]) -> List[Episode]:
+    """
+    Sort episodes into lineage-aware global order and assign global_idx.
+
+    - Groups by UID, builds parent→child tree
+    - Walks tree depth-first: root first, children after parent's last episode
+    - Each episode gets a sequential global_idx
+    - Returns the reordered list
+    """
+    if not episodes or not any(e.uid for e in episodes):
+        # No UID data — just assign sequential indices
+        for i, ep in enumerate(episodes):
+            ep.global_idx = i
+        return episodes
+
+    # Group episodes by UID
+    uid_episodes = defaultdict(list)
+    for ep in episodes:
+        uid_episodes[ep.uid or 'unknown'].append(ep)
+
+    # Sort each group by episode number
+    for uid in uid_episodes:
+        uid_episodes[uid].sort(key=lambda e: e.number)
+
+    # Build parent→children tree
+    uid_parent = {}
+    for uid, eps in uid_episodes.items():
+        parent = eps[0].parent_uid or ''
+        uid_parent[uid] = parent
+
+    children = defaultdict(list)
+    roots = []
+    for uid, parent in uid_parent.items():
+        if parent and parent in uid_episodes:
+            children[parent].append(uid)
+        else:
+            roots.append(uid)
+
+    # Sort roots by first episode number
+    roots.sort(key=lambda u: uid_episodes[u][0].number)
+
+    # DFS walk: emit episodes in lineage order
+    result = []
+
+    def _walk(uid):
+        result.extend(uid_episodes[uid])
+        # Sort children by their first episode number
+        kids = sorted(children.get(uid, []), key=lambda u: uid_episodes[u][0].number)
+        for child in kids:
+            _walk(child)
+
+    for root in roots:
+        _walk(root)
+
+    # Assign global indices
+    for i, ep in enumerate(result):
+        ep.global_idx = i
+
+    return result
+
+
+def get_branch_points(episodes: List[Episode]) -> List[Tuple[int, str]]:
+    """Return list of (global_idx, new_uid_short) where UID changes."""
+    if not episodes:
+        return []
+    points = []
+    prev_uid = episodes[0].uid
+    for ep in episodes:
+        if ep.uid != prev_uid:
+            uid_short = ep.uid.split('-', 1)[-1] if ep.uid and '-' in ep.uid else (ep.uid[:8] if ep.uid else '?')
+            points.append((ep.global_idx, uid_short))
+            prev_uid = ep.uid
+    return points
 
 
 # ═══════════════════════════════════════════════════════
@@ -844,8 +1005,8 @@ def _setup_matplotlib():
     return plt, GridSpec, mticker
 
 
-def _add_stage_bands(ax, ep_nums, stages):
-    """Add colored background bands per curriculum stage."""
+def _add_stage_bands(ax, ep_nums, stages, branch_points=None):
+    """Add colored background bands per curriculum stage + branch markers."""
     prev = stages[0]
     start = ep_nums[0]
     for i in range(1, len(stages)):
@@ -855,6 +1016,34 @@ def _add_stage_bands(ax, ep_nums, stages):
             ax.axvspan(start, end, alpha=0.06, color=col)
             start = ep_nums[i]
             prev = stages[i]
+    if branch_points:
+        _add_branch_markers(ax, branch_points)
+
+
+def _add_branch_markers(ax, branch_points, y_top=None):
+    """Add vertical dotted lines and UID labels at branch points."""
+    for gidx, uid_short in branch_points:
+        ax.axvline(gidx, color='#8b949e', linestyle=':', linewidth=0.8, alpha=0.6)
+        if y_top is not None:
+            ax.text(gidx, y_top, uid_short, fontsize=6, color='#8b949e',
+                    rotation=90, va='top', ha='right', alpha=0.7)
+
+
+def _setup_ep_axis(ax, ep_nums, orig_ep_nums, label='Episode (global)'):
+    """Set x-axis label and add custom tick formatter showing original episode numbers."""
+    ax.set_xlabel(label)
+    if len(ep_nums) > 0 and len(orig_ep_nums) == len(ep_nums):
+        # Build mapping: global_idx → original ep number for ticks
+        import matplotlib.ticker as mticker_local
+
+        idx_to_orig = dict(zip(ep_nums, orig_ep_nums))
+
+        def _fmt(x, pos):
+            if int(x) in idx_to_orig:
+                return str(idx_to_orig[int(x)])
+            return str(int(x))
+
+        ax.xaxis.set_major_formatter(mticker_local.FuncFormatter(_fmt))
 
 
 def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
@@ -864,8 +1053,10 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         print(c("  matplotlib not installed, skipping charts.", C.YEL))
         return
 
-    # Extract arrays
-    ep_nums = np.array([e.number for e in episodes])
+    # Extract arrays — use global_idx for x-axis
+    ep_nums = np.array([e.global_idx for e in episodes])
+    orig_ep_nums = np.array([e.number for e in episodes])
+    branch_points = get_branch_points(episodes)
     rewards = np.array([e.reward for e in episodes])
     steps = np.array([e.steps for e in episodes], dtype=float)
     food = np.array([e.food for e in episodes], dtype=float)
@@ -897,7 +1088,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
     # 1a. Reward with Bollinger bands
     ax = fig.add_subplot(gs[0, 0])
-    _add_stage_bands(ax, ep_nums, stages_arr)
+    _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
     ax.plot(ep_nums, rewards, alpha=0.12, color='#484f58', linewidth=0.5)
     if N > sma_w:
         sma = moving_average(rewards, sma_w)
@@ -909,14 +1100,14 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.plot(ep_nums, ema, color='#f0883e', linewidth=1.5, alpha=0.8, label=f'EMA-{sma_w}')
     ax.axhline(0, color='#484f58', linestyle=':', linewidth=0.8)
     ax.set_title('Reward (Bollinger Bands)', fontweight='bold')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_ylabel('Reward')
     ax.legend(fontsize=8, loc='upper left')
     ax.grid(True)
 
     # 1b. Steps with percentile bands
     ax = fig.add_subplot(gs[0, 1])
-    _add_stage_bands(ax, ep_nums, stages_arr)
+    _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
     ax.plot(ep_nums, steps, alpha=0.12, color='#484f58', linewidth=0.5)
     if N > sma_w:
         p25 = rolling_percentile(steps, sma_w, 25)
@@ -928,20 +1119,20 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.plot(ep_nums[mask], p50[mask], color='#3fb950', linewidth=2, label='Median')
         ax.plot(ep_nums[mask], p95[mask], color='#3fb950', linewidth=1, linestyle='--', alpha=0.6, label='P95')
     ax.set_title('Survival Duration (Percentile Bands)', fontweight='bold')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_ylabel('Steps')
     ax.legend(fontsize=8, loc='upper left')
     ax.grid(True)
 
     # 1c. Food collection
     ax = fig.add_subplot(gs[1, 0])
-    _add_stage_bands(ax, ep_nums, stages_arr)
+    _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
     ax.plot(ep_nums, food, alpha=0.12, color='#484f58', linewidth=0.5)
     if N > sma_w:
         sma_f = moving_average(food, sma_w)
         ax.plot(ep_nums[sma_w - 1:], sma_f, color='#d29922', linewidth=2, label=f'SMA-{sma_w}')
     ax.set_title('Food Collected', fontweight='bold')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_ylabel('Food')
     ax.legend(fontsize=8)
     ax.grid(True)
@@ -956,7 +1147,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             ax.plot(ep_nums[valid_loss][sma_w - 1:], sma_l, color='#f85149', linewidth=2, label=f'SMA-{sma_w}')
         ax.set_yscale('log')
     ax.set_title('Training Loss (log scale)', fontweight='bold')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_ylabel('Loss')
     ax.legend(fontsize=8)
     ax.grid(True)
@@ -965,7 +1156,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     ax = fig.add_subplot(gs[2, 0])
     ax.plot(ep_nums, epsilons, color='#f0883e', linewidth=1.5, label='Epsilon')
     ax.set_ylabel('Epsilon', color='#f0883e')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_title('Epsilon & Learning Rate', fontweight='bold')
     if lr_arr is not None and np.any(lr_arr > 0):
         ax2 = ax.twinx()
@@ -999,7 +1190,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.set_ylim(0, 100)
         ax.set_ylabel('% of Deaths')
     ax.set_title('Death Causes (Stacked Area)', fontweight='bold')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.legend(fontsize=7, loc='upper right')
     ax.grid(True)
 
@@ -1015,7 +1206,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         (steps, 'Steps', '#3fb950'), (food, 'Food', '#d29922'), (rewards, 'Reward', '#58a6ff')
     ]):
         ax = axes[ax_i]
-        _add_stage_bands(ax, ep_nums, stages_arr)
+        _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
         ax.plot(ep_nums, data, alpha=0.12, color='#484f58', linewidth=0.5)
         if N > 20:
             sma_d = moving_average(data, min(20, N // 3))
@@ -1101,7 +1292,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     ax.axhline(0.08, color='#3fb950', linestyle='--', alpha=0.5, label='eps_end=0.08')
     ax.set_title('Epsilon Decay')
     ax.set_ylabel('Epsilon')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.legend(fontsize=8)
     ax.grid(True)
 
@@ -1112,7 +1303,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.set_yscale('log')
     ax.set_title('Learning Rate Schedule')
     ax.set_ylabel('LR (log)')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.grid(True)
 
     # Beta (PER importance sampling)
@@ -1121,7 +1312,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.plot(ep_nums, beta_arr, color='#d2a8ff', linewidth=1.5)
     ax.set_title('PER Beta (Importance Sampling)')
     ax.set_ylabel('Beta')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.grid(True)
 
     # Loss with EMA
@@ -1135,7 +1326,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.set_yscale('log')
     ax.set_title('Loss (EMA + Raw)')
     ax.set_ylabel('Loss (log)')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.legend(fontsize=8)
     ax.grid(True)
 
@@ -1282,7 +1473,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         (food, 'Food', '#d29922'),
     ]):
         ax = axes[ax_i]
-        _add_stage_bands(ax, ep_nums, stages_arr)
+        _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
         ax.plot(ep_nums, data, alpha=0.08, color='#484f58', linewidth=0.5)
 
         if N > band_w:
@@ -1420,7 +1611,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             ax.set_yticklabels(active_causes, fontsize=8)
             plt.colorbar(im, ax=ax, label='%', shrink=0.8)
     ax.set_title('Death Cause Heatmap (time)')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
 
     _save(fig, 'chart_07_death_analysis.png')
 
@@ -1432,13 +1623,13 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
     # 8a. Food/step ratio over time
     ax = axes[0, 0]
-    _add_stage_bands(ax, ep_nums, stages_arr)
+    _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
     ax.plot(ep_nums, food_per_step, alpha=0.12, color='#484f58', linewidth=0.5)
     if N > sma_w:
         sma_fps = moving_average(food_per_step, sma_w)
         ax.plot(ep_nums[sma_w - 1:], sma_fps, color='#d29922', linewidth=2, label=f'SMA-{sma_w}')
     ax.set_title('Food per Step (Efficiency)')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_ylabel('Food/Step')
     ax.legend(fontsize=8)
     ax.grid(True)
@@ -1449,7 +1640,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     ax.plot(ep_nums, cum_food, color='#d29922', linewidth=2)
     ax.fill_between(ep_nums, cum_food, alpha=0.1, color='#d29922')
     ax.set_title('Cumulative Food Collected')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_ylabel('Total Food')
     ax.grid(True)
 
@@ -1558,7 +1749,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     gradient_color = 'green' if cum[-1] > cum[N // 2] else 'red'
     ax.fill_between(ep_nums, cum, alpha=0.08, color=gradient_color)
     ax.set_title('Cumulative Reward')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.grid(True)
 
     # 10c. Rolling reward variance
@@ -1568,7 +1759,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.plot(ep_nums, r_std, color='#bc8cff', linewidth=1.5, label=f'Rolling Std ({sma_w})')
         ax.fill_between(ep_nums, r_std, alpha=0.1, color='#bc8cff')
     ax.set_title('Reward Volatility (Rolling Std)')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_ylabel('Std Dev')
     ax.legend(fontsize=8)
     ax.grid(True)
@@ -1588,7 +1779,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             ax.text(mid_ep, ax.get_ylim()[1] if ax.get_ylim()[1] != 0 else seg['mean'],
                    f'{seg["slope"]:+.2f}', ha='center', fontsize=8, color=col, fontweight='bold')
     ax.set_title('Segmented Reward Trends')
-    ax.set_xlabel('Episode')
+    ax.set_xlabel('Episode (global)')
     ax.set_ylabel('Reward (SMA)')
     ax.grid(True)
 
@@ -1626,6 +1817,55 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.set_title(title, fontsize=11)
 
     _save(fig, 'chart_11_goal_gauges.png')
+
+    # ──────────────────────────────────────────────────
+    # CHART 11b: GOAL PROGRESS OVER TIME (time-based X)
+    # ──────────────────────────────────────────────────
+    timestamps = [e.timestamp for e in episodes]
+    has_timestamps = all(t is not None for t in timestamps)
+    if has_timestamps:
+        from matplotlib.dates import DateFormatter, AutoDateLocator
+        ts_arr = np.array(timestamps)
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 12), sharex=True)
+        fig.suptitle('GOAL PROGRESS OVER TIME', fontsize=16, fontweight='bold')
+
+        # --- Top panel: Points (food) ---
+        ax1.scatter(ts_arr, food, alpha=0.15, s=4, color='#484f58', label='Per episode')
+        if N > 10:
+            food_sma = moving_average(food, min(50, N // 3))
+            ts_sma = ts_arr[len(ts_arr) - len(food_sma):]
+            ax1.plot(ts_sma, food_sma, color='#3fb950', linewidth=2, label=f'SMA-{min(50, N // 3)}')
+        ax1.axhline(y=6000, color='#f0883e', linestyle='--', alpha=0.6, label='Goal: 6000')
+        ax1.set_ylabel('Points (food)')
+        ax1.legend(loc='upper left', fontsize=9)
+        ax1.grid(True, alpha=0.3)
+        _add_stage_bands(ax1, ts_arr, stages_arr)
+
+        # --- Bottom panel: Survival (steps) ---
+        ax2.scatter(ts_arr, steps, alpha=0.15, s=4, color='#484f58', label='Per episode')
+        if N > 10:
+            steps_sma = moving_average(steps, min(50, N // 3))
+            ts_sma2 = ts_arr[len(ts_arr) - len(steps_sma):]
+            ax2.plot(ts_sma2, steps_sma, color='#58a6ff', linewidth=2, label=f'SMA-{min(50, N // 3)}')
+        ax2.axhline(y=1800, color='#f0883e', linestyle='--', alpha=0.6, label='Goal: 1800')
+        ax2.set_ylabel('Survival (steps)')
+        ax2.set_xlabel('Time')
+        ax2.legend(loc='upper left', fontsize=9)
+        ax2.grid(True, alpha=0.3)
+        _add_stage_bands(ax2, ts_arr, stages_arr)
+
+        # Format x-axis as readable timestamps
+        locator = AutoDateLocator()
+        formatter = DateFormatter('%m-%d %H:%M')
+        ax2.xaxis.set_major_locator(locator)
+        ax2.xaxis.set_major_formatter(formatter)
+        fig.autofmt_xdate(rotation=30)
+
+        plt.tight_layout()
+        _save(fig, 'chart_11b_goal_over_time.png')
+    else:
+        print(c("  chart_11b skipped: no timestamps available", C.YEL))
 
     # ──────────────────────────────────────────────────
     # CHART 12: HYPERPARAMETER ANALYSIS
@@ -1830,7 +2070,8 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     td_errors_arr = np.array([e.td_error for e in q_src])
     grad_norms_arr = np.array([e.grad_norm for e in q_src])
     # Override ep_nums/rewards/stages for chart 13 scope
-    q_ep_nums = np.array([e.number for e in q_src])
+    q_ep_nums = np.array([e.global_idx for e in q_src])
+    q_branch_points = get_branch_points(q_src)
     q_rewards = np.array([e.reward for e in q_src])
     q_stages_arr = np.array([e.stage for e in q_src])
     q_N = len(q_src)
@@ -1846,7 +2087,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
         # 13a. Q-value mean & max over time
         ax = fig.add_subplot(gs[0, 0])
-        _add_stage_bands(ax, q_ep_nums, q_stages_arr)
+        _add_stage_bands(ax, q_ep_nums, q_stages_arr, q_branch_points)
         ax.plot(q_ep_nums, q_means_arr, alpha=0.12, color='#484f58', linewidth=0.5)
         ax.plot(q_ep_nums, q_maxes_arr, alpha=0.08, color='#484f58', linewidth=0.5)
         if q_N > q_sma_w:
@@ -1856,7 +2097,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             ax.plot(q_ep_nums[q_sma_w-1:], sma_qx, color='#3fb950', linewidth=2, label=f'Q max (SMA-{q_sma_w})')
         ax.axhline(0, color='#484f58', linestyle=':', linewidth=0.8)
         ax.set_title('Q-Values Over Time', fontweight='bold')
-        ax.set_xlabel('Episode')
+        ax.set_xlabel('Episode (global)')
         ax.set_ylabel('Q-Value')
         ax.legend(fontsize=8)
         ax.grid(True)
@@ -1881,7 +2122,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
         # 13c. TD-Error over time
         ax = fig.add_subplot(gs[1, 0])
-        _add_stage_bands(ax, q_ep_nums, q_stages_arr)
+        _add_stage_bands(ax, q_ep_nums, q_stages_arr, q_branch_points)
         valid_td = td_errors_arr > 0
         if np.any(valid_td):
             ax.plot(q_ep_nums[valid_td], td_errors_arr[valid_td], alpha=0.12, color='#484f58', linewidth=0.5)
@@ -1890,14 +2131,14 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
                 ax.plot(q_ep_nums[valid_td][q_sma_w-1:], sma_td, color='#d29922', linewidth=2, label=f'SMA-{q_sma_w}')
             ax.set_yscale('log')
         ax.set_title('TD-Error (log scale)', fontweight='bold')
-        ax.set_xlabel('Episode')
+        ax.set_xlabel('Episode (global)')
         ax.set_ylabel('TD Error')
         ax.legend(fontsize=8)
         ax.grid(True)
 
         # 13d. Gradient Norm over time
         ax = fig.add_subplot(gs[1, 1])
-        _add_stage_bands(ax, q_ep_nums, q_stages_arr)
+        _add_stage_bands(ax, q_ep_nums, q_stages_arr, q_branch_points)
         valid_gn = grad_norms_arr > 0
         if np.any(valid_gn):
             ax.plot(q_ep_nums[valid_gn], grad_norms_arr[valid_gn], alpha=0.12, color='#484f58', linewidth=0.5)
@@ -1907,7 +2148,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             # Clip line
             ax.axhline(1.0, color='#ffaa00', linestyle='--', alpha=0.6, label='grad_clip=1.0')
         ax.set_title('Gradient Norm (pre-clip)', fontweight='bold')
-        ax.set_xlabel('Episode')
+        ax.set_xlabel('Episode (global)')
         ax.set_ylabel('Grad Norm')
         ax.legend(fontsize=8)
         ax.grid(True)
@@ -1957,7 +2198,8 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     # Prefer csv_episodes for action data (log parser doesn't extract these fields)
     act_src = csv_episodes if csv_episodes and any(e.act_straight != 0 for e in csv_episodes) else episodes
-    act_ep_nums = np.array([e.number for e in act_src])
+    act_ep_nums = np.array([e.global_idx for e in act_src])
+    act_branch_points = get_branch_points(act_src)
     act_rewards = np.array([e.reward for e in act_src])
     act_stages_arr = np.array([e.stage for e in act_src])
     act_N = len(act_src)
@@ -1982,7 +2224,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
         # 14a. Stacked area: action distribution over time
         ax = fig.add_subplot(gs[0, :2])
-        _add_stage_bands(ax, act_ep_nums, act_stages_arr)
+        _add_stage_bands(ax, act_ep_nums, act_stages_arr, act_branch_points)
         roll_w = max(20, act_N // 30)
         if act_N > roll_w:
             x_pts = []
@@ -1999,7 +2241,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
                 bottom += vals
             ax.set_ylim(0, 100)
         ax.set_title('Action Distribution Over Time (Stacked)', fontweight='bold')
-        ax.set_xlabel('Episode')
+        ax.set_xlabel('Episode (global)')
         ax.set_ylabel('% of Actions')
         ax.legend(fontsize=8, loc='upper right', ncol=3)
         ax.grid(True)
@@ -2041,7 +2283,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             if len(probs) > 0:
                 entropy_arr[i] = -np.sum(probs * np.log2(probs + 1e-10))
         max_entropy = np.log2(6)  # 6 action categories
-        _add_stage_bands(ax, act_ep_nums, act_stages_arr)
+        _add_stage_bands(ax, act_ep_nums, act_stages_arr, act_branch_points)
         ax.plot(act_ep_nums, entropy_arr, alpha=0.12, color='#484f58', linewidth=0.5)
         if act_N > act_sma_w:
             sma_ent = moving_average(entropy_arr, act_sma_w)
@@ -2049,7 +2291,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         ax.axhline(max_entropy, color='#3fb950', linestyle='--', alpha=0.5, label=f'Max entropy ({max_entropy:.2f})')
         ax.axhline(max_entropy * 0.5, color='#f85149', linestyle=':', alpha=0.5, label='50% diversity')
         ax.set_title('Action Entropy (Policy Diversity)', fontweight='bold')
-        ax.set_xlabel('Episode')
+        ax.set_xlabel('Episode (global)')
         ax.set_ylabel('Entropy (bits)')
         ax.legend(fontsize=8)
         ax.grid(True)
@@ -2081,7 +2323,8 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     csv_agents_arr = np.array([e.num_agents for e in csv_src])
     has_agents_data = np.any(csv_agents_arr > 0)
     if has_agents_data:
-        csv_ep_nums = np.array([e.number for e in csv_src])
+        csv_ep_nums = np.array([e.global_idx for e in csv_src])
+        csv_branch_points = get_branch_points(csv_src)
         csv_rewards = np.array([e.reward for e in csv_src])
         csv_stages = np.array([e.stage for e in csv_src])
         csv_N = len(csv_src)
@@ -2093,7 +2336,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
         # 15a. Number of agents over time (step plot)
         ax = axes[0]
-        _add_stage_bands(ax, csv_ep_nums, csv_stages)
+        _add_stage_bands(ax, csv_ep_nums, csv_stages, csv_branch_points)
         ax.step(csv_ep_nums, csv_agents_arr, where='post', color='#58a6ff', linewidth=2, label='Active Agents')
         ax.fill_between(csv_ep_nums, 0, csv_agents_arr, step='post', alpha=0.15, color='#58a6ff')
         ax.set_ylabel('Active Agents')
@@ -2104,7 +2347,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
         # 15b. Reward per agent (efficiency)
         ax = axes[1]
-        _add_stage_bands(ax, csv_ep_nums, csv_stages)
+        _add_stage_bands(ax, csv_ep_nums, csv_stages, csv_branch_points)
         safe_agents = np.maximum(csv_agents_arr, 1)
         rw_per_agent = csv_rewards / safe_agents
         ax.plot(csv_ep_nums, rw_per_agent, alpha=0.12, color='#484f58', linewidth=0.5)
@@ -2112,7 +2355,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             sma_rpa = moving_average(rw_per_agent, csv_sma_w)
             ax.plot(csv_ep_nums[csv_sma_w-1:], sma_rpa, color='#3fb950', linewidth=2, label=f'Reward/Agent SMA-{csv_sma_w}')
         ax.set_title('Reward per Agent (Efficiency)', fontweight='bold')
-        ax.set_xlabel('Episode')
+        ax.set_xlabel('Episode (global)')
         ax.set_ylabel('Reward / Agent')
         ax.axhline(0, color='#484f58', linestyle=':', linewidth=0.8)
         ax.legend(fontsize=8)
@@ -2120,7 +2363,88 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
         _save(fig, 'chart_15_auto_scaling.png')
 
-    print(c(f'\n  Total: up to 15 chart files generated.', C.GRN, C.B))
+    # ──────────────────────────────────────────────────
+    # CHART 16: MAX STEPS ANALYSIS
+    # ──────────────────────────────────────────────────
+    fig, axes = plt.subplots(2, 1, figsize=(18, 10), gridspec_kw={'height_ratios': [3, 1]})
+    fig.suptitle('MAX STEPS ANALYSIS', fontsize=16, fontweight='bold', y=0.98)
+    fig.subplots_adjust(hspace=0.35)
+
+    # Max steps limits per stage (from styles.py)
+    stage_max_steps = {1: 300, 2: 500, 3: 1000, 4: 2000}
+
+    # 16a. Steps per episode with max_steps ceiling lines
+    ax = axes[0]
+    _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
+
+    # Plot all steps
+    ax.plot(ep_nums, steps, alpha=0.15, color='#484f58', linewidth=0.5)
+    if N > sma_w:
+        sma_steps = moving_average(steps, sma_w)
+        ax.plot(ep_nums[sma_w-1:], sma_steps, color='#58a6ff', linewidth=2, label=f'Steps SMA-{sma_w}')
+
+    # Draw max_steps ceiling per stage segment
+    unique_stages_sorted = sorted(set(stages_arr))
+    for s in unique_stages_sorted:
+        s_mask = stages_arr == s
+        if not np.any(s_mask):
+            continue
+        s_ep_nums = ep_nums[s_mask]
+        limit = stage_max_steps.get(s, 99999)
+        if limit < 10000:
+            ax.hlines(limit, s_ep_nums[0], s_ep_nums[-1],
+                      colors=STAGE_COLORS_HEX.get(s, '#888'), linestyles='--',
+                      linewidth=2, alpha=0.8, label=f'S{s} limit={limit}')
+
+    # Mark MaxSteps episodes
+    maxstep_mask = causes_arr == 'MaxSteps'
+    if np.any(maxstep_mask):
+        ax.scatter(ep_nums[maxstep_mask], steps[maxstep_mask],
+                   color='#f0e68c', s=40, zorder=5, marker='D',
+                   edgecolors='#b8860b', linewidths=0.8, label='MaxSteps hit')
+
+    ax.set_title('Steps per Episode vs Max Steps Limit', fontweight='bold')
+    _setup_ep_axis(ax, ep_nums, orig_ep_nums)
+    ax.set_ylabel('Steps')
+    ax.legend(fontsize=8, loc='upper left')
+    ax.grid(True)
+
+    # 16b. MaxSteps hit rate per stage (bar chart)
+    ax = axes[1]
+    bar_stages = []
+    bar_rates = []
+    bar_counts = []
+    bar_totals = []
+    bar_colors = []
+    for s in unique_stages_sorted:
+        s_mask = stages_arr == s
+        n_total = np.sum(s_mask)
+        n_maxsteps = np.sum((causes_arr == 'MaxSteps') & s_mask)
+        bar_stages.append(f'S{s}: {STAGE_NAMES.get(s, "?")}')
+        bar_rates.append(n_maxsteps / n_total * 100 if n_total > 0 else 0)
+        bar_counts.append(n_maxsteps)
+        bar_totals.append(n_total)
+        bar_colors.append(STAGE_COLORS_HEX.get(s, '#888'))
+
+    bars = ax.bar(bar_stages, bar_rates, color=bar_colors, alpha=0.8, edgecolor='#30363d')
+    for bar, rate, cnt, total in zip(bars, bar_rates, bar_counts, bar_totals):
+        if cnt > 0:
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
+                    f'{cnt}/{total}\n({rate:.1f}%)', ha='center', va='bottom', fontsize=9,
+                    color='#c9d1d9', fontweight='bold')
+        else:
+            ax.text(bar.get_x() + bar.get_width() / 2, 0.3,
+                    f'0/{total}', ha='center', va='bottom', fontsize=9,
+                    color='#8b949e')
+
+    ax.set_title('MaxSteps Hit Rate by Stage', fontweight='bold')
+    ax.set_ylabel('MaxSteps %')
+    ax.set_ylim(0, max(max(bar_rates) * 1.3, 5) if bar_rates else 5)
+    ax.grid(True, axis='y')
+
+    _save(fig, 'chart_16_maxsteps_analysis.png')
+
+    print(c(f'\n  Total: up to 16 chart files generated.', C.GRN, C.B))
 
 
 # ═══════════════════════════════════════════════════════
@@ -2300,10 +2624,12 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('chart_09_reward_distributions.png', 'Reward Distributions'),
             ('chart_10_learning_detection.png', 'Learning Detection'),
             ('chart_11_goal_gauges.png', 'Goal Progress'),
+            ('chart_11b_goal_over_time.png', 'Goal Progress Over Time'),
             ('chart_12_hyperparameter_analysis.png', 'Hyperparameter Analysis'),
             ('chart_13_qvalue_gradients.png', 'Q-Value & Gradient Analysis'),
             ('chart_14_action_distribution.png', 'Action Distribution Analysis'),
             ('chart_15_auto_scaling.png', 'Active Agents Over Time'),
+            ('chart_16_maxsteps_analysis.png', 'MaxSteps Analysis'),
         ]
         for fname, title in chart_files:
             chart_path = os.path.join(chart_dir, fname)
@@ -2359,27 +2685,48 @@ def main():
     uids = discover_uids(csv_episodes) if csv_episodes else []
     if uids and any(u[0] != 'unknown' for u in uids):
         print()
-        print(c('  Available UIDs:', C.CYN, C.B))
-        for uid, count, first_ep, last_ep in uids:
-            print(f'    {c(uid, C.WHT)}  episodes {first_ep}-{last_ep} ({count} eps)')
+        _print_uid_tree(uids)
 
         if args.uid:
             matched = [u for u in uids if args.uid in u[0]]
             if matched:
                 target_uid = matched[0][0]
-                csv_episodes = [e for e in csv_episodes if e.uid == target_uid]
+                # Include full ancestor chain
+                chain_uids = _get_ancestor_chain(target_uid, csv_episodes)
+                csv_episodes = [e for e in csv_episodes if e.uid in chain_uids]
                 if not episodes or episodes is csv_episodes:
                     episodes = csv_episodes
-                print(c(f'  Filtering: {target_uid} ({len(csv_episodes)} eps)', C.GRN))
+                print(c(f'  Filtering: {target_uid} + {len(chain_uids)-1} ancestors ({len(csv_episodes)} eps)', C.GRN))
             else:
                 print(c(f'  UID "{args.uid}" not found!', C.RED))
                 return
         elif args.latest:
             latest_uid = uids[-1][0]
-            csv_episodes = [e for e in csv_episodes if e.uid == latest_uid]
+            # Include full ancestor chain for latest UID
+            chain_uids = _get_ancestor_chain(latest_uid, csv_episodes)
+            csv_episodes = [e for e in csv_episodes if e.uid in chain_uids]
             if not episodes or episodes[0].uid:
                 episodes = csv_episodes
-            print(c(f'  Latest UID: {latest_uid} ({len(csv_episodes)} eps)', C.GRN))
+            print(c(f'  Latest UID: {latest_uid} + {len(chain_uids)-1} ancestors ({len(csv_episodes)} eps)', C.GRN))
+        else:
+            # No filter: use longest chain as primary, keep all for overlay
+            longest_chain = _find_longest_chain(uids)
+            if len(longest_chain) < len(set(u[0] for u in uids)):
+                print(c(f'  Using longest chain ({len(longest_chain)} UIDs) as primary view', C.CYN))
+            csv_episodes = [e for e in csv_episodes if e.uid in longest_chain]
+            if not episodes or episodes[0].uid:
+                episodes = csv_episodes
+
+    # Build lineage chain — assigns global_idx to all episodes
+    if csv_episodes:
+        csv_episodes = build_lineage_chain(csv_episodes)
+    if episodes and episodes is not csv_episodes:
+        episodes = build_lineage_chain(episodes)
+    elif episodes is csv_episodes:
+        pass  # already built
+    else:
+        for i, ep in enumerate(episodes):
+            ep.global_idx = i
 
     print(c('  Analyzing...', C.CYN))
     verdict = assess_learning(episodes, csv_episodes, sessions)

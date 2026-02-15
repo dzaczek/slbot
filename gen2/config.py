@@ -27,11 +27,11 @@ class OptimizationConfig:
     weight_decay: float = 1e-5
     batch_size: int = 64
     gamma: float = 0.8             # Starting gamma (Stage 1), overridden per-stage
-    grad_clip: float = 1.0
+    grad_clip: float = 0.5
     eps_start: float = 1.0
     eps_end: float = 0.08          # Less randomness at convergence
     eps_decay: int = 8000          # Calibrated for steps_done += 1 per batch
-    target_update_freq: int = 500  # More frequent target updates
+    target_update_freq: int = 1000  # Slower target updates for stability
     max_episodes: int = 5000000
     checkpoint_every: int = 50
     reward_scale: float = 1.0
