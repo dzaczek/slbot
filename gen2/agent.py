@@ -133,6 +133,15 @@ class DDQNAgent:
         Note: steps_done is incremented externally by the trainer (once per batch step)
         to avoid N× decay with N parallel agents.
         """
+        # --- REFLEX LAYER ---
+        # Hardcoded survival reflexes that override the network when danger is imminent.
+        # The network still learns from the outcomes — reflexes just keep the bot alive
+        # long enough to generate useful training data.
+        if isinstance(state, dict) and 'sectors' in state:
+            reflex_action = self._check_reflexes(state['sectors'])
+            if reflex_action is not None:
+                return reflex_action
+
         eps_threshold = self.get_epsilon()
 
         if random.random() > eps_threshold:
@@ -148,6 +157,55 @@ class DDQNAgent:
                 return q_values.max(1)[1].item()
         else:
             return random.randrange(10)
+
+    def _check_reflexes(self, sectors):
+        """
+        Emergency reflexes based on sector vector. Returns action or None.
+
+        Sector layout:
+          [0..23]  food_score per sector (0=ahead, clockwise 15° each)
+          [24..47] obstacle_score per sector (1.0=touching, 0.0=clear)
+          [48..71] obstacle_type per sector (-1=none, 0=body/wall, 1=head)
+          [72]     wall_dist_norm (dist_to_wall / 1500)
+
+        Actions: 0=straight, 1/2=gentle L/R, 3/4=medium L/R,
+                 5/6=sharp L/R, 7/8=uturn L/R, 9=boost
+        """
+        obstacle = sectors[24:48]   # obstacle_score per sector
+        obs_type = sectors[48:72]   # obstacle_type per sector
+        wall_norm = sectors[72]     # wall distance normalized
+
+        # --- REFLEX 1: Obstacle directly ahead (sectors 0, 23 = front ±15°) ---
+        # If something is close in front, turn away hard
+        front_danger = max(obstacle[0], obstacle[23], obstacle[1])
+        if front_danger > 0.6:  # >0.6 means within ~600 units (40% of 1500 scope)
+            # Pick the safer side — check left vs right obstacle density
+            # Left = sectors 20-23 (−60° to 0°), Right = sectors 1-4 (0° to +60°)
+            left_danger = sum(obstacle[20:24]) / 4.0
+            right_danger = sum(obstacle[1:5]) / 4.0
+
+            if front_danger > 0.85:  # Very close — U-turn
+                return 7 if left_danger <= right_danger else 8  # U-turn toward safer side
+            else:  # Medium close — sharp turn
+                return 5 if left_danger <= right_danger else 6  # Sharp turn toward safer side
+
+        # --- REFLEX 2: Wall proximity emergency ---
+        # wall_norm < 0.2 means within 300 units of wall (out of 1500 scope)
+        if wall_norm < 0.15:
+            # Turn toward center — check which side has more open space
+            left_obs = sum(obstacle[18:24]) / 6.0
+            right_obs = sum(obstacle[0:6]) / 6.0
+            return 7 if left_obs <= right_obs else 8  # U-turn away from wall
+
+        # --- REFLEX 3: Enemy head approaching from front ---
+        # Enemy heads (type=1) in front sectors are the most dangerous
+        for s_i in [0, 23, 1, 22]:  # front ±30°
+            if obs_type[s_i] == 1 and obstacle[s_i] > 0.4:  # head within ~900 units
+                left_danger = sum(obstacle[20:24]) / 4.0
+                right_danger = sum(obstacle[1:5]) / 4.0
+                return 5 if left_danger <= right_danger else 6  # Sharp turn away
+
+        return None  # No reflex triggered — let the network decide
 
     def remember(self, state, action, reward, next_state, done, gamma=None):
         """

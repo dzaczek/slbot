@@ -577,6 +577,21 @@ class SlitherEnv:
         mx, my = my_snake.get('x', 0), my_snake.get('y', 0)
         current_len = my_snake.get('len', 0)
 
+        # DEBUG: Log angle for first 10 steps AND every 50 steps
+        if self.steps_in_episode <= 10 or self.steps_in_episode % 50 == 0:
+            import math as _m
+            wang = my_snake.get('wang', 'N/A')
+            eang = my_snake.get('eang', 'N/A')
+            wang_s = f"{wang:.4f}" if isinstance(wang, (int, float)) else str(wang)
+            eang_s = f"{eang:.4f}" if isinstance(eang, (int, float)) else str(eang)
+            msg = (f"  [STEER] step={self.steps_in_episode} ang={current_ang:.4f} ({_m.degrees(current_ang):.1f} deg) "
+                   f"wang={wang_s} eang={eang_s} "
+                   f"act={action} chg={angle_change:+.2f} target={current_ang+angle_change:.4f} "
+                   f"pos=({mx:.0f},{my:.0f})")
+            print(msg, flush=True)
+            with open("logs/steer_debug.log", "a") as _f:
+                _f.write(msg + "\n")
+
         # Save pre-action data for death detection
         pre_action_data = data
 

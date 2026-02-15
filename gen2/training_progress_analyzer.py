@@ -2444,7 +2444,112 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
     _save(fig, 'chart_16_maxsteps_analysis.png')
 
-    print(c(f'\n  Total: up to 16 chart files generated.', C.GRN, C.B))
+    # ──────────────────────────────────────────────────
+    # CHART 17: SURVIVAL PERCENTILES (per 100-episode windows)
+    # ──────────────────────────────────────────────────
+    SURV_WINDOW = 100
+    if N >= SURV_WINDOW:
+        n_windows = N // SURV_WINDOW
+        win_x = []       # window center episode
+        win_avg = []
+        win_p25 = []
+        win_p50 = []
+        win_p75 = []
+        win_p90 = []
+        win_best = []
+
+        for w_i in range(n_windows):
+            start_i = w_i * SURV_WINDOW
+            end_i = start_i + SURV_WINDOW
+            w_steps = np.sort(steps[start_i:end_i])
+            w_ep = ep_nums[start_i + SURV_WINDOW // 2]  # center of window
+            win_x.append(w_ep)
+            win_avg.append(np.mean(w_steps))
+            win_p25.append(np.percentile(w_steps, 25))
+            win_p50.append(np.percentile(w_steps, 50))
+            win_p75.append(np.percentile(w_steps, 75))
+            win_p90.append(np.percentile(w_steps, 90))
+            win_best.append(np.max(w_steps))
+
+        fig, axes = plt.subplots(2, 1, figsize=(18, 12), gridspec_kw={'height_ratios': [2, 1]})
+        fig.suptitle(f'SURVIVAL PERCENTILES (per {SURV_WINDOW}-episode windows)', fontsize=16, fontweight='bold', y=0.98)
+        fig.subplots_adjust(hspace=0.3)
+
+        # 17a. Main view — clipped Y axis for detail
+        ax = axes[0]
+        _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
+
+        # Fill between p25-p75
+        ax.fill_between(win_x, win_p25, win_p75, alpha=0.15, color='#58a6ff', label='_nolegend_')
+        # Fill between p75-p90
+        ax.fill_between(win_x, win_p75, win_p90, alpha=0.08, color='#bc8cff', label='_nolegend_')
+
+        # Lines
+        ax.plot(win_x, win_p25, color='#8b949e', linewidth=1.2, marker='v', markersize=3, label='p25')
+        ax.plot(win_x, win_p50, color='#58a6ff', linewidth=2, marker='s', markersize=4, label='Median (p50)')
+        ax.plot(win_x, win_avg, color='#f0883e', linewidth=2.5, marker='o', markersize=5, label='Average', zorder=5)
+        ax.plot(win_x, win_p75, color='#3fb950', linewidth=1.5, marker='^', markersize=4, label='p75')
+        ax.plot(win_x, win_p90, color='#bc8cff', linewidth=1.5, marker='D', markersize=4, label='p90')
+        ax.plot(win_x, win_best, color='#f85149', linewidth=1.5, linestyle='--', marker='*', markersize=6, label='Best (ep)', alpha=0.7)
+
+        # Clip Y to 2x the max p90 for readability
+        y_clip = max(win_p90) * 2.2 if win_p90 else 500
+        y_clip = max(y_clip, 200)  # at least 200
+        ax.set_ylim(0, y_clip)
+        _setup_ep_axis(ax, ep_nums, orig_ep_nums)
+        ax.set_ylabel('Steps Survived')
+        ax.set_title('Detailed View (Y clipped for readability)', fontweight='bold', fontsize=11)
+        ax.legend(fontsize=9, loc='upper left', ncol=3)
+        ax.grid(True, alpha=0.3)
+
+        # Annotate latest values
+        if len(win_x) > 0:
+            last_x = win_x[-1]
+            for val, label, color, va in [
+                (win_avg[-1], f'avg={win_avg[-1]:.0f}', '#f0883e', 'bottom'),
+                (win_p50[-1], f'p50={win_p50[-1]:.0f}', '#58a6ff', 'top'),
+                (win_p90[-1], f'p90={win_p90[-1]:.0f}', '#bc8cff', 'bottom'),
+            ]:
+                ax.annotate(label, xy=(last_x, val), fontsize=8, color=color,
+                            fontweight='bold', ha='left',
+                            xytext=(8, 4 if va == 'bottom' else -4), textcoords='offset points')
+
+        # 17b. Average + Median trend with linear regression
+        ax = axes[1]
+        _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
+
+        ax.plot(win_x, win_avg, color='#f0883e', linewidth=2.5, marker='o', markersize=5, label='Average')
+        ax.plot(win_x, win_p50, color='#58a6ff', linewidth=2, marker='s', markersize=4, label='Median (p50)')
+
+        # Add trend lines per stage
+        for s in sorted(set(stages_arr)):
+            s_mask_win = []
+            s_avg_win = []
+            s_x_win = []
+            for wi in range(len(win_x)):
+                start_i = wi * SURV_WINDOW
+                end_i = start_i + SURV_WINDOW
+                mid_stage = stages_arr[start_i + SURV_WINDOW // 2] if start_i + SURV_WINDOW // 2 < N else stages_arr[-1]
+                if mid_stage == s:
+                    s_x_win.append(win_x[wi])
+                    s_avg_win.append(win_avg[wi])
+            if len(s_x_win) >= 3:
+                z = np.polyfit(range(len(s_x_win)), s_avg_win, 1)
+                trend_y = np.polyval(z, range(len(s_x_win)))
+                col = STAGE_COLORS_HEX.get(s, '#888')
+                ax.plot(s_x_win, trend_y, color=col, linewidth=2, linestyle=':', alpha=0.8,
+                        label=f'S{s} trend ({z[0]:+.2f}/win)')
+
+        _setup_ep_axis(ax, ep_nums, orig_ep_nums)
+        ax.set_ylabel('Steps Survived')
+        ax.set_title('Average & Median with Trend Lines', fontweight='bold', fontsize=11)
+        ax.set_ylim(bottom=0)
+        ax.legend(fontsize=9, loc='upper left', ncol=2)
+        ax.grid(True, alpha=0.3)
+
+        _save(fig, 'chart_17_survival_percentiles.png')
+
+    print(c(f'\n  Total: up to 17 chart files generated.', C.GRN, C.B))
 
 
 # ═══════════════════════════════════════════════════════
@@ -2630,6 +2735,7 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('chart_14_action_distribution.png', 'Action Distribution Analysis'),
             ('chart_15_auto_scaling.png', 'Active Agents Over Time'),
             ('chart_16_maxsteps_analysis.png', 'MaxSteps Analysis'),
+            ('chart_17_survival_percentiles.png', 'Survival Percentiles'),
         ]
         for fname, title in chart_files:
             chart_path = os.path.join(chart_dir, fname)

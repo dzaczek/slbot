@@ -189,20 +189,38 @@ class SlitherBrowser:
         // Disable visual effects
         window.redraw = window.redraw || function(){};
         
-        // Block ALL mouse events (capture phase stops addEventListener listeners too)
-        ['mousemove', 'pointermove', 'touchmove'].forEach(function(evt) {
-            document.addEventListener(evt, function(e) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-            }, true);  // capture phase = fires BEFORE game's listeners
-        });
-        window.onmousemove = null;
-
-        // Bot steering: game reads xm/ym each frame for target angle
-        // We set them from send_action(), this flag confirms bot has control
+        // Bot steering: DIRECT angle override via game loop hook
+        // Problem: game uses closure-scoped xm/ym that we can't access,
+        // and synthetic MouseEvents have isTrusted:false which may be ignored.
+        // Solution: hook into the game's oef() render loop and force the
+        // snake's desired angle (wang) directly every frame.
         window._botSteering = true;
-        if (typeof window.xm === 'undefined') window.xm = window.innerWidth / 2;
-        if (typeof window.ym === 'undefined') window.ym = window.innerHeight / 2;
+        window._botTargetAng = 0;  // target angle in radians
+
+        // Strategy 1: Patch oef() to force wang (wanted angle) every frame
+        // The game stores the snake object and sets snake.wang = atan2(...)
+        // We override it AFTER the game computes it but BEFORE physics step
+        if (window._botSteerInterval) clearInterval(window._botSteerInterval);
+        window._botSteerInterval = setInterval(function() {
+            if (!window._botSteering || !window.slither) return;
+            var s = window.slither;
+            // Force the snake's wanted angle directly
+            if (typeof s.wang !== 'undefined') {
+                s.wang = window._botTargetAng;
+            }
+            // Also try eang (effective/target angle) if it exists
+            if (typeof s.eang !== 'undefined') {
+                s.eang = window._botTargetAng;
+            }
+            // Fallback: set xm/ym too
+            var canvas = document.getElementById('mc') || document.querySelector('canvas');
+            var cx = canvas ? canvas.width/2 : 400;
+            var cy = canvas ? canvas.height/2 : 300;
+            window.xm = cx + Math.cos(window._botTargetAng) * 300;
+            window.ym = cy + Math.sin(window._botTargetAng) * 300;
+            if (typeof window.mx !== 'undefined') window.mx = window.xm;
+            if (typeof window.my !== 'undefined') window.my = window.ym;
+        }, 8);  // 125fps — faster than game loop to guarantee coverage
         
         console.log("SlitherBot: Controls injected.");
         """
@@ -261,7 +279,8 @@ class SlitherBrowser:
                 ang: window.slither.ang, sp: window.slither.sp,
                 sc: window.slither.sc,
                 len: window.slither.pts ? window.slither.pts.length : 0,
-                pts: my_pts
+                pts: my_pts,
+                wang: window.slither.wang, eang: window.slither.eang
             };
 
             var visible_foods = [];
@@ -375,6 +394,13 @@ class SlitherBrowser:
         // Combined: set action + return current state in one call
         window._botActAndRead = function(ang, boost) {
             if (window.slither) {
+                // Set target angle directly — the setInterval loop
+                // forces wang/eang every frame
+                window._botTargetAng = ang;
+                // Also force immediately
+                if (typeof window.slither.wang !== 'undefined') window.slither.wang = ang;
+                if (typeof window.slither.eang !== 'undefined') window.slither.eang = ang;
+                // Fallback: xm/ym
                 var canvas = document.getElementById('mc') || document.querySelector('canvas');
                 var w = canvas ? canvas.width : 800;
                 var h = canvas ? canvas.height : 600;
@@ -954,11 +980,14 @@ class SlitherBrowser:
             var target_x = centerX + Math.cos(ang) * radius;
             var target_y = centerY + Math.sin(ang) * radius;
 
-            // Set mouse target (game reads these each frame)
+            // Set target angle directly for per-frame steering loop
+            window._botTargetAng = ang;
+            // Force immediately on snake object
+            if (window.slither && typeof window.slither.wang !== 'undefined') window.slither.wang = ang;
+            if (window.slither && typeof window.slither.eang !== 'undefined') window.slither.eang = ang;
+            // Fallback: set xm/ym
             window.xm = target_x;
             window.ym = target_y;
-
-            // Also set via game's internal mouse tracking if available
             if (typeof window.mx !== 'undefined') window.mx = target_x;
             if (typeof window.my !== 'undefined') window.my = target_y;
 
