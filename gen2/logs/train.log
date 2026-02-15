@@ -5146,3 +5146,348 @@
 2026-02-15 01:03:07,054 - INFO - Ep 3491 | S4:MASS_MANAGEMENT | Rw: 747.62 | St: 198 | Fd: 108 (0.545/st) | Eps: 0.247 | L: 32.9784 | Q: 63.41/110.65 | SnakeCollision | Pos:(41457,37726) Wall:3695 Enemy:262
 2026-02-15 01:03:12,627 - INFO - Ep 3492 | S4:MASS_MANAGEMENT | Rw: 86.27 | St: 13 | Fd: 20 (1.538/st) | Eps: 0.246 | L: 33.4568 | Q: 71.42/107.17 | SnakeCollision | Pos:(36608,33212) Wall:9885 Enemy:38
 2026-02-15 01:03:18,130 - INFO - Ep 3493 | S4:MASS_MANAGEMENT | Rw: 95.92 | St: 18 | Fd: 21 (1.167/st) | Eps: 0.246 | L: 47.7606 | Q: 63.68/108.61 | SnakeCollision | Pos:(41539,28474) Wall:4126 Enemy:80
+2026-02-15 07:52:55,828 - INFO - Configuration:
+2026-02-15 07:52:55,829 - INFO -   Style: Aggressive (Hunter)
+2026-02-15 07:52:55,829 - INFO -   Mode: static
+2026-02-15 07:52:55,829 - INFO -   Agents: AUTO (start=1, max=8)
+2026-02-15 07:52:55,829 - INFO -   Frame Stack: 4
+2026-02-15 07:52:55,829 - INFO -   Resolution: (64, 64)
+2026-02-15 07:52:55,829 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-15 07:52:55,829 - INFO -   LR: 0.0001
+2026-02-15 07:52:55,829 - INFO -   PER: True
+2026-02-15 07:52:55,829 - INFO -   Backend: selenium
+2026-02-15 07:52:55,829 - INFO - Training Run UID: 20260215-f510ca75
+2026-02-15 07:52:56,645 - INFO -   Parent UID: 20260214-82bf63f0
+2026-02-15 07:52:56,645 - INFO - Resumed from episode 3450
+2026-02-15 07:53:02,297 - INFO -   Curriculum Stage: 1 (HUNTER)
+2026-02-15 07:53:02,297 - INFO -   Max Steps: 99999
+2026-02-15 07:53:21,284 - INFO - [AUTO-SCALE] Added agent #2 (CPU:36% RAM:38510MB Step:54ms)
+2026-02-15 07:53:32,828 - INFO - Ep 3451 | S1:HUNTER | Rw: 725.59 | St: 138 | Fd: 37 (0.268/st) | Eps: 0.264 | L: 83.3704 | Q: 52.25/76.61 | SnakeCollision | Pos:(41475,37700) Wall:3693 Enemy:1294
+2026-02-15 07:53:34,915 - INFO - >> Target Network Updated
+2026-02-15 07:53:51,540 - INFO - [AUTO-SCALE] Added agent #3 (CPU:32% RAM:37581MB Step:57ms)
+2026-02-15 07:54:05,153 - INFO - Ep 3452 | S1:HUNTER | Rw: 692.22 | St: 91 | Fd: 36 (0.396/st) | Eps: 0.260 | L: 46.4610 | Q: 35.69/70.30 | SnakeCollision | Pos:(40750,36951) Wall:4690
+2026-02-15 07:54:07,421 - INFO - Ep 3453 | S1:HUNTER | Rw: 1199.47 | St: 180 | Fd: 62 (0.344/st) | Eps: 0.260 | L: 42.5109 | Q: 35.40/62.44 | SnakeCollision | Pos:(42146,36559) Wall:3597
+2026-02-15 07:54:07,422 - INFO - Ep 3454 | S1:HUNTER | Rw: 1214.85 | St: 248 | Fd: 62 (0.250/st) | Eps: 0.260 | L: 42.5109 | Q: 35.40/62.44 | SnakeCollision | Pos:(41564,31294) Wall:4895 Enemy:415
+2026-02-15 07:54:15,381 - INFO - Ep 3455 | S1:HUNTER | Rw: 431.19 | St: 31 | Fd: 22 (0.710/st) | Eps: 0.259 | L: 49.3953 | Q: 37.97/68.26 | SnakeCollision | Pos:(38431,33643) Wall:8015 Enemy:61
+2026-02-15 07:54:21,459 - INFO - Ep 3456 | S1:HUNTER | Rw: 451.37 | St: 46 | Fd: 23 (0.500/st) | Eps: 0.259 | L: 22.2133 | Q: 38.60/69.18 | SnakeCollision | Pos:(28733,32024) Wall:10143 Enemy:41
+2026-02-15 07:54:29,154 - INFO - Ep 3457 | S1:HUNTER | Rw: 450.93 | St: 64 | Fd: 23 (0.359/st) | Eps: 0.258 | L: 47.1441 | Q: 35.09/71.21 | SnakeCollision | Pos:(31145,31995) Wall:12486 Enemy:52
+2026-02-15 07:54:50,025 - INFO - Ep 3458 | S1:HUNTER | Rw: 1014.74 | St: 162 | Fd: 51 (0.315/st) | Eps: 0.255 | L: 13.0812 | Q: 38.82/67.03 | SnakeCollision | Pos:(28122,33219) Wall:9518 Enemy:38
+2026-02-15 07:55:01,385 - INFO - [AUTO-SCALE] Added agent #4 (CPU:49% RAM:37285MB Step:146ms)
+2026-02-15 07:55:05,202 - INFO - Ep 3459 | S1:HUNTER | Rw: 1346.28 | St: 181 | Fd: 68 (0.376/st) | Eps: 0.255 | L: 15.8357 | Q: 35.91/74.21 | SnakeCollision | Pos:(39683,33705) Wall:6770 Enemy:1841
+2026-02-15 07:55:05,203 - INFO - Ep 3460 | S1:HUNTER | Rw: 1142.79 | St: 197 | Fd: 59 (0.299/st) | Eps: 0.255 | L: 15.8357 | Q: 35.91/74.21 | SnakeCollision | Pos:(41117,35834) Wall:4822 Enemy:705
+2026-02-15 07:55:05,203 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 10, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 07:55:07,610 - INFO - Ep 3461 | S1:HUNTER | Rw: 410.55 | St: 2 | Fd: 21 (10.500/st) | Eps: 0.255 | L: 24.8981 | Q: 35.26/60.60 | SnakeCollision | Pos:(28575,37300) Wall:7803 Enemy:89
+2026-02-15 07:55:09,923 - INFO - Ep 3462 | S1:HUNTER | Rw: 168.48 | St: 3 | Fd: 9 (3.000/st) | Eps: 0.255 | L: 43.2241 | Q: 34.74/60.67 | SnakeCollision | Pos:(35982,35182) Wall:9671 Enemy:34
+2026-02-15 07:55:31,681 - INFO - [AUTO-SCALE] Added agent #5 (CPU:55% RAM:37664MB Step:61ms)
+2026-02-15 07:55:33,957 - INFO - Ep 3463 | S1:HUNTER | Rw: 775.62 | St: 96 | Fd: 39 (0.406/st) | Eps: 0.252 | L: 5.5636 | Q: 37.05/64.52 | SnakeCollision | Pos:(40482,37087) Wall:4859 Enemy:1594
+2026-02-15 07:55:33,958 - INFO - Ep 3464 | S1:HUNTER | Rw: 552.77 | St: 97 | Fd: 28 (0.289/st) | Eps: 0.252 | L: 5.5636 | Q: 37.05/64.52 | SnakeCollision | Pos:(32531,34710) Wall:11837 Enemy:479
+2026-02-15 07:55:33,958 - INFO - Ep 3465 | S1:HUNTER | Rw: 648.14 | St: 95 | Fd: 33 (0.347/st) | Eps: 0.252 | L: 5.5636 | Q: 37.05/64.52 | SnakeCollision | Pos:(40818,32159) Wall:5719 Enemy:501
+2026-02-15 07:55:38,815 - INFO - Ep 3466 | S1:HUNTER | Rw: 168.11 | St: 3 | Fd: 9 (3.000/st) | Eps: 0.252 | L: 24.0394 | Q: 38.51/68.23 | SnakeCollision | Pos:(28547,35700) Wall:8902 Enemy:123
+2026-02-15 07:55:47,356 - INFO - Ep 3467 | S1:HUNTER | Rw: 948.11 | St: 137 | Fd: 49 (0.358/st) | Eps: 0.252 | L: 19.0720 | Q: 34.50/62.15 | SnakeCollision | Pos:(40916,36718) Wall:4650
+2026-02-15 07:55:53,627 - INFO - Ep 3468 | S1:HUNTER | Rw: 532.08 | St: 50 | Fd: 27 (0.540/st) | Eps: 0.251 | L: 17.5176 | Q: 34.28/63.73 | SnakeCollision | Pos:(30324,31944) Wall:11690 Enemy:40
+2026-02-15 07:55:55,964 - INFO - Ep 3469 | S1:HUNTER | Rw: 538.33 | St: 51 | Fd: 28 (0.549/st) | Eps: 0.251 | L: 23.4135 | Q: 34.75/63.71 | SnakeCollision | Pos:(36407,40762) Wall:4924 Enemy:1221
+2026-02-15 07:55:55,965 - INFO - Ep 3470 | S1:HUNTER | Rw: 450.36 | St: 49 | Fd: 23 (0.469/st) | Eps: 0.251 | L: 23.4135 | Q: 34.75/63.71 | SnakeCollision | Pos:(31431,26936) Wall:8272 Enemy:113
+2026-02-15 07:55:55,965 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 20, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 07:55:56,048 - INFO -   >> New Best Avg Reward: 693.10. Saved backup: best_model_20260215-f510ca75_ep3470_rw693.pth
+2026-02-15 07:55:59,999 - INFO - Ep 3471 | S1:HUNTER | Rw: 426.14 | St: 12 | Fd: 22 (1.833/st) | Eps: 0.251 | L: 15.4004 | Q: 33.69/79.13 | SnakeCollision | Pos:(30451,34579) Wall:11077 Enemy:200
+2026-02-15 07:56:02,302 - INFO - Ep 3472 | S1:HUNTER | Rw: 636.48 | St: 53 | Fd: 32 (0.604/st) | Eps: 0.251 | L: 20.4863 | Q: 34.30/59.75 | SnakeCollision | Pos:(39790,39540) Wall:3933
+2026-02-15 07:56:06,634 - INFO - Ep 3473 | S1:HUNTER | Rw: 347.64 | St: 3 | Fd: 18 (6.000/st) | Eps: 0.251 | L: 30.9250 | Q: 32.25/68.65 | SnakeCollision | Pos:(37920,27404) Wall:6559 Enemy:414
+2026-02-15 07:56:09,868 - INFO - Ep 3474 | S1:HUNTER | Rw: 211.16 | St: 3 | Fd: 11 (3.667/st) | Eps: 0.251 | L: 23.9898 | Q: 35.50/72.02 | SnakeCollision | Pos:(33534,31711) Wall:12703 Enemy:554
+2026-02-15 07:56:12,323 - INFO - Ep 3475 | S1:HUNTER | Rw: 367.98 | St: 3 | Fd: 19 (6.333/st) | Eps: 0.251 | L: 27.0724 | Q: 34.45/64.75 | SnakeCollision | Pos:(31287,37354) Wall:9029 Enemy:127
+2026-02-15 07:56:12,874 - INFO - [AUTO-SCALE] Removed agent -> 4 (CPU:56% RAM:37325MB Step:600ms)
+2026-02-15 07:56:17,566 - INFO - Ep 3476 | S1:HUNTER | Rw: 771.13 | St: 8 | Fd: 39 (4.875/st) | Eps: 0.251 | L: 19.1530 | Q: 34.15/61.23 | SnakeCollision | Pos:(30782,31558) Wall:11969 Enemy:60
+2026-02-15 07:56:26,375 - INFO - Ep 3477 | S1:HUNTER | Rw: 560.14 | St: 46 | Fd: 29 (0.630/st) | Eps: 0.250 | L: 12.5634 | Q: 34.64/61.89 | SnakeCollision | Pos:(41396,36007) Wall:4499
+2026-02-15 07:56:29,151 - INFO - Ep 3478 | S1:HUNTER | Rw: 691.26 | St: 43 | Fd: 35 (0.814/st) | Eps: 0.250 | L: 9.6771 | Q: 38.52/74.56 | SnakeCollision | Pos:(34731,34494) Wall:11075 Enemy:466
+2026-02-15 07:56:29,650 - INFO - [AUTO-SCALE] Removed agent -> 3 (CPU:44% RAM:37750MB Step:735ms)
+2026-02-15 07:56:38,916 - INFO - Ep 3479 | S1:HUNTER | Rw: 909.90 | St: 65 | Fd: 46 (0.708/st) | Eps: 0.250 | L: 29.7512 | Q: 33.29/62.81 | SnakeCollision | Pos:(36583,34857) Wall:9350 Enemy:53
+2026-02-15 07:56:41,333 - INFO - Ep 3480 | S1:HUNTER | Rw: 413.41 | St: 24 | Fd: 21 (0.875/st) | Eps: 0.250 | L: 14.2163 | Q: 34.57/79.05 | SnakeCollision | Pos:(30377,28578) Wall:9469 Enemy:276
+2026-02-15 07:56:41,333 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 30, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 07:56:56,976 - INFO - Ep 3481 | S1:HUNTER | Rw: 1132.69 | St: 179 | Fd: 59 (0.330/st) | Eps: 0.247 | L: 4.6674 | Q: 33.96/59.86 | SnakeCollision | Pos:(41192,29028) Wall:4665
+2026-02-15 07:57:10,581 - INFO - [AUTO-SCALE] Added agent #4 (CPU:42% RAM:38207MB Step:143ms)
+2026-02-15 07:57:12,850 - INFO - Ep 3482 | S1:HUNTER | Rw: 894.22 | St: 141 | Fd: 45 (0.319/st) | Eps: 0.247 | L: 5.4536 | Q: 38.31/74.14 | SnakeCollision | Pos:(35569,26337) Wall:7089 Enemy:555
+2026-02-15 07:57:12,851 - INFO - Ep 3483 | S1:HUNTER | Rw: 218.26 | St: 25 | Fd: 11 (0.440/st) | Eps: 0.247 | L: 5.4536 | Q: 38.31/74.14 | SnakeCollision | Pos:(32679,38176) Wall:8369 Enemy:760
+2026-02-15 07:57:12,851 - INFO - Ep 3484 | S1:HUNTER | Rw: 680.10 | St: 140 | Fd: 35 (0.250/st) | Eps: 0.247 | L: 5.4536 | Q: 38.31/74.14 | SnakeCollision | Pos:(37314,39534)
+2026-02-15 07:57:41,297 - INFO - [AUTO-SCALE] Added agent #5 (CPU:38% RAM:37621MB Step:127ms)
+2026-02-15 07:57:44,931 - INFO - Ep 3485 | S1:HUNTER | Rw: 699.34 | St: 116 | Fd: 35 (0.302/st) | Eps: 0.244 | L: 18.8166 | Q: 34.86/72.59 | SnakeCollision | Pos:(28385,31698) Wall:9745 Enemy:293
+2026-02-15 07:57:44,932 - INFO - Ep 3486 | S1:HUNTER | Rw: 680.87 | St: 116 | Fd: 36 (0.310/st) | Eps: 0.244 | L: 18.8166 | Q: 34.86/72.59 | SnakeCollision | Pos:(34448,40926) Wall:5409 Enemy:945
+2026-02-15 07:57:44,932 - INFO - Ep 3487 | S1:HUNTER | Rw: 771.46 | St: 116 | Fd: 39 (0.336/st) | Eps: 0.244 | L: 18.8166 | Q: 34.86/72.59 | SnakeCollision | Pos:(40592,35346) Wall:5482 Enemy:432
+2026-02-15 07:57:44,933 - INFO - Ep 3488 | S1:HUNTER | Rw: 592.57 | St: 117 | Fd: 30 (0.256/st) | Eps: 0.244 | L: 18.8166 | Q: 34.86/72.59 | SnakeCollision | Pos:(33104,34742) Wall:11735 Enemy:354
+2026-02-15 07:57:48,291 - INFO - Ep 3489 | S1:HUNTER | Rw: 10.26 | St: 2 | Fd: 1 (0.500/st) | Eps: 0.244 | L: 17.4457 | Q: 34.42/65.20 | SnakeCollision | Pos:(31446,37992) Wall:8444 Enemy:866
+2026-02-15 07:57:57,906 - INFO - Ep 3490 | S1:HUNTER | Rw: 428.57 | St: 21 | Fd: 22 (1.048/st) | Eps: 0.244 | L: 4.3811 | Q: 34.03/71.29 | SnakeCollision | Pos:(35140,34314) Wall:10862 Enemy:171
+2026-02-15 07:57:57,906 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 40, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 07:58:05,990 - INFO - Ep 3491 | S1:HUNTER | Rw: 526.24 | St: 41 | Fd: 27 (0.659/st) | Eps: 0.244 | L: 8.5222 | Q: 37.66/73.37 | SnakeCollision | Pos:(38989,38371) Wall:5317 Enemy:1635
+2026-02-15 07:58:10,101 - INFO - Ep 3492 | S1:HUNTER | Rw: 511.45 | St: 43 | Fd: 26 (0.605/st) | Eps: 0.244 | L: 9.5263 | Q: 36.70/73.56 | SnakeCollision | Pos:(31769,32821) Wall:13169 Enemy:210
+2026-02-15 07:58:10,102 - INFO - Ep 3493 | S1:HUNTER | Rw: 608.53 | St: 43 | Fd: 31 (0.721/st) | Eps: 0.244 | L: 9.5263 | Q: 36.70/73.56 | SnakeCollision | Pos:(30618,36310) Wall:9769 Enemy:489
+2026-02-15 07:58:12,401 - INFO - Ep 3494 | S1:HUNTER | Rw: 466.64 | St: 23 | Fd: 24 (1.043/st) | Eps: 0.244 | L: 8.8884 | Q: 35.68/64.76 | SnakeCollision | Pos:(35300,34100) Wall:10840 Enemy:52
+2026-02-15 07:58:15,742 - INFO - Ep 3495 | S1:HUNTER | Rw: 530.04 | St: 45 | Fd: 27 (0.600/st) | Eps: 0.244 | L: 17.6748 | Q: 34.30/72.42 | SnakeCollision | Pos:(30239,31579) Wall:11490 Enemy:353
+2026-02-15 07:58:26,726 - INFO - Ep 3496 | S1:HUNTER | Rw: 512.39 | St: 49 | Fd: 26 (0.531/st) | Eps: 0.243 | L: 9.1658 | Q: 35.76/64.98 | SnakeCollision | Pos:(35006,26814) Wall:7757 Enemy:221
+2026-02-15 07:58:31,526 - INFO - Ep 3497 | S1:HUNTER | Rw: 548.75 | St: 55 | Fd: 28 (0.509/st) | Eps: 0.242 | L: 6.4260 | Q: 34.66/63.61 | SnakeCollision | Pos:(37143,32755) Wall:9399 Enemy:29
+2026-02-15 07:58:35,875 - INFO - Ep 3498 | S1:HUNTER | Rw: 521.76 | St: 56 | Fd: 27 (0.482/st) | Eps: 0.242 | L: 8.8322 | Q: 37.90/68.35 | SnakeCollision | Pos:(37573,39167) Wall:5689 Enemy:1049
+2026-02-15 07:58:35,876 - INFO - Ep 3499 | S1:HUNTER | Rw: 754.97 | St: 57 | Fd: 38 (0.667/st) | Eps: 0.242 | L: 8.8322 | Q: 37.90/68.35 | SnakeCollision | Pos:(40649,34788) Wall:5594 Enemy:923
+2026-02-15 07:58:46,040 - INFO - Ep 3500 | S1:HUNTER | Rw: 1035.57 | St: 82 | Fd: 52 (0.634/st) | Eps: 0.242 | L: 5.0074 | Q: 36.91/71.20 | SnakeCollision | Pos:(32274,32217) Wall:13564 Enemy:30
+2026-02-15 07:58:46,040 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 50, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 07:58:50,142 - INFO - Ep 3501 | S1:HUNTER | Rw: 512.89 | St: 30 | Fd: 26 (0.867/st) | Eps: 0.242 | L: 10.4759 | Q: 34.78/68.12 | SnakeCollision | Pos:(31779,37919) Wall:8573 Enemy:573
+2026-02-15 07:58:52,966 - INFO - Ep 3502 | S1:HUNTER | Rw: 507.99 | St: 36 | Fd: 26 (0.722/st) | Eps: 0.242 | L: 10.0653 | Q: 36.23/72.46 | SnakeCollision | Pos:(34012,26090) Wall:7373 Enemy:246
+2026-02-15 07:58:53,506 - INFO - [AUTO-SCALE] Removed agent -> 4 (CPU:54% RAM:37180MB Step:606ms)
+2026-02-15 07:59:03,554 - INFO - Ep 3503 | S1:HUNTER | Rw: 672.92 | St: 53 | Fd: 34 (0.642/st) | Eps: 0.241 | L: 4.6255 | Q: 35.12/67.59 | SnakeCollision | Pos:(35372,32461) Wall:11174 Enemy:50
+2026-02-15 07:59:05,851 - INFO - Ep 3504 | S1:HUNTER | Rw: 430.88 | St: 53 | Fd: 22 (0.415/st) | Eps: 0.241 | L: 9.2926 | Q: 35.95/66.44 | SnakeCollision | Pos:(35864,33378) Wall:10581 Enemy:208
+2026-02-15 07:59:05,853 - INFO - Ep 3505 | S1:HUNTER | Rw: 582.95 | St: 83 | Fd: 30 (0.361/st) | Eps: 0.241 | L: 9.2926 | Q: 35.95/66.44 | SnakeCollision | Pos:(40432,28187) Wall:4987
+2026-02-15 07:59:12,850 - INFO - >> Target Network Updated
+2026-02-15 07:59:27,255 - INFO - Ep 3506 | S1:HUNTER | Rw: 1199.28 | St: 204 | Fd: 61 (0.299/st) | Eps: 0.238 | L: 13.8725 | Q: 33.33/65.95 | SnakeCollision | Pos:(42465,33848)
+2026-02-15 07:59:38,307 - INFO - [AUTO-SCALE] Added agent #5 (CPU:44% RAM:37518MB Step:164ms)
+2026-02-15 07:59:40,606 - INFO - Ep 3507 | S1:HUNTER | Rw: -10.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.238 | L: 7.8978 | Q: 30.72/57.60 | SnakeCollision | Pos:(29431,34523) Wall:10306 Enemy:551
+2026-02-15 07:59:40,607 - INFO - Ep 3508 | S1:HUNTER | Rw: 827.01 | St: 150 | Fd: 41 (0.273/st) | Eps: 0.238 | L: 7.8978 | Q: 30.72/57.60 | SnakeCollision | Pos:(34580,26183) Wall:7314 Enemy:60
+2026-02-15 07:59:40,607 - INFO - Ep 3509 | S1:HUNTER | Rw: 984.90 | St: 150 | Fd: 50 (0.333/st) | Eps: 0.238 | L: 7.8978 | Q: 30.72/57.60 | SnakeCollision | Pos:(39420,32596) Wall:7126 Enemy:1194
+2026-02-15 07:59:43,938 - INFO - Ep 3510 | S1:HUNTER | Rw: 1134.39 | St: 152 | Fd: 57 (0.375/st) | Eps: 0.238 | L: 16.5528 | Q: 33.74/60.23 | SnakeCollision | Pos:(40833,35074) Wall:5338 Enemy:719
+2026-02-15 07:59:43,938 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 60, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:00:00,821 - INFO - Ep 3511 | S1:HUNTER | Rw: 588.68 | St: 99 | Fd: 30 (0.303/st) | Eps: 0.236 | L: 10.9290 | Q: 29.27/70.23 | SnakeCollision | Pos:(40969,33905) Wall:5469 Enemy:249
+2026-02-15 08:00:11,997 - INFO - [AUTO-SCALE] Added agent #6 (CPU:64% RAM:37106MB Step:171ms)
+2026-02-15 08:00:14,312 - INFO - Ep 3512 | S1:HUNTER | Rw: 644.81 | St: 99 | Fd: 33 (0.333/st) | Eps: 0.236 | L: 14.7206 | Q: 28.93/59.25 | SnakeCollision | Pos:(30621,35126) Wall:10778 Enemy:199
+2026-02-15 08:00:14,313 - INFO - Ep 3513 | S1:HUNTER | Rw: 829.19 | St: 98 | Fd: 42 (0.429/st) | Eps: 0.236 | L: 14.7206 | Q: 28.93/59.25 | SnakeCollision | Pos:(29535,33676) Wall:10778 Enemy:99
+2026-02-15 08:00:14,313 - INFO - Ep 3514 | S1:HUNTER | Rw: 853.80 | St: 99 | Fd: 43 (0.434/st) | Eps: 0.236 | L: 14.7206 | Q: 28.93/59.25 | SnakeCollision | Pos:(36274,29987) Wall:9476 Enemy:628
+2026-02-15 08:00:14,313 - INFO - Ep 3515 | S1:HUNTER | Rw: 720.52 | St: 99 | Fd: 36 (0.364/st) | Eps: 0.236 | L: 14.7206 | Q: 28.93/59.25 | SnakeCollision | Pos:(36612,28004) Wall:7900 Enemy:307
+2026-02-15 08:00:14,314 - INFO - Ep 3516 | S1:HUNTER | Rw: -10.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.236 | L: 14.7206 | Q: 28.93/59.25 | SnakeCollision | Pos:(33318,36428) Wall:10043 Enemy:934
+2026-02-15 08:00:32,171 - INFO - Ep 3517 | S1:HUNTER | Rw: 574.87 | St: 82 | Fd: 29 (0.354/st) | Eps: 0.234 | L: 5.4943 | Q: 30.76/71.19 | SnakeCollision | Pos:(33680,27238) Wall:8566 Enemy:45
+2026-02-15 08:00:34,905 - INFO - Ep 3518 | S1:HUNTER | Rw: 539.03 | St: 83 | Fd: 27 (0.325/st) | Eps: 0.234 | L: 7.4698 | Q: 32.22/66.82 | SnakeCollision | Pos:(33633,26836) Wall:8181 Enemy:241
+2026-02-15 08:00:34,907 - INFO - Ep 3519 | S1:HUNTER | Rw: 727.68 | St: 84 | Fd: 37 (0.440/st) | Eps: 0.234 | L: 7.4698 | Q: 32.22/66.82 | SnakeCollision | Pos:(33656,32224) Wall:12843 Enemy:406
+2026-02-15 08:00:37,769 - INFO - Ep 3520 | S1:HUNTER | Rw: 667.81 | St: 84 | Fd: 34 (0.405/st) | Eps: 0.234 | L: 5.5855 | Q: 31.12/66.74 | SnakeCollision | Pos:(37943,39590) Wall:5128
+2026-02-15 08:00:37,769 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 70, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:00:48,985 - INFO - Ep 3521 | S1:HUNTER | Rw: 475.37 | St: 56 | Fd: 24 (0.429/st) | Eps: 0.233 | L: 15.4916 | Q: 30.92/63.35 | SnakeCollision | Pos:(31802,27882) Wall:9269 Enemy:32
+2026-02-15 08:00:48,986 - INFO - Ep 3522 | S1:HUNTER | Rw: 635.37 | St: 57 | Fd: 32 (0.561/st) | Eps: 0.233 | L: 15.4916 | Q: 30.92/63.35 | SnakeCollision | Pos:(38245,28099) Wall:6768 Enemy:16
+2026-02-15 08:01:01,319 - INFO - [AUTO-SCALE] Added agent #7 (CPU:51% RAM:36693MB Step:152ms)
+2026-02-15 08:01:03,713 - INFO - Ep 3523 | S1:HUNTER | Rw: -10.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.233 | L: 4.9709 | Q: 31.17/63.45 | SnakeCollision | Pos:(27759,35791) Wall:8212 Enemy:669
+2026-02-15 08:01:03,719 - INFO - Ep 3524 | S1:HUNTER | Rw: 683.81 | St: 141 | Fd: 35 (0.248/st) | Eps: 0.233 | L: 4.9709 | Q: 31.17/63.45 | SnakeCollision | Pos:(38105,28499) Wall:7121 Enemy:332
+2026-02-15 08:01:03,719 - INFO - Ep 3525 | S1:HUNTER | Rw: 429.98 | St: 58 | Fd: 22 (0.379/st) | Eps: 0.233 | L: 4.9709 | Q: 31.17/63.45 | SnakeCollision | Pos:(39062,33900) Wall:7345 Enemy:669
+2026-02-15 08:01:09,511 - INFO - Ep 3526 | S1:HUNTER | Rw: 188.49 | St: 10 | Fd: 10 (1.000/st) | Eps: 0.233 | L: 8.3876 | Q: 28.33/52.52 | SnakeCollision | Pos:(29431,32420) Wall:10875 Enemy:74
+2026-02-15 08:01:13,527 - INFO - Ep 3527 | S1:HUNTER | Rw: 605.35 | St: 70 | Fd: 31 (0.443/st) | Eps: 0.233 | L: 7.5240 | Q: 29.60/62.04 | SnakeCollision | Pos:(41796,36534) Wall:3928
+2026-02-15 08:01:13,528 - INFO - Ep 3528 | S1:HUNTER | Rw: 109.96 | St: 11 | Fd: 6 (0.545/st) | Eps: 0.233 | L: 7.5240 | Q: 29.60/62.04 | SnakeCollision | Pos:(31707,33025) Wall:13029 Enemy:651
+2026-02-15 08:01:13,529 - INFO - Ep 3529 | S1:HUNTER | Rw: 170.94 | St: 12 | Fd: 9 (0.750/st) | Eps: 0.233 | L: 7.5240 | Q: 29.60/62.04 | SnakeCollision | Pos:(36627,36709) Wall:8173 Enemy:188
+2026-02-15 08:01:17,453 - INFO - Ep 3530 | S1:HUNTER | Rw: 1013.29 | St: 153 | Fd: 51 (0.333/st) | Eps: 0.233 | L: 20.4153 | Q: 29.63/58.26 | SnakeCollision | Pos:(41363,32767) Wall:5181 Enemy:1284
+2026-02-15 08:01:17,453 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 80, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:01:21,977 - INFO - Ep 3531 | S1:HUNTER | Rw: 347.82 | St: 3 | Fd: 18 (6.000/st) | Eps: 0.233 | L: 14.3242 | Q: 31.77/58.28 | SnakeCollision | Pos:(36748,29641) Wall:8889 Enemy:594
+2026-02-15 08:01:21,978 - INFO - Ep 3532 | S1:HUNTER | Rw: 388.66 | St: 13 | Fd: 20 (1.538/st) | Eps: 0.233 | L: 14.3242 | Q: 31.77/58.28 | SnakeCollision | Pos:(39287,36257) Wall:6307 Enemy:392
+2026-02-15 08:01:22,668 - INFO - [AUTO-SCALE] Removed agent -> 6 (CPU:79% RAM:36246MB Step:522ms)
+2026-02-15 08:01:25,045 - INFO - Ep 3533 | S1:HUNTER | Rw: 491.03 | St: 15 | Fd: 25 (1.667/st) | Eps: 0.233 | L: 11.4569 | Q: 29.90/64.16 | SnakeCollision | Pos:(40733,29381) Wall:5221 Enemy:1367
+2026-02-15 08:01:25,046 - INFO - Ep 3534 | S1:HUNTER | Rw: 349.61 | St: 3 | Fd: 18 (6.000/st) | Eps: 0.233 | L: 11.4569 | Q: 29.90/64.16 | SnakeCollision | Pos:(30054,28569) Wall:9297 Enemy:188
+2026-02-15 08:01:36,318 - INFO - Ep 3535 | S1:HUNTER | Rw: 592.63 | St: 48 | Fd: 30 (0.625/st) | Eps: 0.232 | L: 4.5389 | Q: 31.22/57.19 | SnakeCollision | Pos:(27580,30257) Wall:8523 Enemy:54
+2026-02-15 08:01:43,103 - INFO - Ep 3536 | S1:HUNTER | Rw: 634.70 | St: 66 | Fd: 33 (0.500/st) | Eps: 0.232 | L: 17.0649 | Q: 32.17/67.77 | SnakeCollision | Pos:(39333,39098) Wall:4568
+2026-02-15 08:01:49,710 - INFO - Ep 3537 | S1:HUNTER | Rw: 388.90 | St: 36 | Fd: 20 (0.556/st) | Eps: 0.231 | L: 4.0771 | Q: 34.35/64.55 | SnakeCollision | Pos:(31676,35044) Wall:11353 Enemy:29
+2026-02-15 08:01:52,056 - INFO - Ep 3538 | S1:HUNTER | Rw: 480.27 | St: 82 | Fd: 25 (0.305/st) | Eps: 0.231 | L: 4.8972 | Q: 32.73/67.55 | SnakeCollision | Pos:(41448,30421) Wall:4847 Enemy:1761
+2026-02-15 08:01:52,059 - INFO - Ep 3539 | S1:HUNTER | Rw: 1192.30 | St: 83 | Fd: 60 (0.723/st) | Eps: 0.231 | L: 4.8972 | Q: 32.73/67.55 | SnakeCollision | Pos:(41179,33640) Wall:5299 Enemy:149
+2026-02-15 08:01:56,457 - INFO - Ep 3540 | S1:HUNTER | Rw: 429.90 | St: 19 | Fd: 22 (1.158/st) | Eps: 0.231 | L: 16.0166 | Q: 32.57/61.72 | SnakeCollision | Pos:(31161,36171) Wall:10118 Enemy:264
+2026-02-15 08:01:56,457 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 90, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:01:56,460 - INFO - Ep 3541 | S1:HUNTER | Rw: 611.70 | St: 83 | Fd: 31 (0.373/st) | Eps: 0.231 | L: 16.0166 | Q: 32.57/61.72 | SnakeCollision | Pos:(38955,38173) Wall:5474
+2026-02-15 08:01:59,912 - INFO - Ep 3542 | S1:HUNTER | Rw: -9.48 | St: 2 | Fd: 0 (0.000/st) | Eps: 0.231 | L: 5.6373 | Q: 33.55/61.56 | SnakeCollision | Pos:(32609,35519) Wall:11027 Enemy:825
+2026-02-15 08:02:03,749 - INFO - Ep 3543 | S1:HUNTER | Rw: 858.05 | St: 86 | Fd: 43 (0.500/st) | Eps: 0.231 | L: 15.9607 | Q: 31.12/63.04 | SnakeCollision | Pos:(39993,37146) Wall:5249 Enemy:1340
+2026-02-15 08:02:07,859 - INFO - Ep 3544 | S1:HUNTER | Rw: 310.80 | St: 3 | Fd: 16 (5.333/st) | Eps: 0.231 | L: 12.4061 | Q: 32.07/61.07 | SnakeCollision | Pos:(30856,34791) Wall:11187 Enemy:488
+2026-02-15 08:02:07,860 - INFO - Ep 3545 | S1:HUNTER | Rw: 371.03 | St: 4 | Fd: 19 (4.750/st) | Eps: 0.231 | L: 12.4061 | Q: 32.07/61.07 | SnakeCollision | Pos:(37971,30729) Wall:8278 Enemy:231
+2026-02-15 08:02:10,696 - INFO - Ep 3546 | S1:HUNTER | Rw: 408.28 | St: 6 | Fd: 21 (3.500/st) | Eps: 0.231 | L: 8.0598 | Q: 30.88/60.66 | SnakeCollision | Pos:(30184,32405) Wall:11626 Enemy:294
+2026-02-15 08:02:12,188 - INFO - [AUTO-SCALE] Removed agent -> 5 (CPU:53% RAM:36352MB Step:734ms)
+2026-02-15 08:02:18,813 - INFO - Ep 3547 | S1:HUNTER | Rw: 408.29 | St: 20 | Fd: 21 (1.050/st) | Eps: 0.231 | L: 7.0390 | Q: 32.72/58.72 | SnakeCollision | Pos:(29399,35323) Wall:9799 Enemy:41
+2026-02-15 08:02:22,645 - INFO - Ep 3548 | S1:HUNTER | Rw: 547.58 | St: 23 | Fd: 28 (1.217/st) | Eps: 0.231 | L: 18.8086 | Q: 29.54/58.93 | SnakeCollision | Pos:(40770,31076) Wall:5646
+2026-02-15 08:02:39,045 - INFO - Ep 3549 | S1:HUNTER | Rw: 795.37 | St: 115 | Fd: 40 (0.348/st) | Eps: 0.229 | L: 13.1386 | Q: 33.73/62.53 | SnakeCollision | Pos:(33609,36958) Wall:9463 Enemy:50
+2026-02-15 08:02:41,521 - INFO - Ep 3550 | S1:HUNTER | Rw: 846.47 | St: 114 | Fd: 44 (0.386/st) | Eps: 0.229 | L: 7.1578 | Q: 33.81/57.31 | SnakeCollision | Pos:(42667,30318) Wall:3637 Enemy:300
+2026-02-15 08:02:41,521 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 100, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:02:41,594 - INFO - Ep 3551 | S1:HUNTER | Rw: 1267.43 | St: 118 | Fd: 64 (0.542/st) | Eps: 0.229 | L: 7.1578 | Q: 33.81/57.31 | SnakeCollision | Pos:(41261,30831) Wall:5117
+2026-02-15 08:02:46,479 - INFO - Ep 3552 | S1:HUNTER | Rw: 841.63 | St: 100 | Fd: 43 (0.430/st) | Eps: 0.229 | L: 11.6197 | Q: 31.54/61.82 | SnakeCollision | Pos:(38754,39734)
+2026-02-15 08:02:58,069 - INFO - Ep 3553 | S1:HUNTER | Rw: 428.25 | St: 49 | Fd: 22 (0.449/st) | Eps: 0.228 | L: 7.0277 | Q: 31.95/60.61 | SnakeCollision | Pos:(27920,33990) Wall:9147 Enemy:57
+2026-02-15 08:03:00,465 - INFO - Ep 3554 | S1:HUNTER | Rw: 612.80 | St: 55 | Fd: 31 (0.564/st) | Eps: 0.228 | L: 10.5379 | Q: 32.65/57.21 | SnakeCollision | Pos:(31005,36057) Wall:10165 Enemy:104
+2026-02-15 08:03:00,467 - INFO - Ep 3555 | S1:HUNTER | Rw: 584.20 | St: 56 | Fd: 30 (0.536/st) | Eps: 0.228 | L: 10.5379 | Q: 32.65/57.21 | SnakeCollision | Pos:(41830,35282)
+2026-02-15 08:03:11,762 - INFO - Ep 3556 | S1:HUNTER | Rw: 792.30 | St: 117 | Fd: 41 (0.350/st) | Eps: 0.227 | L: 8.7406 | Q: 29.53/68.55 | SnakeCollision | Pos:(40954,37561) Wall:4212
+2026-02-15 08:03:16,201 - INFO - Ep 3557 | S1:HUNTER | Rw: 1563.73 | St: 213 | Fd: 80 (0.376/st) | Eps: 0.227 | L: 11.9072 | Q: 31.37/55.77 | SnakeCollision | Pos:(39048,39809) Wall:4254 Enemy:253
+2026-02-15 08:03:19,361 - INFO - Ep 3558 | S1:HUNTER | Rw: 640.07 | St: 65 | Fd: 32 (0.492/st) | Eps: 0.227 | L: 9.3901 | Q: 30.93/55.49 | SnakeCollision | Pos:(37994,35781) Wall:7666 Enemy:39
+2026-02-15 08:03:19,362 - INFO - Ep 3559 | S1:HUNTER | Rw: 534.07 | St: 66 | Fd: 27 (0.409/st) | Eps: 0.227 | L: 9.3901 | Q: 30.93/55.49 | SnakeCollision | Pos:(30598,30544) Wall:11198 Enemy:394
+2026-02-15 08:03:28,295 - INFO - Ep 3560 | S1:HUNTER | Rw: 426.90 | St: 39 | Fd: 22 (0.564/st) | Eps: 0.226 | L: 9.8143 | Q: 29.28/64.57 | SnakeCollision | Pos:(32745,33119) Wall:13395 Enemy:37
+2026-02-15 08:03:28,295 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 110, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:03:30,626 - INFO - Ep 3561 | S1:HUNTER | Rw: 594.37 | St: 105 | Fd: 31 (0.295/st) | Eps: 0.226 | L: 3.5082 | Q: 32.19/66.34 | SnakeCollision | Pos:(42206,36384) Wall:3607
+2026-02-15 08:03:30,626 - INFO - Ep 3562 | S1:HUNTER | Rw: 693.24 | St: 43 | Fd: 36 (0.837/st) | Eps: 0.226 | L: 3.5082 | Q: 32.19/66.34 | SnakeCollision | Pos:(36199,38670) Wall:6872 Enemy:442
+2026-02-15 08:03:57,392 - INFO - [AUTO-SCALE] Added agent #6 (CPU:50% RAM:36613MB Step:150ms)
+2026-02-15 08:04:00,220 - INFO - Ep 3563 | S1:HUNTER | Rw: 847.30 | St: 97 | Fd: 43 (0.443/st) | Eps: 0.224 | L: 6.8679 | Q: 29.00/61.53 | SnakeCollision | Pos:(33184,25839) Wall:7256 Enemy:127
+2026-02-15 08:04:00,221 - INFO - Ep 3564 | S1:HUNTER | Rw: 735.45 | St: 98 | Fd: 37 (0.378/st) | Eps: 0.224 | L: 6.8679 | Q: 29.00/61.53 | SnakeCollision | Pos:(34303,27554) Wall:8701 Enemy:113
+2026-02-15 08:04:00,223 - INFO - Ep 3565 | S1:HUNTER | Rw: 559.95 | St: 97 | Fd: 28 (0.289/st) | Eps: 0.224 | L: 6.8679 | Q: 29.00/61.53 | SnakeCollision | Pos:(40482,31611) Wall:6009 Enemy:1362
+2026-02-15 08:04:04,071 - INFO - Ep 3566 | S1:HUNTER | Rw: 872.97 | St: 138 | Fd: 44 (0.319/st) | Eps: 0.224 | L: 2.0662 | Q: 31.55/66.06 | SnakeCollision | Pos:(35002,41450) Wall:4765
+2026-02-15 08:04:04,075 - INFO - Ep 3567 | S1:HUNTER | Rw: 1144.23 | St: 139 | Fd: 58 (0.417/st) | Eps: 0.224 | L: 2.0662 | Q: 31.55/66.06 | SnakeCollision | Pos:(42196,31442) Wall:4287
+2026-02-15 08:04:04,076 - INFO - Ep 3568 | S1:HUNTER | Rw: 9.54 | St: 2 | Fd: 1 (0.500/st) | Eps: 0.224 | L: 2.0662 | Q: 31.55/66.06 | SnakeCollision | Pos:(32793,36565) Wall:9974 Enemy:311
+2026-02-15 08:04:08,685 - INFO - Ep 3569 | S1:HUNTER | Rw: 9.74 | St: 2 | Fd: 1 (0.500/st) | Eps: 0.224 | L: 8.5892 | Q: 28.11/54.24 | SnakeCollision | Pos:(35875,36051) Wall:9168 Enemy:930
+2026-02-15 08:04:22,826 - INFO - Ep 3570 | S1:HUNTER | Rw: 926.74 | St: 82 | Fd: 47 (0.573/st) | Eps: 0.223 | L: 6.3111 | Q: 28.76/65.15 | SnakeCollision | Pos:(41160,36225) Wall:4636
+2026-02-15 08:04:22,826 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 120, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:04:33,980 - INFO - [AUTO-SCALE] Added agent #7 (CPU:57% RAM:36508MB Step:150ms)
+2026-02-15 08:04:36,327 - INFO - Ep 3571 | S1:HUNTER | Rw: 514.06 | St: 84 | Fd: 26 (0.310/st) | Eps: 0.223 | L: 9.4903 | Q: 29.96/55.37 | SnakeCollision | Pos:(37833,36143) Wall:7607 Enemy:699
+2026-02-15 08:04:36,328 - INFO - Ep 3572 | S1:HUNTER | Rw: 493.83 | St: 82 | Fd: 25 (0.305/st) | Eps: 0.223 | L: 9.4903 | Q: 29.96/55.37 | SnakeCollision | Pos:(26920,33851) Wall:8218 Enemy:271
+2026-02-15 08:04:40,059 - INFO - Ep 3573 | S1:HUNTER | Rw: 649.85 | St: 2 | Fd: 33 (16.500/st) | Eps: 0.223 | L: 9.3512 | Q: 33.74/63.25 | SnakeCollision | Pos:(33676,27326) Wall:8653 Enemy:260
+2026-02-15 08:04:42,648 - INFO - Ep 3574 | S1:HUNTER | Rw: 887.51 | St: 86 | Fd: 45 (0.523/st) | Eps: 0.223 | L: 10.4255 | Q: 29.62/55.09 | SnakeCollision | Pos:(37896,40262) Wall:4613 Enemy:1903
+2026-02-15 08:04:45,051 - INFO - Ep 3575 | S1:HUNTER | Rw: 849.94 | St: 86 | Fd: 43 (0.500/st) | Eps: 0.223 | L: 5.0747 | Q: 32.66/64.85 | SnakeCollision | Pos:(40025,38484) Wall:4452 Enemy:312
+2026-02-15 08:04:49,684 - INFO - Ep 3576 | S1:HUNTER | Rw: 368.54 | St: 5 | Fd: 19 (3.800/st) | Eps: 0.223 | L: 3.8360 | Q: 32.60/65.49 | SnakeCollision | Pos:(26560,30888) Wall:7780 Enemy:73
+2026-02-15 08:04:56,318 - INFO - Ep 3577 | S1:HUNTER | Rw: 370.16 | St: 12 | Fd: 19 (1.583/st) | Eps: 0.223 | L: 19.5103 | Q: 32.09/61.42 | SnakeCollision | Pos:(31891,28725) Wall:10115 Enemy:30
+2026-02-15 08:04:56,319 - INFO - Ep 3578 | S1:HUNTER | Rw: 550.19 | St: 13 | Fd: 28 (2.154/st) | Eps: 0.223 | L: 19.5103 | Q: 32.09/61.42 | SnakeCollision | Pos:(30640,33794) Wall:11717 Enemy:60
+2026-02-15 08:04:56,984 - INFO - [AUTO-SCALE] Removed agent -> 6 (CPU:79% RAM:36008MB Step:552ms)
+2026-02-15 08:04:59,458 - INFO - Ep 3579 | S1:HUNTER | Rw: 150.77 | St: 10 | Fd: 8 (0.800/st) | Eps: 0.223 | L: 4.8353 | Q: 29.49/60.68 | SnakeCollision | Pos:(29577,35409) Wall:9871 Enemy:422
+2026-02-15 08:04:59,459 - INFO - Ep 3580 | S1:HUNTER | Rw: 371.56 | St: 12 | Fd: 19 (1.583/st) | Eps: 0.223 | L: 4.8353 | Q: 29.49/60.68 | SnakeCollision | Pos:(31741,27977) Wall:9352 Enemy:624
+2026-02-15 08:04:59,459 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 130, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:05:10,449 - INFO - Ep 3581 | S1:HUNTER | Rw: 456.06 | St: 43 | Fd: 23 (0.535/st) | Eps: 0.222 | L: 9.3895 | Q: 33.02/64.33 | SnakeCollision | Pos:(37113,32574) Wall:9433 Enemy:41
+2026-02-15 08:05:14,637 - INFO - Ep 3582 | S1:HUNTER | Rw: 649.88 | St: 45 | Fd: 33 (0.733/st) | Eps: 0.222 | L: 9.0459 | Q: 30.42/56.16 | SnakeCollision | Pos:(34035,32869) Wall:12477 Enemy:656
+2026-02-15 08:05:14,640 - INFO - Ep 3583 | S1:HUNTER | Rw: 613.93 | St: 59 | Fd: 31 (0.525/st) | Eps: 0.222 | L: 9.0459 | Q: 30.42/56.16 | SnakeCollision | Pos:(37826,40186) Wall:4716 Enemy:1088
+2026-02-15 08:05:14,642 - INFO - Ep 3584 | S1:HUNTER | Rw: 487.72 | St: 44 | Fd: 25 (0.568/st) | Eps: 0.222 | L: 9.0459 | Q: 30.42/56.16 | SnakeCollision | Pos:(31508,28045) Wall:9373 Enemy:362
+2026-02-15 08:05:14,642 - INFO - Ep 3585 | S1:HUNTER | Rw: 1136.69 | St: 142 | Fd: 57 (0.401/st) | Eps: 0.222 | L: 9.0459 | Q: 30.42/56.16 | SnakeCollision | Pos:(39868,37529) Wall:5145
+2026-02-15 08:05:21,933 - INFO - Ep 3586 | S1:HUNTER | Rw: 557.09 | St: 67 | Fd: 28 (0.418/st) | Eps: 0.221 | L: 14.1046 | Q: 31.63/58.00 | SnakeCollision | Pos:(39026,39484) Wall:4508
+2026-02-15 08:05:25,310 - INFO - Ep 3587 | S1:HUNTER | Rw: 368.39 | St: 23 | Fd: 19 (0.826/st) | Eps: 0.221 | L: 4.4492 | Q: 29.23/64.41 | SnakeCollision | Pos:(27993,34499) Wall:9041 Enemy:703
+2026-02-15 08:05:29,737 - INFO - Ep 3588 | S1:HUNTER | Rw: 392.14 | St: 24 | Fd: 20 (0.833/st) | Eps: 0.221 | L: 3.4122 | Q: 29.74/60.05 | SnakeCollision | Pos:(33486,38899) Wall:7579 Enemy:1001
+2026-02-15 08:05:29,739 - INFO - Ep 3589 | S1:HUNTER | Rw: 387.82 | St: 24 | Fd: 20 (0.833/st) | Eps: 0.221 | L: 3.4122 | Q: 29.74/60.05 | SnakeCollision | Pos:(30187,34372) Wall:11013 Enemy:147
+2026-02-15 08:05:34,376 - INFO - Ep 3590 | S1:HUNTER | Rw: 587.91 | St: 26 | Fd: 30 (1.154/st) | Eps: 0.221 | L: 9.4283 | Q: 31.22/60.69 | SnakeCollision | Pos:(40515,38141)
+2026-02-15 08:05:34,376 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 140, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:05:37,756 - INFO - Ep 3591 | S1:HUNTER | Rw: 388.24 | St: 4 | Fd: 20 (5.000/st) | Eps: 0.221 | L: 1.4564 | Q: 33.48/64.61 | SnakeCollision | Pos:(32107,34234) Wall:12255 Enemy:585
+2026-02-15 08:05:45,237 - INFO - Ep 3592 | S1:HUNTER | Rw: 447.98 | St: 15 | Fd: 23 (1.533/st) | Eps: 0.221 | L: 2.4307 | Q: 28.55/61.97 | SnakeCollision | Pos:(32375,34361) Wall:12177 Enemy:78
+2026-02-15 08:05:45,748 - INFO - [AUTO-SCALE] Removed agent -> 5 (CPU:56% RAM:35739MB Step:732ms)
+2026-02-15 08:05:49,328 - INFO - Ep 3593 | S1:HUNTER | Rw: 408.15 | St: 18 | Fd: 21 (1.167/st) | Eps: 0.221 | L: 12.3457 | Q: 30.03/54.74 | SnakeCollision | Pos:(39964,29732) Wall:6065 Enemy:147
+2026-02-15 08:05:49,328 - INFO - Ep 3594 | S1:HUNTER | Rw: 250.56 | St: 15 | Fd: 13 (0.867/st) | Eps: 0.221 | L: 12.3457 | Q: 30.03/54.74 | SnakeCollision | Pos:(31650,27339) Wall:8709 Enemy:345
+2026-02-15 08:05:57,350 - INFO - Ep 3595 | S1:HUNTER | Rw: 968.61 | St: 50 | Fd: 49 (0.980/st) | Eps: 0.221 | L: 11.1962 | Q: 31.27/61.68 | SnakeCollision | Pos:(41482,28541) Wall:4207
+2026-02-15 08:06:00,695 - INFO - Ep 3596 | S1:HUNTER | Rw: 690.55 | St: 74 | Fd: 35 (0.473/st) | Eps: 0.221 | L: 11.9887 | Q: 30.60/68.58 | SnakeCollision | Pos:(37873,40998) Wall:4012
+2026-02-15 08:06:01,318 - INFO - [AUTO-SCALE] Removed agent -> 4 (CPU:59% RAM:36063MB Step:628ms)
+2026-02-15 08:06:11,418 - INFO - Ep 3597 | S1:HUNTER | Rw: 750.60 | St: 80 | Fd: 38 (0.475/st) | Eps: 0.220 | L: 3.8474 | Q: 32.69/60.50 | SnakeCollision | Pos:(31387,38507) Wall:7927 Enemy:31
+2026-02-15 08:06:16,966 - INFO - Ep 3598 | S1:HUNTER | Rw: 669.20 | St: 56 | Fd: 34 (0.607/st) | Eps: 0.220 | L: 8.8847 | Q: 34.07/57.19 | SnakeCollision | Pos:(34238,33254) Wall:12168 Enemy:52
+2026-02-15 08:06:19,361 - INFO - Ep 3599 | S1:HUNTER | Rw: 660.53 | St: 87 | Fd: 34 (0.391/st) | Eps: 0.220 | L: 4.1412 | Q: 31.27/62.32 | SnakeCollision | Pos:(41703,36070) Wall:4190
+2026-02-15 08:06:23,933 - INFO - Ep 3600 | S1:HUNTER | Rw: 1166.29 | St: 59 | Fd: 59 (1.000/st) | Eps: 0.219 | L: 5.4759 | Q: 28.80/56.09 | SnakeCollision | Pos:(40990,39464) Wall:3086 Enemy:1468
+2026-02-15 08:06:23,933 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 150, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:06:29,427 - INFO - Ep 3601 | S1:HUNTER | Rw: 407.33 | St: 16 | Fd: 21 (1.312/st) | Eps: 0.219 | L: 8.7586 | Q: 31.48/60.66 | SnakeCollision | Pos:(35556,35476) Wall:9802 Enemy:35
+2026-02-15 08:06:35,703 - INFO - Ep 3602 | S1:HUNTER | Rw: 489.86 | St: 22 | Fd: 25 (1.136/st) | Eps: 0.219 | L: 8.1596 | Q: 29.24/63.42 | SnakeCollision | Pos:(37267,27200) Wall:6864 Enemy:29
+2026-02-15 08:06:36,258 - INFO - [AUTO-SCALE] Removed agent -> 3 (CPU:48% RAM:36518MB Step:558ms)
+2026-02-15 08:06:46,002 - INFO - Ep 3603 | S1:HUNTER | Rw: 842.89 | St: 72 | Fd: 43 (0.597/st) | Eps: 0.218 | L: 3.7352 | Q: 31.35/56.63 | SnakeCollision | Pos:(42032,35681) Wall:4011
+2026-02-15 08:06:48,401 - INFO - Ep 3604 | S1:HUNTER | Rw: 782.23 | St: 70 | Fd: 39 (0.557/st) | Eps: 0.218 | L: 6.8108 | Q: 29.80/60.35 | SnakeCollision | Pos:(38126,30199) Wall:7945 Enemy:248
+2026-02-15 08:06:51,729 - INFO - >> Target Network Updated
+2026-02-15 08:06:57,977 - INFO - Ep 3605 | S1:HUNTER | Rw: 798.11 | St: 112 | Fd: 40 (0.357/st) | Eps: 0.217 | L: 6.4730 | Q: 25.08/62.11 | SnakeCollision | Pos:(38061,31300) Wall:8346 Enemy:45
+2026-02-15 08:07:17,995 - INFO - [AUTO-SCALE] Added agent #4 (CPU:40% RAM:36918MB Step:59ms)
+2026-02-15 08:07:20,270 - INFO - Ep 3606 | S1:HUNTER | Rw: 551.67 | St: 75 | Fd: 28 (0.373/st) | Eps: 0.216 | L: 17.6735 | Q: 27.15/61.45 | SnakeCollision | Pos:(29763,31838) Wall:11120 Enemy:289
+2026-02-15 08:07:20,272 - INFO - Ep 3607 | S1:HUNTER | Rw: 1311.20 | St: 124 | Fd: 66 (0.532/st) | Eps: 0.216 | L: 17.6735 | Q: 27.15/61.45 | SnakeCollision | Pos:(39860,32125) Wall:6674 Enemy:58
+2026-02-15 08:07:36,711 - INFO - Ep 3608 | S1:HUNTER | Rw: 571.90 | St: 96 | Fd: 30 (0.312/st) | Eps: 0.215 | L: 1.8132 | Q: 30.68/63.63 | SnakeCollision | Pos:(42311,33516) Wall:4188 Enemy:1204
+2026-02-15 08:07:48,206 - INFO - [AUTO-SCALE] Added agent #5 (CPU:50% RAM:36596MB Step:143ms)
+2026-02-15 08:07:50,538 - INFO - Ep 3609 | S1:HUNTER | Rw: 732.16 | St: 97 | Fd: 37 (0.381/st) | Eps: 0.215 | L: 14.2630 | Q: 29.87/61.62 | SnakeCollision | Pos:(37512,38990) Wall:5867 Enemy:695
+2026-02-15 08:07:50,539 - INFO - Ep 3610 | S1:HUNTER | Rw: -10.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.215 | L: 14.2630 | Q: 29.87/61.62 | SnakeCollision | Pos:(27857,34881) Wall:8756 Enemy:1048
+2026-02-15 08:07:50,539 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 160, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:07:55,132 - INFO - Ep 3611 | S1:HUNTER | Rw: 1212.75 | St: 223 | Fd: 62 (0.278/st) | Eps: 0.214 | L: 14.1046 | Q: 31.46/64.80 | SnakeCollision | Pos:(40584,40763) Wall:2508
+2026-02-15 08:07:59,121 - INFO - Ep 3612 | S1:HUNTER | Rw: 29.13 | St: 4 | Fd: 2 (0.500/st) | Eps: 0.214 | L: 5.3764 | Q: 28.77/56.35 | SnakeCollision | Pos:(37292,29154) Wall:8163 Enemy:898
+2026-02-15 08:08:01,487 - INFO - Ep 3613 | S1:HUNTER | Rw: 671.35 | St: 103 | Fd: 34 (0.330/st) | Eps: 0.214 | L: 7.7450 | Q: 27.39/54.96 | SnakeCollision | Pos:(41438,35599) Wall:4601
+2026-02-15 08:08:08,982 - INFO - Ep 3614 | S1:HUNTER | Rw: 246.53 | St: 24 | Fd: 13 (0.542/st) | Eps: 0.214 | L: 7.3466 | Q: 27.19/57.75 | SnakeCollision | Pos:(37669,31511) Wall:8773 Enemy:46
+2026-02-15 08:08:16,511 - INFO - Ep 3615 | S1:HUNTER | Rw: 370.40 | St: 43 | Fd: 19 (0.442/st) | Eps: 0.214 | L: 9.0635 | Q: 30.13/61.21 | SnakeCollision | Pos:(39371,29403) Wall:6484 Enemy:36
+2026-02-15 08:08:20,932 - INFO - Ep 3616 | S1:HUNTER | Rw: 508.03 | St: 39 | Fd: 26 (0.667/st) | Eps: 0.214 | L: 10.9352 | Q: 29.40/56.79 | SnakeCollision | Pos:(33930,28435) Wall:9657 Enemy:253
+2026-02-15 08:08:27,059 - INFO - Ep 3617 | S1:HUNTER | Rw: 1227.25 | St: 59 | Fd: 62 (1.051/st) | Eps: 0.214 | L: 14.0003 | Q: 27.28/55.68 | SnakeCollision | Pos:(41001,38151) Wall:3857
+2026-02-15 08:08:38,359 - INFO - Ep 3618 | S1:HUNTER | Rw: 1111.84 | St: 110 | Fd: 57 (0.518/st) | Eps: 0.213 | L: 2.2238 | Q: 29.18/68.73 | SnakeCollision | Pos:(43742,35140) Wall:2508 Enemy:1850
+2026-02-15 08:08:40,712 - INFO - Ep 3619 | S1:HUNTER | Rw: 952.80 | St: 71 | Fd: 48 (0.676/st) | Eps: 0.213 | L: 5.3345 | Q: 26.78/58.24 | SnakeCollision | Pos:(35891,26350) Wall:6953 Enemy:194
+2026-02-15 08:08:44,598 - INFO - Ep 3620 | S1:HUNTER | Rw: 591.62 | St: 86 | Fd: 30 (0.349/st) | Eps: 0.213 | L: 8.9465 | Q: 26.10/60.85 | SnakeCollision | Pos:(32123,34848) Wall:11659 Enemy:132
+2026-02-15 08:08:44,598 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 170, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:08:44,601 - INFO - Ep 3621 | S1:HUNTER | Rw: 688.36 | St: 73 | Fd: 35 (0.479/st) | Eps: 0.213 | L: 8.9465 | Q: 26.10/60.85 | SnakeCollision | Pos:(34182,38012) Wall:8295 Enemy:418
+2026-02-15 08:08:54,490 - INFO - Ep 3622 | S1:HUNTER | Rw: 385.38 | St: 33 | Fd: 20 (0.606/st) | Eps: 0.212 | L: 14.9120 | Q: 27.79/63.19 | SnakeCollision | Pos:(36532,27684) Wall:7709 Enemy:157
+2026-02-15 08:09:01,898 - INFO - Ep 3623 | S1:HUNTER | Rw: 789.58 | St: 104 | Fd: 40 (0.385/st) | Eps: 0.212 | L: 6.1075 | Q: 27.98/62.43 | SnakeCollision | Pos:(36041,26794) Wall:7264 Enemy:140
+2026-02-15 08:09:05,828 - INFO - Ep 3624 | S1:HUNTER | Rw: 516.71 | St: 51 | Fd: 26 (0.510/st) | Eps: 0.212 | L: 8.7409 | Q: 28.01/62.53 | SnakeCollision | Pos:(36310,38718) Wall:6773 Enemy:211
+2026-02-15 08:09:05,829 - INFO - Ep 3625 | S1:HUNTER | Rw: 609.47 | St: 49 | Fd: 31 (0.633/st) | Eps: 0.212 | L: 8.7409 | Q: 28.01/62.53 | SnakeCollision | Pos:(29547,30653) Wall:10444 Enemy:13
+2026-02-15 08:09:09,090 - INFO - Ep 3626 | S1:HUNTER | Rw: 388.13 | St: 17 | Fd: 20 (1.176/st) | Eps: 0.212 | L: 12.1385 | Q: 29.29/57.26 | SnakeCollision | Pos:(29509,28675) Wall:9071 Enemy:476
+2026-02-15 08:09:15,631 - INFO - Ep 3627 | S1:HUNTER | Rw: 388.38 | St: 19 | Fd: 20 (1.053/st) | Eps: 0.211 | L: 10.2088 | Q: 25.03/66.43 | SnakeCollision | Pos:(29332,32219) Wall:10761 Enemy:40
+2026-02-15 08:09:20,007 - INFO - Ep 3628 | S1:HUNTER | Rw: 630.89 | St: 70 | Fd: 32 (0.457/st) | Eps: 0.211 | L: 10.1592 | Q: 29.04/61.75 | SnakeCollision | Pos:(35567,27162) Wall:7822 Enemy:673
+2026-02-15 08:09:20,621 - INFO - [AUTO-SCALE] Removed agent -> 4 (CPU:56% RAM:36029MB Step:590ms)
+2026-02-15 08:09:22,932 - INFO - Ep 3629 | S1:HUNTER | Rw: 629.99 | St: 22 | Fd: 32 (1.455/st) | Eps: 0.211 | L: 5.3395 | Q: 25.98/57.03 | SnakeCollision | Pos:(32210,35548) Wall:10980 Enemy:424
+2026-02-15 08:09:27,156 - INFO - Ep 3630 | S1:HUNTER | Rw: 388.08 | St: 3 | Fd: 20 (6.667/st) | Eps: 0.211 | L: 7.7134 | Q: 29.49/63.89 | SnakeCollision | Pos:(29685,30895) Wall:10688 Enemy:400
+2026-02-15 08:09:27,156 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 180, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:09:32,081 - INFO - Ep 3631 | S1:HUNTER | Rw: 528.62 | St: 25 | Fd: 27 (1.080/st) | Eps: 0.211 | L: 7.0191 | Q: 29.23/57.85 | SnakeCollision | Pos:(38873,39419) Wall:4661 Enemy:49
+2026-02-15 08:09:35,405 - INFO - Ep 3632 | S1:HUNTER | Rw: 392.85 | St: 6 | Fd: 20 (3.333/st) | Eps: 0.211 | L: 10.4915 | Q: 28.00/55.45 | SnakeCollision | Pos:(35495,27873) Wall:8469 Enemy:485
+2026-02-15 08:09:35,922 - INFO - [AUTO-SCALE] Removed agent -> 3 (CPU:46% RAM:36453MB Step:865ms)
+2026-02-15 08:09:38,211 - INFO - Ep 3633 | S1:HUNTER | Rw: 388.45 | St: 6 | Fd: 20 (3.333/st) | Eps: 0.211 | L: 9.2226 | Q: 26.30/61.99 | SnakeCollision | Pos:(29685,34286) Wall:10647 Enemy:169
+2026-02-15 08:09:41,506 - INFO - Ep 3634 | S1:HUNTER | Rw: 408.88 | St: 9 | Fd: 21 (2.333/st) | Eps: 0.211 | L: 5.2735 | Q: 30.02/66.65 | SnakeCollision | Pos:(37810,38320) Wall:6188 Enemy:128
+2026-02-15 08:09:43,806 - INFO - Ep 3635 | S1:HUNTER | Rw: 248.02 | St: 3 | Fd: 13 (4.333/st) | Eps: 0.211 | L: 2.0458 | Q: 25.80/59.57 | SnakeCollision | Pos:(37984,32206) Wall:8551 Enemy:80
+2026-02-15 08:09:48,021 - INFO - Ep 3636 | S1:HUNTER | Rw: 289.77 | St: 3 | Fd: 15 (5.000/st) | Eps: 0.211 | L: 13.1604 | Q: 26.20/57.29 | SnakeCollision | Pos:(31819,29920) Wall:11266 Enemy:245
+2026-02-15 08:09:51,664 - INFO - Ep 3637 | S1:HUNTER | Rw: -9.62 | St: 2 | Fd: 0 (0.000/st) | Eps: 0.211 | L: 10.4156 | Q: 28.79/58.01 | SnakeCollision | Pos:(33173,26643) Wall:8057 Enemy:723
+2026-02-15 08:09:52,171 - INFO - [AUTO-SCALE] Removed agent -> 2 (CPU:44% RAM:36846MB Step:1154ms)
+2026-02-15 08:10:07,319 - INFO - Ep 3638 | S1:HUNTER | Rw: 929.58 | St: 103 | Fd: 47 (0.456/st) | Eps: 0.210 | L: 8.1871 | Q: 27.96/56.68 | SnakeCollision | Pos:(35974,36877) Wall:8479 Enemy:41
+2026-02-15 08:10:13,381 - INFO - Ep 3639 | S1:HUNTER | Rw: 1296.16 | St: 109 | Fd: 65 (0.596/st) | Eps: 0.210 | L: 2.4035 | Q: 30.18/63.37 | SnakeCollision | Pos:(32088,29275) Wall:10689 Enemy:48
+2026-02-15 08:10:33,209 - INFO - [AUTO-SCALE] Added agent #3 (CPU:41% RAM:37166MB Step:59ms)
+2026-02-15 08:10:37,545 - INFO - Ep 3640 | S1:HUNTER | Rw: 792.82 | St: 95 | Fd: 40 (0.421/st) | Eps: 0.208 | L: 6.0198 | Q: 31.51/60.48 | SnakeCollision | Pos:(36717,25553) Wall:5852 Enemy:526
+2026-02-15 08:10:37,546 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 190, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:10:49,120 - INFO - Ep 3641 | S1:HUNTER | Rw: 736.93 | St: 139 | Fd: 38 (0.273/st) | Eps: 0.207 | L: 4.6139 | Q: 31.33/62.46 | SnakeCollision | Pos:(44163,34892) Wall:2150
+2026-02-15 08:10:51,438 - INFO - Ep 3642 | S1:HUNTER | Rw: 468.28 | St: 54 | Fd: 24 (0.444/st) | Eps: 0.207 | L: 4.6805 | Q: 28.84/59.90 | SnakeCollision | Pos:(36963,28217) Wall:7812 Enemy:207
+2026-02-15 08:11:11,288 - INFO - Ep 3643 | S1:HUNTER | Rw: 773.03 | St: 143 | Fd: 40 (0.280/st) | Eps: 0.205 | L: 5.3903 | Q: 30.26/63.07 | SnakeCollision | Pos:(42119,32470) Wall:4427 Enemy:1525
+2026-02-15 08:11:22,075 - INFO - [AUTO-SCALE] Added agent #4 (CPU:46% RAM:36771MB Step:141ms)
+2026-02-15 08:11:24,384 - INFO - Ep 3644 | S1:HUNTER | Rw: 874.91 | St: 145 | Fd: 44 (0.303/st) | Eps: 0.205 | L: 4.7718 | Q: 27.05/57.78 | SnakeCollision | Pos:(38533,34580) Wall:7679 Enemy:1395
+2026-02-15 08:11:31,151 - INFO - Ep 3645 | S1:HUNTER | Rw: 1295.76 | St: 219 | Fd: 66 (0.301/st) | Eps: 0.205 | L: 7.8967 | Q: 26.94/62.22 | SnakeCollision | Pos:(41806,34156) Wall:4603 Enemy:1629
+2026-02-15 08:11:34,450 - INFO - Ep 3646 | S1:HUNTER | Rw: 218.80 | St: 23 | Fd: 11 (0.478/st) | Eps: 0.205 | L: 0.2477 | Q: 24.50/61.62 | SnakeCollision | Pos:(23708,31888) Wall:5130 Enemy:164
+2026-02-15 08:11:40,536 - INFO - Ep 3647 | S1:HUNTER | Rw: 510.83 | St: 34 | Fd: 26 (0.765/st) | Eps: 0.204 | L: 7.9130 | Q: 31.79/60.28 | SnakeCollision | Pos:(33113,31041) Wall:12385 Enemy:72
+2026-02-15 08:11:56,159 - INFO - Ep 3648 | S1:HUNTER | Rw: 754.96 | St: 86 | Fd: 38 (0.442/st) | Eps: 0.203 | L: 3.7246 | Q: 27.07/55.45 | SnakeCollision | Pos:(35475,34578) Wall:10437 Enemy:41
+2026-02-15 08:12:07,677 - INFO - [AUTO-SCALE] Added agent #5 (CPU:45% RAM:36382MB Step:171ms)
+2026-02-15 08:12:09,960 - INFO - Ep 3649 | S1:HUNTER | Rw: 1056.93 | St: 102 | Fd: 53 (0.520/st) | Eps: 0.203 | L: 3.8091 | Q: 29.11/57.15 | SnakeCollision | Pos:(39980,30443) Wall:6274 Enemy:156
+2026-02-15 08:12:09,961 - INFO - Ep 3650 | S1:HUNTER | Rw: 31.52 | St: 6 | Fd: 2 (0.333/st) | Eps: 0.203 | L: 3.8091 | Q: 29.11/57.15 | SnakeCollision | Pos:(39015,29477) Wall:6839 Enemy:943
+2026-02-15 08:12:09,961 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 200, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:12:14,015 - INFO - Ep 3651 | S1:HUNTER | Rw: 753.38 | St: 127 | Fd: 38 (0.299/st) | Eps: 0.203 | L: 8.9184 | Q: 26.71/56.01 | SnakeCollision | Pos:(40464,37652) Wall:4580
+2026-02-15 08:12:30,314 - INFO - Ep 3652 | S1:HUNTER | Rw: 690.84 | St: 95 | Fd: 36 (0.379/st) | Eps: 0.202 | L: 7.7388 | Q: 27.46/56.28 | SnakeCollision | Pos:(39097,40334) Wall:3825 Enemy:1236
+2026-02-15 08:12:41,423 - INFO - [AUTO-SCALE] Added agent #6 (CPU:63% RAM:36140MB Step:149ms)
+2026-02-15 08:12:45,685 - INFO - Ep 3653 | S1:HUNTER | Rw: 1512.59 | St: 198 | Fd: 78 (0.394/st) | Eps: 0.202 | L: 5.4637 | Q: 25.97/57.17 | SnakeCollision | Pos:(37959,40764) Wall:4161 Enemy:1214
+2026-02-15 08:12:45,689 - INFO - Ep 3654 | S1:HUNTER | Rw: 684.19 | St: 95 | Fd: 35 (0.368/st) | Eps: 0.202 | L: 5.4637 | Q: 25.97/57.17 | SnakeCollision | Pos:(36093,40966) Wall:4865 Enemy:1004
+2026-02-15 08:12:45,690 - INFO - Ep 3655 | S1:HUNTER | Rw: 699.11 | St: 94 | Fd: 35 (0.372/st) | Eps: 0.202 | L: 5.4637 | Q: 25.97/57.17 | SnakeCollision | Pos:(31546,35972) Wall:10430 Enemy:218
+2026-02-15 08:12:45,690 - INFO - Ep 3656 | S1:HUNTER | Rw: -10.00 | St: 1 | Fd: 0 (0.000/st) | Eps: 0.202 | L: 5.4637 | Q: 25.97/57.17 | SnakeCollision | Pos:(37393,32090) Wall:9132 Enemy:1027
+2026-02-15 08:12:51,917 - INFO - Ep 3657 | S1:HUNTER | Rw: 889.28 | St: 105 | Fd: 45 (0.429/st) | Eps: 0.201 | L: 3.1781 | Q: 30.26/55.29 | SnakeCollision | Pos:(44399,32323) Wall:2146
+2026-02-15 08:12:56,577 - INFO - Ep 3658 | S1:HUNTER | Rw: 508.41 | St: 12 | Fd: 26 (2.167/st) | Eps: 0.201 | L: 11.8715 | Q: 31.45/62.35 | SnakeCollision | Pos:(30836,32223) Wall:12252 Enemy:387
+2026-02-15 08:12:58,936 - INFO - Ep 3659 | S1:HUNTER | Rw: 789.36 | St: 12 | Fd: 40 (3.333/st) | Eps: 0.201 | L: 3.3580 | Q: 27.44/58.08 | SnakeCollision | Pos:(33085,25852) Wall:7277 Enemy:99
+2026-02-15 08:13:02,517 - INFO - Ep 3660 | S1:HUNTER | Rw: 389.24 | St: 13 | Fd: 20 (1.538/st) | Eps: 0.201 | L: 7.3276 | Q: 29.66/60.85 | SnakeCollision | Pos:(35146,35388) Wall:10151 Enemy:114
+2026-02-15 08:13:02,517 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 210, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:13:03,183 - INFO - [AUTO-SCALE] Removed agent -> 5 (CPU:75% RAM:35878MB Step:529ms)
+2026-02-15 08:13:05,519 - INFO - Ep 3661 | S1:HUNTER | Rw: 409.74 | St: 4 | Fd: 21 (5.250/st) | Eps: 0.201 | L: 3.3135 | Q: 27.44/54.21 | SnakeCollision | Pos:(38282,30422) Wall:7882 Enemy:136
+2026-02-15 08:13:10,717 - INFO - Ep 3662 | S1:HUNTER | Rw: 769.68 | St: 22 | Fd: 39 (1.773/st) | Eps: 0.201 | L: 7.6885 | Q: 28.17/57.24 | SnakeCollision | Pos:(38460,40486) Wall:4102 Enemy:818
+2026-02-15 08:13:19,773 - INFO - Ep 3663 | S1:HUNTER | Rw: 643.74 | St: 49 | Fd: 33 (0.673/st) | Eps: 0.201 | L: 8.0379 | Q: 25.63/57.47 | SnakeCollision | Pos:(35591,42183) Wall:3895 Enemy:48
+2026-02-15 08:13:24,434 - INFO - Ep 3664 | S1:HUNTER | Rw: 850.06 | St: 54 | Fd: 44 (0.815/st) | Eps: 0.201 | L: 4.0673 | Q: 27.87/56.75 | SnakeCollision | Pos:(39613,39822) Wall:3859 Enemy:81
+2026-02-15 08:13:28,910 - INFO - Ep 3665 | S1:HUNTER | Rw: 731.89 | St: 55 | Fd: 38 (0.691/st) | Eps: 0.201 | L: 1.6355 | Q: 29.63/59.58 | SnakeCollision | Pos:(42563,30827) Wall:3836
+2026-02-15 08:13:28,915 - INFO - Ep 3666 | S1:HUNTER | Rw: 758.95 | St: 68 | Fd: 38 (0.559/st) | Eps: 0.201 | L: 1.6355 | Q: 29.63/59.58 | SnakeCollision | Pos:(40251,39102) Wall:3885 Enemy:875
+2026-02-15 08:13:46,652 - INFO - [AUTO-SCALE] Added agent #6 (CPU:55% RAM:36135MB Step:146ms)
+2026-02-15 08:13:49,006 - INFO - Ep 3667 | S1:HUNTER | Rw: 620.14 | St: 51 | Fd: 31 (0.608/st) | Eps: 0.200 | L: 5.6005 | Q: 25.96/62.32 | SnakeCollision | Pos:(40190,37261) Wall:5021 Enemy:1373
+2026-02-15 08:13:55,298 - INFO - Ep 3668 | S1:HUNTER | Rw: 650.84 | St: 109 | Fd: 33 (0.303/st) | Eps: 0.200 | L: 3.0924 | Q: 25.92/67.12 | SnakeCollision | Pos:(32445,39289) Wall:7256 Enemy:100
+2026-02-15 08:13:59,710 - INFO - Ep 3669 | S1:HUNTER | Rw: 528.39 | St: 64 | Fd: 27 (0.422/st) | Eps: 0.200 | L: 6.0300 | Q: 25.93/59.87 | SnakeCollision | Pos:(41900,32482) Wall:4647 Enemy:1001
+2026-02-15 08:13:59,714 - INFO - Ep 3670 | S1:HUNTER | Rw: 592.17 | St: 64 | Fd: 30 (0.469/st) | Eps: 0.200 | L: 6.0300 | Q: 25.93/59.87 | SnakeCollision | Pos:(38311,40127) Wall:4479
+2026-02-15 08:13:59,715 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 220, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:14:04,237 - INFO - Ep 3671 | S1:HUNTER | Rw: 873.64 | St: 71 | Fd: 44 (0.620/st) | Eps: 0.200 | L: 7.1897 | Q: 30.57/63.80 | SnakeCollision | Pos:(39587,42323) Wall:1953 Enemy:1458
+2026-02-15 08:14:07,322 - INFO - Ep 3672 | S1:HUNTER | Rw: 369.55 | St: 18 | Fd: 19 (1.056/st) | Eps: 0.200 | L: 3.2228 | Q: 30.87/63.72 | SnakeCollision | Pos:(34577,26601) Wall:7712 Enemy:444
+2026-02-15 08:14:17,433 - INFO - Ep 3673 | S1:HUNTER | Rw: 690.29 | St: 45 | Fd: 35 (0.778/st) | Eps: 0.199 | L: 6.6990 | Q: 30.20/67.20 | SnakeCollision | Pos:(34020,29116) Wall:10261 Enemy:30
+2026-02-15 08:14:21,331 - INFO - Ep 3674 | S1:HUNTER | Rw: 615.06 | St: 45 | Fd: 32 (0.711/st) | Eps: 0.199 | L: 7.0586 | Q: 31.45/66.34 | SnakeCollision | Pos:(41982,34357) Wall:4393
+2026-02-15 08:14:21,334 - INFO - Ep 3675 | S1:HUNTER | Rw: 780.13 | St: 61 | Fd: 40 (0.656/st) | Eps: 0.199 | L: 7.0586 | Q: 31.45/66.34 | SnakeCollision | Pos:(42241,32099) Wall:4295
+2026-02-15 08:14:32,469 - INFO - Ep 3676 | S1:HUNTER | Rw: 1059.04 | St: 97 | Fd: 54 (0.557/st) | Eps: 0.198 | L: 5.9689 | Q: 27.73/59.75 | SnakeCollision | Pos:(41540,37789) Wall:3591
+2026-02-15 08:14:35,813 - INFO - Ep 3677 | S1:HUNTER | Rw: 513.03 | St: 53 | Fd: 26 (0.491/st) | Eps: 0.198 | L: 14.5332 | Q: 29.26/58.11 | SnakeCollision | Pos:(30067,36412) Wall:9405 Enemy:282
+2026-02-15 08:14:35,814 - INFO - Ep 3678 | S1:HUNTER | Rw: 849.26 | St: 95 | Fd: 44 (0.463/st) | Eps: 0.198 | L: 14.5332 | Q: 29.26/58.11 | SnakeCollision | Pos:(37525,41156) Wall:4056 Enemy:1856
+2026-02-15 08:14:38,671 - INFO - Ep 3679 | S1:HUNTER | Rw: 673.77 | St: 97 | Fd: 34 (0.351/st) | Eps: 0.198 | L: 5.8339 | Q: 30.44/66.36 | SnakeCollision | Pos:(42497,38672) Wall:2316
+2026-02-15 08:14:54,269 - INFO - Ep 3680 | S1:HUNTER | Rw: 631.61 | St: 75 | Fd: 32 (0.427/st) | Eps: 0.197 | L: 6.3560 | Q: 29.42/66.68 | SnakeCollision | Pos:(37340,27322) Wall:6905 Enemy:27
+2026-02-15 08:14:54,269 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 230, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:15:06,208 - INFO - [AUTO-SCALE] Added agent #7 (CPU:65% RAM:36449MB Step:172ms)
+2026-02-15 08:15:08,939 - INFO - Ep 3681 | S1:HUNTER | Rw: 1162.28 | St: 131 | Fd: 59 (0.450/st) | Eps: 0.197 | L: 9.4259 | Q: 31.50/63.23 | SnakeCollision | Pos:(38394,40808) Wall:3880
+2026-02-15 08:15:08,940 - INFO - Ep 3682 | S1:HUNTER | Rw: 610.90 | St: 77 | Fd: 31 (0.403/st) | Eps: 0.197 | L: 9.4259 | Q: 31.50/63.23 | SnakeCollision | Pos:(32349,30060) Wall:11498 Enemy:157
+2026-02-15 08:15:08,941 - INFO - Ep 3683 | S1:HUNTER | Rw: 753.93 | St: 77 | Fd: 38 (0.494/st) | Eps: 0.197 | L: 9.4259 | Q: 31.50/63.23 | SnakeCollision | Pos:(37127,36830) Wall:7730 Enemy:65
+2026-02-15 08:15:08,941 - INFO - Ep 3684 | S1:HUNTER | Rw: 817.50 | St: 130 | Fd: 41 (0.315/st) | Eps: 0.197 | L: 9.4259 | Q: 31.50/63.23 | SnakeCollision | Pos:(40354,35654) Wall:5598 Enemy:316
+2026-02-15 08:15:11,787 - INFO - Ep 3685 | S1:HUNTER | Rw: 751.46 | St: 79 | Fd: 38 (0.481/st) | Eps: 0.197 | L: 6.0307 | Q: 26.92/58.98 | SnakeCollision | Pos:(42447,31368) Wall:4029 Enemy:1078
+2026-02-15 08:15:17,849 - INFO - Ep 3686 | S1:HUNTER | Rw: 830.27 | St: 6 | Fd: 42 (7.000/st) | Eps: 0.197 | L: 5.6228 | Q: 30.87/60.33 | SnakeCollision | Pos:(30781,32881) Wall:12196 Enemy:75
+2026-02-15 08:15:24,272 - INFO - Ep 3687 | S1:HUNTER | Rw: 509.24 | St: 18 | Fd: 26 (1.444/st) | Eps: 0.197 | L: 9.9473 | Q: 29.29/63.88 | SnakeCollision | Pos:(38793,33895) Wall:7611 Enemy:33
+2026-02-15 08:15:26,761 - INFO - Ep 3688 | S1:HUNTER | Rw: 437.47 | St: 20 | Fd: 22 (1.100/st) | Eps: 0.197 | L: 5.1183 | Q: 28.80/57.36 | SnakeCollision | Pos:(42194,30887) Wall:4210 Enemy:1172
+2026-02-15 08:15:26,761 - INFO - Ep 3689 | S1:HUNTER | Rw: 389.43 | St: 20 | Fd: 20 (1.000/st) | Eps: 0.197 | L: 5.1183 | Q: 28.80/57.36 | SnakeCollision | Pos:(33815,27100) Wall:8402 Enemy:465
+2026-02-15 08:15:27,619 - INFO - [AUTO-SCALE] Removed agent -> 6 (CPU:0% RAM:35681MB Step:518ms)
+2026-02-15 08:15:39,666 - INFO - Ep 3690 | S1:HUNTER | Rw: 671.56 | St: 59 | Fd: 34 (0.576/st) | Eps: 0.196 | L: 4.0272 | Q: 27.82/66.71 | SnakeCollision | Pos:(37493,26968) Wall:6541 Enemy:40
+2026-02-15 08:15:39,666 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 240, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:15:52,803 - INFO - Ep 3691 | S1:HUNTER | Rw: 1499.56 | St: 143 | Fd: 76 (0.531/st) | Eps: 0.195 | L: 8.6611 | Q: 30.37/55.37 | SnakeCollision | Pos:(40789,39067) Wall:3492
+2026-02-15 08:15:55,115 - INFO - Ep 3692 | S1:HUNTER | Rw: 1317.20 | St: 139 | Fd: 67 (0.482/st) | Eps: 0.195 | L: 4.2146 | Q: 28.95/57.25 | SnakeCollision | Pos:(41594,39728) Wall:2450 Enemy:1358
+2026-02-15 08:15:59,066 - INFO - Ep 3693 | S1:HUNTER | Rw: 611.67 | St: 67 | Fd: 31 (0.463/st) | Eps: 0.195 | L: 3.0678 | Q: 28.32/62.47 | SnakeCollision | Pos:(32914,35052) Wall:11468 Enemy:109
+2026-02-15 08:16:01,526 - INFO - Ep 3694 | S1:HUNTER | Rw: 1014.31 | St: 126 | Fd: 51 (0.405/st) | Eps: 0.195 | L: 8.6658 | Q: 28.59/57.89 | SnakeCollision | Pos:(37656,41322)
+2026-02-15 08:16:06,508 - INFO - Ep 3695 | S1:HUNTER | Rw: 1748.93 | St: 151 | Fd: 88 (0.583/st) | Eps: 0.195 | L: 3.8968 | Q: 27.99/64.54 | SnakeCollision | Pos:(42784,31156) Wall:3668 Enemy:819
+2026-02-15 08:16:10,352 - INFO - Ep 3696 | S1:HUNTER | Rw: 1634.59 | St: 132 | Fd: 82 (0.621/st) | Eps: 0.195 | L: 8.6356 | Q: 28.82/61.06 | SnakeCollision | Pos:(42065,30855) Wall:4332 Enemy:91
+2026-02-15 08:16:10,575 - INFO -   >> New Best Avg Reward: 693.26. Saved backup: best_model_20260215-f510ca75_ep3696_rw693.pth
+2026-02-15 08:16:13,011 - INFO - Ep 3697 | S1:HUNTER | Rw: 428.35 | St: 10 | Fd: 22 (2.200/st) | Eps: 0.195 | L: 10.0850 | Q: 27.43/65.23 | SnakeCollision | Pos:(32574,28149) Wall:9595 Enemy:457
+2026-02-15 08:16:17,377 - INFO - Ep 3698 | S1:HUNTER | Rw: 407.80 | St: 9 | Fd: 21 (2.333/st) | Eps: 0.195 | L: 4.3112 | Q: 29.08/61.95 | SnakeCollision | Pos:(42280,34072)
+2026-02-15 08:16:17,950 - INFO - [AUTO-SCALE] Removed agent -> 5 (CPU:0% RAM:36530MB Step:608ms)
+2026-02-15 08:16:22,286 - INFO - Ep 3699 | S1:HUNTER | Rw: 390.42 | St: 9 | Fd: 20 (2.222/st) | Eps: 0.195 | L: 5.5157 | Q: 29.60/64.85 | SnakeCollision | Pos:(34661,36258) Wall:9730 Enemy:126
+2026-02-15 08:16:37,076 - INFO - Ep 3700 | S1:HUNTER | Rw: 568.07 | St: 57 | Fd: 29 (0.509/st) | Eps: 0.194 | L: 14.4515 | Q: 29.30/61.26 | SnakeCollision | Pos:(34512,30365) Wall:11060 Enemy:61
+2026-02-15 08:16:37,076 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 250, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:16:39,476 - INFO - Ep 3701 | S1:HUNTER | Rw: 1453.02 | St: 68 | Fd: 73 (1.074/st) | Eps: 0.194 | L: 8.9050 | Q: 26.42/58.85 | SnakeCollision | Pos:(43475,35101) Wall:2778
+2026-02-15 08:16:44,020 - INFO - Ep 3702 | S1:HUNTER | Rw: 490.06 | St: 58 | Fd: 25 (0.431/st) | Eps: 0.194 | L: 5.4189 | Q: 26.58/61.57 | SnakeCollision | Pos:(31609,34040) Wall:12234 Enemy:214
+2026-02-15 08:16:48,557 - INFO - Ep 3703 | S1:HUNTER | Rw: 809.80 | St: 64 | Fd: 41 (0.641/st) | Eps: 0.194 | L: 2.8298 | Q: 30.10/58.40 | SnakeCollision | Pos:(41327,27061) Wall:3644
+2026-02-15 08:16:53,110 - INFO - Ep 3704 | S1:HUNTER | Rw: 904.46 | St: 67 | Fd: 46 (0.687/st) | Eps: 0.194 | L: 5.5145 | Q: 27.86/58.82 | SnakeCollision | Pos:(38717,40860) Wall:3649
+2026-02-15 08:16:55,421 - INFO - Ep 3705 | S1:HUNTER | Rw: 370.36 | St: 7 | Fd: 19 (2.714/st) | Eps: 0.194 | L: 6.4427 | Q: 29.19/60.44 | SnakeCollision | Pos:(36465,30906) Wall:9750 Enemy:69
+2026-02-15 08:17:03,025 - INFO - Ep 3706 | S1:HUNTER | Rw: 487.51 | St: 29 | Fd: 25 (0.862/st) | Eps: 0.193 | L: 10.2965 | Q: 30.44/66.03 | SnakeCollision | Pos:(32197,38134) Wall:8401 Enemy:60
+2026-02-15 08:17:07,465 - INFO - Ep 3707 | S1:HUNTER | Rw: 569.05 | St: 28 | Fd: 29 (1.036/st) | Eps: 0.193 | L: 6.2932 | Q: 31.76/71.20 | SnakeCollision | Pos:(30863,31191) Wall:11830 Enemy:262
+2026-02-15 08:17:07,466 - INFO - Ep 3708 | S1:HUNTER | Rw: 497.62 | St: 35 | Fd: 26 (0.743/st) | Eps: 0.193 | L: 6.2932 | Q: 31.76/71.20 | SnakeCollision | Pos:(41832,36984) Wall:3710
+2026-02-15 08:17:08,040 - INFO - [AUTO-SCALE] Removed agent -> 4 (CPU:46% RAM:37008MB Step:705ms)
+2026-02-15 08:17:11,360 - INFO - Ep 3709 | S1:HUNTER | Rw: 374.62 | St: 28 | Fd: 19 (0.679/st) | Eps: 0.193 | L: 7.8717 | Q: 24.16/61.12 | SnakeCollision | Pos:(39512,29012) Wall:6187 Enemy:402
+2026-02-15 08:17:16,775 - INFO - Ep 3710 | S1:HUNTER | Rw: 955.33 | St: 45 | Fd: 49 (1.089/st) | Eps: 0.193 | L: 16.5362 | Q: 24.26/52.31 | SnakeCollision | Pos:(41554,37368) Wall:3784
+2026-02-15 08:17:16,775 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 260, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-15 08:17:19,066 - INFO - Ep 3711 | S1:HUNTER | Rw: 550.46 | St: 13 | Fd: 28 (2.154/st) | Eps: 0.193 | L: 6.8598 | Q: 28.59/59.12 | SnakeCollision | Pos:(31125,33065) Wall:12482 Enemy:272
+2026-02-15 08:17:26,322 - INFO - Ep 3712 | S1:HUNTER | Rw: 526.22 | St: 36 | Fd: 27 (0.750/st) | Eps: 0.193 | L: 5.6498 | Q: 27.52/55.13 | SnakeCollision | Pos:(38046,37164) Wall:6821 Enemy:66
+2026-02-15 08:17:26,847 - INFO - [AUTO-SCALE] Removed agent -> 3 (CPU:57% RAM:37254MB Step:524ms)
+2026-02-15 08:17:29,122 - INFO - Ep 3713 | S1:HUNTER | Rw: 409.30 | St: 24 | Fd: 21 (0.875/st) | Eps: 0.193 | L: 9.9765 | Q: 27.21/67.38 | SnakeCollision | Pos:(35205,25948) Wall:6880 Enemy:436
