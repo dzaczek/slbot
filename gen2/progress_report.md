@@ -1,16 +1,18 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-15 10:51:12  
-**Total Episodes:** 5664  
+**Generated:** 2026-02-15 12:41:28  
+**Total Episodes:** 6844  
 **Training Sessions:** 14
 
-## Verdict: LEARNING (Confidence: 70%)
+## Verdict: LEARNING (Confidence: 60%)
 
-**Goal Feasibility:** POSSIBLE (25-60%)
+**Goal Feasibility:** UNLIKELY (5-25%) without tuning
+
+### Warnings
+- Loss very high (21.35) - unstable
 
 ### Positive Signals
-- Rewards improving: +115.8
-- Epsilon low (0.123) - exploiting policy
+- Rewards improving: +83.5
 
 ## Curriculum Stage Breakdown
 
@@ -18,36 +20,36 @@
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
 | S1 | FOOD_VECTOR | 1293 | 320.7 | 62.2 | 28.5 | 0.7114 | 14.7% | 85.1% | 0.2% |
 | S2 | WALL_AVOID | 1449 | 108.7 | 74.9 | 33.0 | 0.7296 | 9.0% | 91.0% | 0.0% |
-| S3 | ENEMY_AVOID | 810 | 204.7 | 79.1 | 34.0 | 0.9082 | 9.9% | 88.0% | 2.1% |
-| S4 | MASS_MANAGEMENT | 2112 | 230.9 | 90.3 | 36.8 | 0.9087 | 14.2% | 85.5% | 0.3% |
+| S3 | ENEMY_AVOID | 835 | 205.8 | 84.8 | 33.9 | 0.8943 | 9.9% | 87.4% | 2.6% |
+| S4 | MASS_MANAGEMENT | 3267 | 218.4 | 82.3 | 35.7 | 0.9108 | 13.7% | 86.1% | 0.2% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 216.40 | 261.53 | -7111.38 | 72.94 | 140.18 | 281.25 | 690.80 | 3256.19 |
-| Steps | 78.35 | 112.28 | 1.00 | 26.00 | 60.00 | 107.00 | 203.00 | 5000.00 |
-| Food | 33.53 | 18.90 | 0.00 | 21.00 | 30.00 | 43.00 | 70.00 | 128.00 |
-| Loss | 15.87 | 58.56 | 0.00 | 2.96 | 6.34 | 15.41 | 39.16 | 996.87 |
-| Food/Step | 0.82 | 1.11 | 0.00 | 0.36 | 0.48 | 0.73 | 3.00 | 16.50 |
+| Reward | 212.94 | 245.82 | -7111.38 | 78.63 | 145.89 | 275.87 | 654.16 | 3256.19 |
+| Steps | 77.21 | 107.74 | 1.00 | 25.00 | 60.00 | 105.00 | 202.00 | 5000.00 |
+| Food | 33.53 | 18.77 | 0.00 | 21.00 | 30.00 | 43.00 | 70.00 | 128.00 |
+| Loss | 16.15 | 53.44 | 0.00 | 3.44 | 8.14 | 17.62 | 38.87 | 996.87 |
+| Food/Step | 0.83 | 1.11 | 0.00 | 0.37 | 0.49 | 0.74 | 3.00 | 16.50 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 259.11 | 215.21 | -1.8877 | 0.0160 |
-| Last 100 | 244.99 | 206.92 | -0.2238 | 0.0010 |
-| Last 200 | 228.95 | 192.87 | +0.1886 | 0.0032 |
-| Last 500 | 213.64 | 189.06 | +0.1872 | 0.0204 |
-| Last 1000 | 162.64 | 162.63 | +0.1880 | 0.1114 |
+| Last 50 | 165.51 | 97.61 | +0.7850 | 0.0135 |
+| Last 100 | 174.33 | 117.81 | -0.2626 | 0.0041 |
+| Last 200 | 186.12 | 129.33 | -0.2033 | 0.0082 |
+| Last 500 | 193.21 | 134.34 | -0.0432 | 0.0022 |
+| Last 1000 | 195.21 | 138.41 | -0.0065 | 0.0002 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
-| Wall | 699 | 12.3% | 120.8 | 240.5 |
-| SnakeCollision | 4938 | 87.2% | 67.4 | 208.3 |
-| MaxSteps | 27 | 0.5% | 977.8 | 1080.7 |
+| Wall | 849 | 12.4% | 123.3 | 256.8 |
+| SnakeCollision | 5963 | 87.1% | 65.8 | 202.8 |
+| MaxSteps | 32 | 0.5% | 981.2 | 947.6 |
 
 ## Goal Progress
 
@@ -58,7 +60,7 @@
 
 ## Recommendations
 
-Keep training. Monitor for sustained improvement.
+Fine-tune hyperparameters, increase training duration.
 
 1. Episodes too short. Reduce death penalties or add survival bonus.
 
