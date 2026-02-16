@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-16 12:49:00  
-**Total Episodes:** 122  
+**Generated:** 2026-02-16 12:59:13  
+**Total Episodes:** 130  
 **Training Sessions:** 3
 
 ## Verdict: NOT LEARNING (Confidence: 55%)
@@ -9,38 +9,38 @@
 **Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
 ### Positive Signals
-- Food collection improving (slope=0.0708/ep)
+- Food collection improving (slope=0.0799/ep)
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 122 | 98.9 | 81.3 | 30.0 | 0.6727 | 0.8% | 96.7% | 2.5% |
+| S1 | FOOD_VECTOR | 130 | 100.4 | 83.3 | 30.5 | 0.6745 | 0.8% | 96.2% | 3.1% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 98.86 | 68.74 | -13.90 | 54.09 | 83.13 | 123.81 | 244.48 | 311.49 |
-| Steps | 81.25 | 68.28 | 2.00 | 31.00 | 62.00 | 110.50 | 235.05 | 300.00 |
-| Food | 30.03 | 15.90 | 1.00 | 21.00 | 26.50 | 36.75 | 59.95 | 85.00 |
-| Loss | 6.69 | 8.59 | 0.00 | 1.83 | 3.68 | 7.57 | 23.15 | 40.93 |
-| Food/Step | 0.67 | 0.88 | 0.18 | 0.30 | 0.41 | 0.71 | 1.75 | 6.67 |
+| Reward | 100.41 | 70.05 | -15.00 | 54.09 | 84.85 | 129.71 | 244.74 | 311.49 |
+| Steps | 83.25 | 70.51 | 1.00 | 31.00 | 63.50 | 119.25 | 239.30 | 300.00 |
+| Food | 30.52 | 16.44 | 0.00 | 21.00 | 27.00 | 37.75 | 61.10 | 85.00 |
+| Loss | 6.49 | 8.36 | 0.00 | 1.86 | 3.71 | 5.96 | 22.35 | 40.93 |
+| Food/Step | 0.67 | 0.89 | 0.00 | 0.30 | 0.41 | 0.70 | 1.75 | 6.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 110.21 | 72.96 | -0.3942 | 0.0061 |
-| Last 100 | 104.68 | 72.06 | +0.0872 | 0.0012 |
+| Last 50 | 110.38 | 78.69 | +0.0878 | 0.0003 |
+| Last 100 | 106.63 | 72.99 | +0.1412 | 0.0031 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 1 | 0.8% | 262.0 | 299.6 |
-| SnakeCollision | 118 | 96.7% | 74.2 | 92.2 |
-| MaxSteps | 3 | 2.5% | 300.0 | 293.1 |
+| SnakeCollision | 125 | 96.2% | 74.9 | 92.9 |
+| MaxSteps | 4 | 3.1% | 300.0 | 285.4 |
 
 ## Goal Progress
 
@@ -53,7 +53,7 @@
 
 Fine-tune hyperparameters, increase training duration.
 
-1. Epsilon 0.723 still high. Consider faster decay.
+1. Epsilon 0.690 still high. Consider faster decay.
 
 2. Episodes too short. Reduce death penalties or add survival bonus.
 
