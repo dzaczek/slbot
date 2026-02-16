@@ -694,3 +694,62 @@
 2026-02-16 14:40:12,300 - INFO - [AUTO-SCALE] Added agent #5 (CPU:50% RAM:28757MB Step:110ms)
 2026-02-16 14:40:16,336 - INFO - Ep 342 | S2:WALL_AVOID | Rw: 119.37 | St: 41 | Fd: 23 (0.561/st) | Eps: 0.192 | L: 2.4244 | Q: 14.94/37.24 | SnakeCollision | Pos:(38677,35482) Wall:7204 Enemy:638
 2026-02-16 14:40:19,491 - INFO - Ep 343 | S2:WALL_AVOID | Rw: 775.97 | St: 500 | Fd: 96 (0.192/st) | Eps: 0.192 | L: 2.2586 | Q: 15.86/33.94 | MaxSteps | Pos:(24048,23441) Wall:1536 Enemy:723
+2026-02-16 14:41:15,962 - INFO - Ep 344 | S2:WALL_AVOID | Rw: 661.74 | St: 500 | Fd: 103 (0.206/st) | Eps: 0.188 | L: 3.1224 | Q: 16.44/41.05 | MaxSteps | Pos:(43839,36638) Wall:1990
+2026-02-16 14:41:21,810 - INFO - Ep 345 | S2:WALL_AVOID | Rw: 552.35 | St: 298 | Fd: 87 (0.292/st) | Eps: 0.188 | L: 2.8570 | Q: 14.99/48.38 | SnakeCollision | Pos:(38234,37993) Wall:6127 Enemy:99
+2026-02-16 14:41:26,636 - INFO - Ep 346 | S2:WALL_AVOID | Rw: 686.28 | St: 500 | Fd: 102 (0.204/st) | Eps: 0.188 | L: 2.2985 | Q: 14.51/29.71 | MaxSteps | Pos:(22828,28276) Wall:3376
+2026-02-16 14:42:06,203 - INFO - Ep 347 | S2:WALL_AVOID | Rw: 941.53 | St: 500 | Fd: 116 (0.232/st) | Eps: 0.185 | L: 1.8185 | Q: 15.77/28.58 | MaxSteps | Pos:(27416,36141) Wall:7731 Enemy:482
+2026-02-16 14:42:06,357 - INFO -   >> New Best Avg Reward: 547.22. Saved backup: best_model_20260216-569fee67_ep347_rw547.pth
+2026-02-16 14:42:09,349 - INFO - Ep 348 | S2:WALL_AVOID | Rw: 827.89 | St: 500 | Fd: 103 (0.206/st) | Eps: 0.185 | L: 3.9200 | Q: 14.86/31.50 | MaxSteps | Pos:(37868,22761) Wall:2857 Enemy:1168
+2026-02-16 14:42:09,515 - INFO -   >> New Best Avg Reward: 552.93. Saved backup: best_model_20260216-569fee67_ep348_rw552.pth
+2026-02-16 14:42:49,754 - INFO - Ep 349 | S2:WALL_AVOID | Rw: 355.53 | St: 172 | Fd: 50 (0.291/st) | Eps: 0.183 | L: 1.7836 | Q: 15.28/28.35 | SnakeCollision | Pos:(34008,35892) Wall:10350 Enemy:50
+2026-02-16 14:43:14,764 - INFO - Ep 350 | S2:WALL_AVOID | Rw: 917.59 | St: 500 | Fd: 120 (0.240/st) | Eps: 0.182 | L: 1.3629 | Q: 15.83/31.04 | MaxSteps | Pos:(32464,22794) Wall:4240 Enemy:910
+2026-02-16 14:43:14,765 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 120, 'InvalidFrame': 0, 'BrowserError': 4, 'MaxSteps': 90}
+2026-02-16 14:43:14,900 - INFO -   >> New Best Avg Reward: 559.88. Saved backup: best_model_20260216-569fee67_ep350_rw559.pth
+2026-02-16 14:43:16,864 - INFO - Ep 351 | S2:WALL_AVOID | Rw: 847.07 | St: 500 | Fd: 100 (0.200/st) | Eps: 0.182 | L: 1.2592 | Q: 14.70/32.35 | MaxSteps | Pos:(42354,37789) Wall:2881 Enemy:899
+2026-02-16 14:43:17,004 - INFO -   >> New Best Avg Reward: 566.67. Saved backup: best_model_20260216-569fee67_ep351_rw566.pth
+2026-02-16 14:43:20,707 - INFO - Ep 352 | S2:WALL_AVOID | Rw: 859.28 | St: 500 | Fd: 110 (0.220/st) | Eps: 0.181 | L: 1.1434 | Q: 15.37/35.88 | MaxSteps | Pos:(32448,42391) Wall:4155 Enemy:968
+2026-02-16 14:43:20,839 - INFO -   >> New Best Avg Reward: 573.95. Saved backup: best_model_20260216-569fee67_ep352_rw573.pth
+2026-02-16 14:43:34,825 - INFO - Ep 353 | S2:WALL_AVOID | Rw: 195.20 | St: 73 | Fd: 33 (0.452/st) | Eps: 0.181 | L: 2.3282 | Q: 15.28/32.27 | SnakeCollision | Pos:(31762,36950) Wall:9527 Enemy:41
+2026-02-16 14:43:34,975 - INFO -   >> New Best Avg Reward: 574.45. Saved backup: best_model_20260216-569fee67_ep353_rw574.pth
+2026-02-16 14:44:01,374 - INFO - Ep 354 | S2:WALL_AVOID | Rw: 812.22 | St: 500 | Fd: 98 (0.196/st) | Eps: 0.179 | L: 3.0195 | Q: 15.23/37.69 | MaxSteps | Pos:(36990,21345) Wall:1944 Enemy:1437
+2026-02-16 14:44:01,518 - INFO -   >> New Best Avg Reward: 577.84. Saved backup: best_model_20260216-569fee67_ep354_rw577.pth
+2026-02-16 14:44:37,811 - INFO - Ep 355 | S2:WALL_AVOID | Rw: 857.01 | St: 500 | Fd: 124 (0.248/st) | Eps: 0.177 | L: 2.1723 | Q: 16.61/42.71 | MaxSteps | Pos:(26400,42837) Wall:2011
+2026-02-16 14:44:37,967 - INFO -   >> New Best Avg Reward: 581.86. Saved backup: best_model_20260216-569fee67_ep355_rw581.pth
+2026-02-16 14:45:00,512 - INFO - Ep 356 | S2:WALL_AVOID | Rw: 855.53 | St: 500 | Fd: 116 (0.232/st) | Eps: 0.175 | L: 2.3381 | Q: 14.66/32.42 | MaxSteps | Pos:(27441,28530) Wall:7496 Enemy:1111
+2026-02-16 14:45:00,648 - INFO -   >> New Best Avg Reward: 584.26. Saved backup: best_model_20260216-569fee67_ep356_rw584.pth
+2026-02-16 14:45:04,360 - INFO - Ep 357 | S2:WALL_AVOID | Rw: 749.98 | St: 500 | Fd: 94 (0.188/st) | Eps: 0.175 | L: 1.8611 | Q: 16.34/39.58 | MaxSteps | Pos:(35907,43984) Wall:2080
+2026-02-16 14:45:04,508 - INFO -   >> New Best Avg Reward: 584.60. Saved backup: best_model_20260216-569fee67_ep357_rw584.pth
+2026-02-16 14:45:15,074 - INFO - Ep 358 | S2:WALL_AVOID | Rw: 910.28 | St: 500 | Fd: 114 (0.228/st) | Eps: 0.175 | L: 2.3725 | Q: 14.32/36.81 | MaxSteps | Pos:(25569,27329) Wall:5279 Enemy:858
+2026-02-16 14:45:42,341 - INFO - Ep 359 | S2:WALL_AVOID | Rw: 920.25 | St: 500 | Fd: 122 (0.244/st) | Eps: 0.173 | L: 2.0730 | Q: 15.40/36.23 | MaxSteps | Pos:(38870,42889) Wall:1879
+2026-02-16 14:45:42,496 - INFO -   >> New Best Avg Reward: 591.06. Saved backup: best_model_20260216-569fee67_ep359_rw591.pth
+2026-02-16 14:46:14,891 - INFO - Ep 360 | S2:WALL_AVOID | Rw: 239.30 | St: 149 | Fd: 32 (0.215/st) | Eps: 0.171 | L: 1.1153 | Q: 14.93/41.33 | SnakeCollision | Pos:(28824,41122) Wall:4650 Enemy:52
+2026-02-16 14:46:14,891 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 122, 'InvalidFrame': 0, 'BrowserError': 4, 'MaxSteps': 98}
+2026-02-16 14:46:17,922 - INFO - Ep 361 | S2:WALL_AVOID | Rw: 565.64 | St: 353 | Fd: 98 (0.278/st) | Eps: 0.171 | L: 1.8827 | Q: 15.25/36.11 | SnakeCollision | Pos:(26579,22307) Wall:2140 Enemy:655
+2026-02-16 14:46:21,433 - INFO - Ep 362 | S2:WALL_AVOID | Rw: 856.93 | St: 467 | Fd: 117 (0.251/st) | Eps: 0.171 | L: 2.8768 | Q: 11.72/31.36 | SnakeCollision | Pos:(31125,36943) Wall:9378 Enemy:279
+2026-02-16 14:46:24,111 - INFO - Ep 363 | S2:WALL_AVOID | Rw: 53.14 | St: 3 | Fd: 14 (4.667/st) | Eps: 0.171 | L: 4.2032 | Q: 14.57/42.47 | SnakeCollision | Pos:(32325,25810) Wall:7253 Enemy:190
+2026-02-16 14:46:28,205 - INFO - Ep 364 | S2:WALL_AVOID | Rw: 440.45 | St: 290 | Fd: 55 (0.190/st) | Eps: 0.171 | L: 4.1129 | Q: 13.58/33.42 | SnakeCollision | Pos:(42751,26833) Wall:2303 Enemy:892
+2026-02-16 14:46:32,691 - INFO - Ep 365 | S2:WALL_AVOID | Rw: 45.60 | St: 3 | Fd: 13 (4.333/st) | Eps: 0.171 | L: 2.9695 | Q: 15.37/32.10 | SnakeCollision | Pos:(38284,39535) Wall:4959 Enemy:1020
+2026-02-16 14:46:35,714 - INFO - Ep 366 | S2:WALL_AVOID | Rw: 69.03 | St: 3 | Fd: 18 (6.000/st) | Eps: 0.171 | L: 1.6163 | Q: 16.08/34.77 | SnakeCollision | Pos:(23395,32637) Wall:4841 Enemy:701
+2026-02-16 14:46:39,962 - INFO - [AUTO-SCALE] Removed agent -> 4 (CPU:57% RAM:27934MB Step:580ms)
+2026-02-16 14:46:54,997 - INFO - >> Target Network Updated
+2026-02-16 14:47:05,872 - INFO - Ep 367 | S2:WALL_AVOID | Rw: 804.67 | St: 500 | Fd: 105 (0.210/st) | Eps: 0.169 | L: 5.4441 | Q: 17.42/40.36 | MaxSteps | Pos:(23906,38441) Wall:3536 Enemy:1330
+2026-02-16 14:47:10,660 - INFO - Ep 368 | S2:WALL_AVOID | Rw: 289.01 | St: 160 | Fd: 45 (0.281/st) | Eps: 0.169 | L: 3.5434 | Q: 18.08/42.71 | SnakeCollision | Pos:(33869,38083) Wall:8309 Enemy:99
+2026-02-16 14:47:39,533 - INFO - [AUTO-SCALE] Added agent #5 (CPU:53% RAM:28161MB Step:114ms)
+2026-02-16 14:47:41,992 - INFO - Ep 369 | S2:WALL_AVOID | Rw: 165.18 | St: 80 | Fd: 29 (0.362/st) | Eps: 0.169 | L: 2.6886 | Q: 19.35/42.65 | SnakeCollision | Pos:(31636,35449) Wall:10957 Enemy:257
+2026-02-16 14:47:42,012 - INFO - Ep 370 | S2:WALL_AVOID | Rw: 452.68 | St: 241 | Fd: 61 (0.253/st) | Eps: 0.169 | L: 2.6886 | Q: 19.35/42.65 | SnakeCollision | Pos:(30143,40545) Wall:5647 Enemy:806
+2026-02-16 14:47:42,012 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 131, 'InvalidFrame': 0, 'BrowserError': 4, 'MaxSteps': 99}
+2026-02-16 14:48:21,490 - INFO - Ep 371 | S2:WALL_AVOID | Rw: 354.34 | St: 157 | Fd: 62 (0.395/st) | Eps: 0.167 | L: 4.9613 | Q: 18.29/63.08 | SnakeCollision | Pos:(37860,33424) Wall:8615 Enemy:118
+2026-02-16 14:48:23,997 - INFO - Ep 372 | S2:WALL_AVOID | Rw: 402.17 | St: 158 | Fd: 68 (0.430/st) | Eps: 0.167 | L: 5.4816 | Q: 18.72/45.57 | SnakeCollision | Pos:(28064,29961) Wall:8817 Enemy:680
+2026-02-16 14:48:45,999 - INFO - Ep 373 | S2:WALL_AVOID | Rw: 811.80 | St: 500 | Fd: 108 (0.216/st) | Eps: 0.166 | L: 6.0296 | Q: 16.09/40.10 | MaxSteps | Pos:(37188,40698) Wall:4621 Enemy:1360
+2026-02-16 14:48:52,349 - INFO - Ep 374 | S2:WALL_AVOID | Rw: 201.07 | St: 110 | Fd: 33 (0.300/st) | Eps: 0.166 | L: 2.3228 | Q: 16.93/36.30 | SnakeCollision | Pos:(44586,28117) Wall:1170 Enemy:73
+2026-02-16 14:48:57,396 - INFO - Ep 375 | S2:WALL_AVOID | Rw: 435.26 | St: 351 | Fd: 94 (0.268/st) | Eps: 0.166 | L: 6.9550 | Q: 17.66/44.71 | SnakeCollision | Pos:(44094,28307) Wall:1697 Enemy:94
+2026-02-16 14:49:00,136 - INFO - Ep 376 | S2:WALL_AVOID | Rw: 244.97 | St: 114 | Fd: 38 (0.333/st) | Eps: 0.166 | L: 1.5039 | Q: 17.18/42.23 | SnakeCollision | Pos:(33064,27305) Wall:8726 Enemy:412
+2026-02-16 14:49:02,690 - INFO - Ep 377 | S2:WALL_AVOID | Rw: 75.15 | St: 4 | Fd: 19 (4.750/st) | Eps: 0.166 | L: 2.6157 | Q: 16.68/41.17 | SnakeCollision | Pos:(40638,34875) Wall:5581 Enemy:49
+2026-02-16 14:49:12,060 - INFO - Ep 378 | S2:WALL_AVOID | Rw: 97.62 | St: 25 | Fd: 21 (0.840/st) | Eps: 0.165 | L: 3.5592 | Q: 16.05/38.37 | SnakeCollision | Pos:(26771,36499) Wall:6997 Enemy:54
+2026-02-16 14:49:45,258 - INFO - Ep 379 | S2:WALL_AVOID | Rw: 288.34 | St: 147 | Fd: 42 (0.286/st) | Eps: 0.164 | L: 1.6899 | Q: 17.23/41.06 | SnakeCollision | Pos:(41074,33562) Wall:5413 Enemy:39
+2026-02-16 14:49:57,829 - INFO - Ep 380 | S2:WALL_AVOID | Rw: 902.72 | St: 500 | Fd: 119 (0.238/st) | Eps: 0.163 | L: 5.1665 | Q: 18.83/39.31 | MaxSteps | Pos:(23429,35010) Wall:4549 Enemy:743
+2026-02-16 14:49:57,830 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 139, 'InvalidFrame': 0, 'BrowserError': 4, 'MaxSteps': 101}
+2026-02-16 14:50:49,474 - INFO - Ep 381 | S2:WALL_AVOID | Rw: 709.35 | St: 500 | Fd: 98 (0.196/st) | Eps: 0.161 | L: 0.9802 | Q: 18.71/45.93 | MaxSteps | Pos:(24854,22845) Wall:1610 Enemy:563
+2026-02-16 14:50:51,706 - INFO - Ep 382 | S2:WALL_AVOID | Rw: 822.61 | St: 500 | Fd: 101 (0.202/st) | Eps: 0.160 | L: 3.2892 | Q: 18.06/45.78 | MaxSteps | Pos:(43025,34033) Wall:3417 Enemy:380
+2026-02-16 14:50:52,657 - INFO - Ep 383 | S2:WALL_AVOID | Rw: 889.78 | St: 500 | Fd: 110 (0.220/st) | Eps: 0.160 | L: 2.6907 | Q: 16.27/33.59 | MaxSteps | Pos:(37881,39387) Wall:5327 Enemy:408
+2026-02-16 14:51:26,083 - INFO - Ep 384 | S2:WALL_AVOID | Rw: 667.43 | St: 500 | Fd: 82 (0.164/st) | Eps: 0.159 | L: 8.9536 | Q: 17.61/39.58 | MaxSteps | Pos:(33152,44688) Wall:1843 Enemy:1364
