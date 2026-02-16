@@ -300,3 +300,23 @@
 2026-02-16 13:06:21,889 - INFO -   >> New Best Avg Reward: 104.40. Saved backup: best_model_20260216-7b920d7e_ep136_rw104.pth
 2026-02-16 13:06:40,822 - INFO - [Shutdown] KeyboardInterrupt. Saving checkpoint.
 2026-02-16 13:06:41,246 - INFO - [Shutdown] Training ended at episode 136. UID: 20260216-7b920d7e
+2026-02-16 13:11:36,006 - INFO - Configuration:
+2026-02-16 13:11:36,006 - INFO -   Style: Standard (Curriculum)
+2026-02-16 13:11:36,006 - INFO -   Mode: curriculum
+2026-02-16 13:11:36,006 - INFO -   Agents: AUTO (start=1, max=1)
+2026-02-16 13:11:36,006 - INFO -   Frame Stack: 4
+2026-02-16 13:11:36,007 - INFO -   Resolution: (128, 128)
+2026-02-16 13:11:36,007 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-16 13:11:36,007 - INFO -   LR: 0.0001
+2026-02-16 13:11:36,007 - INFO -   PER: True
+2026-02-16 13:11:36,007 - INFO -   Backend: selenium
+2026-02-16 13:11:36,007 - INFO - Training Run UID: 20260216-d9e8d440
+2026-02-16 13:11:36,798 - INFO -   Parent UID: 20260216-7b920d7e
+2026-02-16 13:11:36,798 - INFO - Resumed from episode 136
+2026-02-16 13:11:36,798 - INFO -   Stage: 1 (FOOD_VECTOR)
+2026-02-16 13:11:43,399 - INFO -   Curriculum Stage: 1 (FOOD_VECTOR)
+2026-02-16 13:11:43,399 - INFO -   Max Steps: 300
+2026-02-16 13:11:54,404 - WARNING - [SubprocVecEnv] Worker 0 crashed (EOFError). Respawning...
+2026-02-16 13:11:54,405 - WARNING - [SubprocVecEnv] Respawning worker 0 (attempt 1/3)...
+2026-02-16 13:11:55,469 - INFO - [Shutdown] KeyboardInterrupt. Saving checkpoint.
+2026-02-16 13:11:55,695 - INFO - [Shutdown] Training ended at episode 136. UID: 20260216-d9e8d440
