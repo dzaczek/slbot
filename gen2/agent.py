@@ -165,48 +165,53 @@ class DDQNAgent:
         """
         Emergency reflexes based on sector vector. Returns action or None.
 
-        Sector layout:
-          [0..23]  food_score per sector (0=ahead, clockwise 15° each)
-          [24..47] obstacle_score per sector (1.0=touching, 0.0=clear)
-          [48..71] obstacle_type per sector (-1=none, 0=body/wall, 1=head)
-          [72]     wall_dist_norm (dist_to_wall / 1500)
+        Sector layout (99 floats, alpha-5):
+          [0..23]   food_score per sector (0=ahead, clockwise 15° each)
+          [24..47]  obstacle_score per sector (1.0=touching, 0.0=clear)
+          [48..71]  obstacle_type per sector (-1=none, 0=body/wall, 1=head)
+          [72..95]  enemy_approach per sector (dot product, -1..+1)
+          [96]      wall_dist_norm (dist_to_wall / 2000)
+          [97]      snake_length_norm
+          [98]      speed_norm
 
         Actions: 0=straight, 1/2=gentle L/R, 3/4=medium L/R,
                  5/6=sharp L/R, 7/8=uturn L/R, 9=boost
         """
-        obstacle = sectors[24:48]   # obstacle_score per sector
-        obs_type = sectors[48:72]   # obstacle_type per sector
-        wall_norm = sectors[72]     # wall distance normalized
+        ns = 24  # num_sectors
+        obstacle = sectors[ns:ns*2]       # obstacle_score per sector
+        obs_type = sectors[ns*2:ns*3]     # obstacle_type per sector
+        # Globals start at index ns*4 (after 4 per-sector features)
+        wall_norm = sectors[ns * 4]       # [96] wall_dist_norm
 
         # --- REFLEX 1: Obstacle directly ahead (sectors 0, 23 = front ±15°) ---
         # If something is close in front, turn away hard
         front_danger = max(obstacle[0], obstacle[23], obstacle[1])
-        if front_danger > 0.6:  # >0.6 means within ~600 units (40% of 1500 scope)
+        if front_danger > 0.6:  # >0.6 means within ~800 units (40% of 2000 scope)
             # Pick the safer side — check left vs right obstacle density
             # Left = sectors 20-23 (−60° to 0°), Right = sectors 1-4 (0° to +60°)
             left_danger = sum(obstacle[20:24]) / 4.0
             right_danger = sum(obstacle[1:5]) / 4.0
 
             if front_danger > 0.85:  # Very close — U-turn
-                return 7 if left_danger <= right_danger else 8  # U-turn toward safer side
+                return 7 if left_danger <= right_danger else 8
             else:  # Medium close — sharp turn
-                return 5 if left_danger <= right_danger else 6  # Sharp turn toward safer side
+                return 5 if left_danger <= right_danger else 6
 
         # --- REFLEX 2: Wall proximity emergency ---
-        # wall_norm < 0.2 means within 300 units of wall (out of 1500 scope)
+        # wall_norm < 0.15 means within 300 units of wall (out of 2000 scope)
         if wall_norm < 0.15:
             # Turn toward center — check which side has more open space
             left_obs = sum(obstacle[18:24]) / 6.0
             right_obs = sum(obstacle[0:6]) / 6.0
-            return 7 if left_obs <= right_obs else 8  # U-turn away from wall
+            return 7 if left_obs <= right_obs else 8
 
         # --- REFLEX 3: Enemy head approaching from front ---
         # Enemy heads (type=1) in front sectors are the most dangerous
         for s_i in [0, 23, 1, 22]:  # front ±30°
-            if obs_type[s_i] == 1 and obstacle[s_i] > 0.4:  # head within ~900 units
+            if obs_type[s_i] == 1 and obstacle[s_i] > 0.4:  # head within ~1200 units
                 left_danger = sum(obstacle[20:24]) / 4.0
                 right_danger = sum(obstacle[1:5]) / 4.0
-                return 5 if left_danger <= right_danger else 6  # Sharp turn away
+                return 5 if left_danger <= right_danger else 6
 
         return None  # No reflex triggered — let the network decide
 
