@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-16 08:48:10  
-**Total Episodes:** 7926  
+**Generated:** 2026-02-16 08:56:43  
+**Total Episodes:** 8006  
 **Training Sessions:** 15
 
 ## Verdict: NOT LEARNING (Confidence: 40%)
@@ -9,10 +9,10 @@
 **Goal Feasibility:** VERY UNLIKELY (<5%)
 
 ### Critical Issues
-- Rewards DECLINING: -92.2
+- Rewards DECLINING: -90.9
 
 ### Positive Signals
-- Epsilon low (0.092) - exploiting policy
+- Epsilon low (0.091) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
@@ -20,35 +20,35 @@
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
 | S1 | FOOD_VECTOR | 400 | 99.4 | 103.6 | 30.8 | 0.6613 | 8.0% | 81.5% | 10.5% |
 | S2 | WALL_AVOID | 383 | 231.0 | 140.3 | 30.5 | 0.7597 | 12.3% | 70.8% | 17.0% |
-| S3 | ENEMY_AVOID | 7143 | 169.6 | 77.3 | 31.8 | 0.9821 | 5.9% | 92.7% | 1.3% |
+| S3 | ENEMY_AVOID | 7223 | 169.5 | 78.0 | 31.8 | 0.9842 | 5.8% | 92.7% | 1.4% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 169.01 | 333.32 | -40.65 | 67.95 | 112.87 | 190.40 | 386.66 | 4390.02 |
-| Steps | 81.71 | 122.73 | 1.00 | 23.00 | 55.00 | 99.00 | 207.00 | 1000.00 |
-| Food | 31.69 | 17.55 | 0.00 | 21.00 | 28.00 | 41.00 | 65.00 | 135.00 |
-| Loss | 9.72 | 6.87 | 0.00 | 5.02 | 8.46 | 12.75 | 21.43 | 119.45 |
-| Food/Step | 0.96 | 1.31 | 0.00 | 0.39 | 0.52 | 0.86 | 3.80 | 11.00 |
+| Reward | 168.90 | 331.90 | -40.65 | 68.05 | 112.94 | 190.37 | 388.08 | 4390.02 |
+| Steps | 82.26 | 125.24 | 1.00 | 23.00 | 55.00 | 99.00 | 208.00 | 1000.00 |
+| Food | 31.69 | 17.59 | 0.00 | 21.00 | 28.00 | 41.00 | 65.00 | 135.00 |
+| Loss | 9.68 | 6.85 | 0.00 | 4.97 | 8.41 | 12.70 | 21.38 | 119.45 |
+| Food/Step | 0.96 | 1.32 | 0.00 | 0.39 | 0.52 | 0.86 | 3.80 | 11.00 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 117.08 | 98.74 | -1.4126 | 0.0426 |
-| Last 100 | 121.42 | 95.80 | -0.2578 | 0.0060 |
-| Last 200 | 120.32 | 87.99 | +0.0051 | 0.0000 |
-| Last 500 | 116.57 | 83.40 | +0.0048 | 0.0001 |
-| Last 1000 | 120.97 | 79.33 | -0.0136 | 0.0024 |
+| Last 50 | 131.42 | 101.79 | -0.4355 | 0.0038 |
+| Last 100 | 146.83 | 121.59 | -0.0672 | 0.0003 |
+| Last 200 | 135.87 | 108.24 | +0.1583 | 0.0071 |
+| Last 500 | 120.54 | 93.26 | +0.1010 | 0.0244 |
+| Last 1000 | 124.10 | 85.39 | +0.0008 | 0.0000 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
-| Wall | 498 | 6.3% | 141.1 | 259.5 |
-| SnakeCollision | 7219 | 91.1% | 60.6 | 129.3 |
-| MaxSteps | 202 | 2.5% | 693.6 | 1371.0 |
+| Wall | 498 | 6.2% | 141.1 | 259.5 |
+| SnakeCollision | 7292 | 91.1% | 60.5 | 129.4 |
+| MaxSteps | 209 | 2.6% | 703.8 | 1337.2 |
 | BrowserError | 7 | 0.1% | 2.7 | 6.0 |
 
 ## Goal Progress
@@ -62,7 +62,7 @@
 
 Major changes needed: LR, reward structure, curriculum.
 
-1. Episodes too short. Reduce death penalties or add survival bonus.
+1. No critical issues. Continue training.
 
 ## Charts
 
