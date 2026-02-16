@@ -2549,7 +2549,56 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
         _save(fig, 'chart_17_survival_percentiles.png')
 
-    print(c(f'\n  Total: up to 17 chart files generated.', C.GRN, C.B))
+    # ──────────────────────────────────────────────────
+    # CHART 18: 3D SCATTER — STEPS vs FOOD vs EPISODE
+    # ──────────────────────────────────────────────────
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+    fig = plt.figure(figsize=(16, 12))
+    fig.suptitle('STEPS vs FOOD vs EPISODE (3D)', fontsize=16, fontweight='bold', y=0.95)
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Color by stage
+    stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
+
+    # Subsample if too many points (>5000) for readability
+    if N > 5000:
+        idx = np.linspace(0, N - 1, 5000, dtype=int)
+        ax.scatter(steps[idx], food[idx], ep_nums[idx],
+                   c=stage_colors[idx], alpha=0.3, s=4, depthshade=True)
+    else:
+        ax.scatter(steps, food, ep_nums,
+                   c=stage_colors, alpha=0.3, s=4, depthshade=True)
+
+    # Rolling average trajectory (thick line)
+    if N > sma_w:
+        sma_steps = moving_average(steps, sma_w)
+        sma_food = moving_average(food, sma_w)
+        sma_ep = ep_nums[sma_w - 1:]
+        ax.plot(sma_steps, sma_food, sma_ep,
+                color='#f0883e', linewidth=2.5, alpha=0.9, label=f'SMA-{sma_w}')
+
+    ax.set_xlabel('Steps', fontsize=11, labelpad=10)
+    ax.set_ylabel('Food', fontsize=11, labelpad=10)
+    ax.set_zlabel('Episode', fontsize=11, labelpad=10)
+    ax.view_init(elev=25, azim=135)
+
+    # Stage legend
+    from matplotlib.lines import Line2D
+    legend_elems = [Line2D([0], [0], marker='o', color='w', markerfacecolor=STAGE_COLORS_HEX.get(s, '#888'),
+                           markersize=8, label=f'Stage {s}') for s in sorted(set(stages_arr))]
+    if N > sma_w:
+        legend_elems.append(Line2D([0], [0], color='#f0883e', linewidth=2.5, label=f'SMA-{sma_w}'))
+    ax.legend(handles=legend_elems, fontsize=9, loc='upper left')
+
+    ax.xaxis.pane.set_facecolor('#161b22')
+    ax.yaxis.pane.set_facecolor('#161b22')
+    ax.zaxis.pane.set_facecolor('#161b22')
+    ax.tick_params(colors='#8b949e')
+
+    _save(fig, 'chart_18_3d_steps_food_episode.png')
+
+    print(c(f'\n  Total: up to 18 chart files generated.', C.GRN, C.B))
 
 
 # ═══════════════════════════════════════════════════════
@@ -2736,6 +2785,7 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('chart_15_auto_scaling.png', 'Active Agents Over Time'),
             ('chart_16_maxsteps_analysis.png', 'MaxSteps Analysis'),
             ('chart_17_survival_percentiles.png', 'Survival Percentiles'),
+            ('chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D)'),
         ]
         for fname, title in chart_files:
             chart_path = os.path.join(chart_dir, fname)

@@ -4,8 +4,8 @@ from typing import Tuple
 @dataclass
 class EnvironmentConfig:
     frame_stack: int = 4
-    frame_skip: int = 4
-    resolution: Tuple[int, int] = (64, 64)
+    frame_skip: int = 8
+    resolution: Tuple[int, int] = (128, 128)
     grayscale: bool = False
     num_agents: int = 1
     view_first: bool = False
@@ -17,8 +17,8 @@ class ModelConfig:
     negative_slope: float = 0.01
     fc_units: int = 512
     input_channels: int = 3
-    sector_dim: int = 75
-    sector_scope: float = 1500.0
+    sector_dim: int = 99
+    sector_scope: float = 2000.0
     num_sectors: int = 24
 
 @dataclass

@@ -10,7 +10,7 @@ The training loop is straightforward:
 
 1. A headless Chrome browser connects to slither.io
 2. Injected JS extracts the game state (snake positions, food, map boundaries)
-3. The state gets converted into a 64x64 pixel matrix + a 75-float sector vector
+3. The state gets converted into a 128x128 pixel matrix + a 99-float sector vector
 4. The neural network picks one of 10 actions (turn left/right at various angles, go straight, or boost)
 5. The reward signal tells the network what worked and what didn't
 6. Repeat thousands of times
@@ -21,7 +21,7 @@ The tricky part is everything in between — how to represent the game state, ho
 
 ### Neural Network
 
-We use a **Hybrid Dueling DQN** — a network with **976,427 trainable parameters** that takes two types of input simultaneously and produces Q-values for 10 possible actions.
+We use a **Hybrid Dueling DQN** — a network with **~1.3M trainable parameters** that takes two types of input simultaneously and produces Q-values for 10 possible actions.
 
 #### Full Architecture Diagram
 
@@ -29,36 +29,38 @@ We use a **Hybrid Dueling DQN** — a network with **976,427 trainable parameter
 graph TB
     subgraph INPUT ["INPUT LAYER"]
         direction TB
-        M["64x64 RGB Matrix<br/><i>3 channels x 4 frames = 12ch</i><br/>Food | Danger | Self"]
-        S["75-float Sector Vector<br/><i>24 sectors x 3 features + 3 globals</i>"]
+        M["128x128 RGB Matrix<br/><i>3 channels x 4 frames = 12ch</i><br/>Food | Danger | Self"]
+        S["99-float Sector Vector<br/><i>24 sectors x 4 features + 3 globals</i>"]
     end
 
-    subgraph CNN ["CNN BRANCH — Spatial Processing (94,368 params)"]
+    subgraph CNN ["CNN BRANCH — 4 Conv Layers"]
         direction TB
-        C1["Conv2d Layer 1<br/>12ch → 32 filters<br/>kernel 8x8, stride 4<br/><b>Output: 32 x 15 x 15</b><br/><i>24,608 params</i>"]
+        C1["Conv2d Layer 1<br/>12ch → 32 filters<br/>kernel 8x8, stride 4<br/><b>Output: 32 x 31 x 31</b>"]
         A1["LeakyReLU α=0.01"]
-        C2["Conv2d Layer 2<br/>32 → 64 filters<br/>kernel 4x4, stride 2<br/><b>Output: 64 x 6 x 6</b><br/><i>32,832 params</i>"]
+        C2["Conv2d Layer 2<br/>32 → 64 filters<br/>kernel 4x4, stride 2<br/><b>Output: 64 x 14 x 14</b>"]
         A2["LeakyReLU α=0.01"]
-        C3["Conv2d Layer 3<br/>64 → 64 filters<br/>kernel 3x3, stride 1<br/><b>Output: 64 x 4 x 4</b><br/><i>36,928 params</i>"]
+        C3["Conv2d Layer 3<br/>64 → 64 filters<br/>kernel 3x3, stride 2<br/><b>Output: 64 x 6 x 6</b>"]
         A3["LeakyReLU α=0.01"]
-        FL["Flatten<br/><b>→ 1024 neurons</b>"]
+        C4["Conv2d Layer 4<br/>64 → 64 filters<br/>kernel 3x3, stride 1<br/><b>Output: 64 x 5 x 5</b>"]
+        A4["LeakyReLU α=0.01"]
+        FL["Flatten<br/><b>→ 1600 neurons</b>"]
 
-        C1 --> A1 --> C2 --> A2 --> C3 --> A3 --> FL
+        C1 --> A1 --> C2 --> A2 --> C3 --> A3 --> C4 --> A4 --> FL
     end
 
-    subgraph SEC ["SECTOR BRANCH — Radar Processing (26,240 params)"]
+    subgraph SEC ["SECTOR BRANCH — Radar Processing"]
         direction TB
-        S1["FC Layer 1<br/>75 → 128 neurons<br/><i>9,728 params</i>"]
+        S1["FC Layer 1<br/>99 → 128 neurons"]
         SA1["LeakyReLU α=0.01"]
-        S2["FC Layer 2<br/>128 → 128 neurons<br/><i>16,512 params</i>"]
+        S2["FC Layer 2<br/>128 → 128 neurons"]
         SA2["LeakyReLU α=0.01"]
 
         S1 --> SA1 --> S2 --> SA2
     end
 
-    subgraph MERGE ["MERGE LAYER (590,336 params)"]
-        CAT["Concatenate<br/><b>1024 + 128 = 1152 neurons</b>"]
-        MFC["FC Layer<br/>1152 → 512 neurons<br/><i>590,336 params</i>"]
+    subgraph MERGE ["MERGE LAYER"]
+        CAT["Concatenate<br/><b>1600 + 128 = 1728 neurons</b>"]
+        MFC["FC Layer<br/>1728 → 512 neurons"]
         MA["LeakyReLU α=0.01"]
 
         CAT --> MFC --> MA
@@ -105,26 +107,27 @@ graph TB
 
 #### Network Summary Table
 
-| Layer | Input | Output | Parameters | Activation |
-|-------|-------|--------|------------|------------|
-| **CNN Branch** | | | **94,368** | |
-| Conv1 | 12 x 64 x 64 | 32 x 15 x 15 | 24,608 | LeakyReLU |
-| Conv2 | 32 x 15 x 15 | 64 x 6 x 6 | 32,832 | LeakyReLU |
-| Conv3 | 64 x 6 x 6 | 64 x 4 x 4 | 36,928 | LeakyReLU |
-| Flatten | 64 x 4 x 4 | 1,024 | 0 | — |
-| **Sector Branch** | | | **26,240** | |
-| FC1 | 75 | 128 | 9,728 | LeakyReLU |
-| FC2 | 128 | 128 | 16,512 | LeakyReLU |
-| **Merge** | | | **590,336** | |
-| Concat | 1024 + 128 | 1,152 | 0 | — |
-| FC | 1,152 | 512 | 590,336 | LeakyReLU |
-| **Value Head** | | | **131,585** | |
-| FC1 | 512 | 256 | 131,328 | LeakyReLU |
-| FC2 | 256 | 1 | 257 | — |
-| **Advantage Head** | | | **133,898** | |
-| FC1 | 512 | 256 | 131,328 | LeakyReLU |
-| FC2 | 256 | 10 | 2,570 | — |
-| **Total** | | | **976,427** | |
+| Layer | Input | Output | Activation |
+|-------|-------|--------|------------|
+| **CNN Branch** | | | |
+| Conv1 | 12 x 128 x 128 | 32 x 31 x 31 | LeakyReLU |
+| Conv2 | 32 x 31 x 31 | 64 x 14 x 14 | LeakyReLU |
+| Conv3 | 64 x 14 x 14 | 64 x 6 x 6 | LeakyReLU |
+| Conv4 | 64 x 6 x 6 | 64 x 5 x 5 | LeakyReLU |
+| Flatten | 64 x 5 x 5 | 1,600 | — |
+| **Sector Branch** | | | |
+| FC1 | 99 | 128 | LeakyReLU |
+| FC2 | 128 | 128 | LeakyReLU |
+| **Merge** | | | |
+| Concat | 1600 + 128 | 1,728 | — |
+| FC | 1,728 | 512 | LeakyReLU |
+| **Value Head** | | | |
+| FC1 | 512 | 256 | LeakyReLU |
+| FC2 | 256 | 1 | — |
+| **Advantage Head** | | | |
+| FC1 | 512 | 256 | LeakyReLU |
+| FC2 | 256 | 10 | — |
+| **Total** | | | **~1.3M params** |
 
 #### Data Flow Diagram
 
@@ -137,9 +140,9 @@ graph LR
     subgraph PREPROCESS ["Observation Processing"]
         direction TB
         EGO["Egocentric Rotation<br/><i>Rotate world so snake<br/>heading = UP</i>"]
-        MAT["Matrix Builder<br/><i>64x64 x 3 channels</i><br/>Ch0: Food brightness<br/>Ch1: Enemy bodies+heads<br/>Ch2: Own body"]
+        MAT["Matrix Builder<br/><i>128x128 x 3 channels</i><br/>Ch0: Food brightness<br/>Ch1: Enemy bodies+heads<br/>Ch2: Own body"]
         FS["Frame Stack<br/><i>Stack last 4 frames</i><br/>3ch x 4 = 12 channels<br/>Enables motion detection"]
-        SEC2["Sector Computer<br/><i>24 sectors x 15° each</i><br/>360° radar sweep"]
+        SEC2["Sector Computer<br/><i>24 sectors x 15° each</i><br/>360° radar + enemy approach"]
 
         EGO --> MAT --> FS
         EGO --> SEC2
@@ -165,8 +168,8 @@ graph LR
     end
 
     GS --> EGO
-    FS -->|"12 x 64 x 64"| NN
-    SEC2 -->|"75 floats"| NN
+    FS -->|"12 x 128 x 128"| NN
+    SEC2 -->|"99 floats"| NN
     NN -->|"10 Q-values"| EPS
     EPS -->|"prob ε"| RAND
     EPS -->|"prob 1-ε"| BEST
@@ -182,7 +185,7 @@ graph LR
 
 #### Why This Architecture?
 
-**Why two input branches?** The CNN processes spatial information — where food and enemies are relative to the snake. But convolutions can miss things at the edges or far away (the 64x64 matrix covers a limited area). The sector vector acts like a radar sweep: it divides the full 360-degree view into 24 pie slices (15 degrees each) and summarizes what's in each one up to 1500 game units away. Together they give the network both detailed close-range spatial awareness and a broader strategic picture.
+**Why two input branches?** The CNN processes spatial information — where food and enemies are relative to the snake. But convolutions can miss things at the edges or far away (the 128x128 matrix covers a limited area). The sector vector acts like a radar sweep: it divides the full 360-degree view into 24 pie slices (15 degrees each) and summarizes what's in each one up to 2000 game units away. Together they give the network both detailed close-range spatial awareness and a broader strategic picture.
 
 **Why dueling heads?** Standard DQN outputs Q(s,a) directly for each action. Dueling DQN splits this into "how good is this situation?" (Value) and "how much better is each action than average?" (Advantage). The final Q-value is recombined as: `Q(s,a) = V(s) + A(s,a) - mean(A)`.
 
@@ -190,7 +193,7 @@ This helps because in many game states, *all* actions are roughly equally bad (b
 
 **Why LeakyReLU everywhere?** Standard ReLU can "die" — neurons that output zero stop receiving gradients and never recover. With a chaotic game like slither.io where the input distribution shifts as the bot learns new skills, dead neurons are a real problem. LeakyReLU (slope 0.01 for negative inputs) prevents this while being almost as fast as ReLU.
 
-**Why 976K parameters?** This is intentionally moderate. Larger networks (2M+) overfit to specific game patterns and fail to generalize. Smaller networks (<500K) can't represent the complexity of multi-agent avoidance. The merge layer (590K params — 60% of the network) is the largest component because it needs to learn how spatial (CNN) and distance (sector) information combine to determine value.
+**Why ~1.3M parameters?** This is intentionally moderate. Larger networks (2M+) overfit to specific game patterns and fail to generalize. Smaller networks (<500K) can't represent the complexity of multi-agent avoidance. The 128x128 resolution and 4th conv layer (added in alpha-5) give better spatial resolution without exploding parameter count.
 
 ### Observation Space
 
@@ -204,7 +207,7 @@ ego_x = -sin(ang) * dx + cos(ang) * dy
 ego_y = -cos(ang) * dx - sin(ang) * dy
 ```
 
-#### Matrix Input (3 channels x 64x64, stacked x4 = 12 channels)
+#### Matrix Input (3 channels x 128x128, stacked x4 = 12 channels)
 
 | Channel | Content | Encoding |
 |---------|---------|----------|
@@ -214,7 +217,7 @@ ego_y = -cos(ang) * dx - sin(ang) * dy
 
 We stack the last 4 frames together (giving 12 CNN input channels) so the network can perceive motion — is that enemy approaching or moving away?
 
-#### Sector Vector Input (75 floats)
+#### Sector Vector Input (99 floats)
 
 ```mermaid
 graph TB
@@ -228,18 +231,19 @@ graph TB
         S23["Sector 23<br/>345°-360°"]
     end
 
-    subgraph PERFEATURE ["Per-Sector Features (floats 0-71)"]
+    subgraph PERFEATURE ["Per-Sector Features (floats 0-95)"]
         direction TB
-        FS["food_score [0..23]<br/><i>Closest food distance in sector</i><br/>1.0 = right here, 0.0 = nothing within 1500 units"]
+        FS["food_score [0..23]<br/><i>Closest food distance in sector</i><br/>1.0 = right here, 0.0 = nothing within 2000 units"]
         OS["obstacle_score [24..47]<br/><i>Closest enemy/wall distance</i><br/>1.0 = touching, 0.0 = clear"]
         OT["obstacle_type [48..71]<br/><i>What is the obstacle?</i><br/>-1 = nothing, 0 = body/wall, 1 = enemy head"]
+        EA["enemy_approach [72..95]<br/><i>Dot product of enemy heading vs vector-to-us</i><br/>+1 = charging at us, -1 = moving away"]
     end
 
-    subgraph GLOBALS ["Global Features (floats 72-74)"]
+    subgraph GLOBALS ["Global Features (floats 96-98)"]
         direction TB
-        G1["[72] wall_dist_norm<br/><i>distance to wall / 1500</i>"]
-        G2["[73] snake_length_norm<br/><i>own length / 500</i>"]
-        G3["[74] speed_norm<br/><i>current speed / 20</i>"]
+        G1["[96] wall_dist_norm<br/><i>distance to wall / 2000</i>"]
+        G2["[97] snake_length_norm<br/><i>own length / 500</i>"]
+        G3["[98] speed_norm<br/><i>current speed / 20</i>"]
     end
 
     SECTORS --> PERFEATURE
@@ -251,9 +255,10 @@ graph TB
 ```
 
 The sector vector provides distance-based awareness in all directions. Each sector reports:
-- **food_score**: How close is the nearest food? (1.0 = adjacent, 0.0 = nothing within 1500 units)
+- **food_score**: How close is the nearest food? (1.0 = adjacent, 0.0 = nothing within 2000 units)
 - **obstacle_score**: How close is the nearest danger? (1.0 = about to collide)
 - **obstacle_type**: What kind of danger? (-1 = clear, 0 = body segment or wall, 1 = enemy head — more dangerous because it can chase you)
+- **enemy_approach**: Is the nearest enemy in this sector heading toward us? (+1 = charging directly at us, -1 = moving away, 0 = perpendicular). This was added in alpha-5 to give the network earlier threat detection.
 
 Three global values give the network context about the overall situation regardless of direction.
 
@@ -354,9 +359,9 @@ Length bonus (0.02 per unit of length) rewards the bot for being big, not just e
 | wall_proximity_penalty | 0.3 | 1.5 | 0.5 | 0.5 |
 | enemy_proximity_penalty | 0.0 | 0.0 | 1.5 | 0.8 |
 | enemy_approach_penalty | 0.0 | 0.0 | 0.5 | 0.3 |
-| enemy_alert_dist | 800 | 800 | 1500 | 1000 |
-| gamma | 0.85 | 0.93 | 0.97 | 0.97 |
-| max_steps | 300 | 500 | 1000 | 2000 |
+| enemy_alert_dist | 800 | 800 | 2000 | 1000 |
+| gamma | 0.85 | 0.93 | 0.95 | 0.97 |
+| max_steps | 300 | 500 | 2000 | 2000 |
 
 ### Alternative training styles
 
@@ -372,10 +377,12 @@ Besides the curriculum, there are three static styles for experimentation:
 
 The bot plays slither.io through a real browser controlled via Selenium. A JavaScript bridge is injected into the page that exposes game internals:
 
-- `_botGetState()` — reads snake positions, food locations, map variables
+- `_botGetState()` — reads snake positions, food locations, map variables in one call
 - `_botActAndRead(angle, boost)` — sends an action and reads the resulting state in one call
 
-The JS injection is persistent (injected once per session, not per call), which reduced step overhead from ~110ms to ~52ms.
+**Steering** is done by setting the game's global `xm`/`ym` variables directly via JS. The game's internal loop reads these to compute `wang` (wanted angle) and smoothly interpolates `ehang` → `ang`. Previous approaches (ActionChains, CDP mouse events, synthetic MouseEvent, Object.defineProperty on wang) all failed for various reasons — xm/ym is the only reliable method.
+
+The JS injection is persistent (injected once per session, not per call), which reduced step overhead from ~110ms to ~52ms. Frame skip is set to 8 (12.5 Hz decision rate).
 
 ### Multi-Agent Training
 
@@ -485,6 +492,8 @@ python trainer.py --reset
 | `per.py` | Prioritized Experience Replay with SumTree |
 | `training_progress_analyzer.py` | Post-training analysis — 16 charts + markdown report |
 | `training_stats.csv` | Raw episode-level metrics |
+| `test_steering.py` | Deterministic steering validation test |
+| `test_steer_diag.py` | Steering method diagnostic (tests 5 approaches) |
 
 ## Performance
 
@@ -501,3 +510,29 @@ python trainer.py --reset
 - **Server anti-bot**: slither.io servers reject non-browser WebSocket connections at the TCP level. Native WebSocket clients (Python, Node.js) are all blocked. The only working approach is controlling a real browser via Selenium.
 - **Step latency**: Even optimized, 52ms per step is slow compared to simulated environments. This limits how fast the bot can learn.
 - **Stage 4 instability**: The MASS_MANAGEMENT stage has historically been unstable — Q-values can explode when length_bonus creates a runaway reward signal. Needs careful gamma/reward tuning.
+
+## Changelog
+
+### v4.0.0-beta (2026-02-16) — Alpha-5
+
+**Steering fix** — Discovered that all previous steering methods (ActionChains, CDP mouse, synthetic MouseEvent, wang defineProperty) were broken. The game reads mouse position from global `xm`/`ym` variables and computes `wang = atan2(ym, xm)` internally. Fixed `send_action()` and `_botActAndRead()` to set `xm`/`ym` directly. Also fixed `_botGetState` reading wrong property (`eang` → `ehang`).
+
+**Enemy awareness upgrade** — Sectors expanded from 75 to 99 floats with 24 new `enemy_approach` channels (dot product of enemy heading vs vector-to-us). Sector scope increased from 1500 to 2000 units for earlier threat detection.
+
+**Resolution upgrade** — Matrix increased from 64x64 to 128x128 with a 4th conv layer added to keep CNN output manageable (1600 flat). Total params ~1.3M (was ~976K).
+
+**Other changes:**
+- Frame skip: 4 → 8 (25Hz → 12.5Hz decisions, snake can complete turns)
+- COLLISION_BUFFER: 60 → 120, WALL_BUFFER: 120 → 240
+- S3 gamma: 0.93 → 0.95, enemy_alert_dist: 1500 → 2000
+- Fixed eang override in JS steering (was causing instant angle jumps — only set wang now)
+- Added steering test suite (`test_steering.py`, `test_steer_diag.py`)
+
+**Requires full reset** — old checkpoints incompatible (sector_dim + resolution + conv4 changed).
+
+### v3.0.0-beta (2026-02-13) — Alpha-4
+- reward_scale 10→1, clamp [-5,5]→[-10,10]
+- Fixed LR (removed ReduceLROnPlateau)
+- Gamma stored per-transition in PER
+- grad_clip 10→1, LayerNorm removed
+- New CSV columns: Q-values, gradient norms, action distributions

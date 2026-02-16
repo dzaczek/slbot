@@ -351,8 +351,8 @@ class SlitherEnv:
         
         # Classification logic
         # Wider buffers to account for frame_skip=4 movement distance
-        COLLISION_BUFFER = 60
-        WALL_BUFFER = 120
+        COLLISION_BUFFER = 120   # doubled for frame_skip=8
+        WALL_BUFFER = 240       # doubled for frame_skip=8
 
         cause = "SnakeCollision"
         penalty = self.death_snake_penalty
@@ -411,6 +411,9 @@ class SlitherEnv:
         self.near_wall_frames = 0
         self.invalid_frame_count = 0
         self.steps_in_episode = 0
+        # NAV debug separator
+        with open("logs/nav_debug.log", "a") as _f:
+            _f.write(f"\n{'='*140}\n  NEW EPISODE\n{'='*140}\n")
         self.prev_enemy_dist = None
         self._cached_data = None  # Clear cache on reset
         
@@ -577,20 +580,11 @@ class SlitherEnv:
         mx, my = my_snake.get('x', 0), my_snake.get('y', 0)
         current_len = my_snake.get('len', 0)
 
-        # DEBUG: Log angle for first 10 steps AND every 50 steps
-        if self.steps_in_episode <= 10 or self.steps_in_episode % 50 == 0:
-            import math as _m
-            wang = my_snake.get('wang', 'N/A')
-            eang = my_snake.get('eang', 'N/A')
-            wang_s = f"{wang:.4f}" if isinstance(wang, (int, float)) else str(wang)
-            eang_s = f"{eang:.4f}" if isinstance(eang, (int, float)) else str(eang)
-            msg = (f"  [STEER] step={self.steps_in_episode} ang={current_ang:.4f} ({_m.degrees(current_ang):.1f} deg) "
-                   f"wang={wang_s} eang={eang_s} "
-                   f"act={action} chg={angle_change:+.2f} target={current_ang+angle_change:.4f} "
-                   f"pos=({mx:.0f},{my:.0f})")
-            print(msg, flush=True)
-            with open("logs/steer_debug.log", "a") as _f:
-                _f.write(msg + "\n")
+        # Store pre-action position for movement vector analysis
+        pre_x, pre_y = mx, my
+        pre_ang = current_ang
+        pre_wang = my_snake.get('wang', None)
+        pre_eang = my_snake.get('eang', None)
 
         # Save pre-action data for death detection
         pre_action_data = data
@@ -603,11 +597,11 @@ class SlitherEnv:
         else:
             current_food_dist = None
 
-        # Execute action — single send + consolidated wait
-        # The game reads xm/ym each frame, so setting once is sufficient.
-        # Previously: 4 × (send_action + 20ms) = 4 execute_script calls + 80ms sleep
-        # Now: 1 combined send+read + 1 sleep = saves 4 execute_script round-trips
+        # Execute action — relative to current heading (ang)
         target_ang = current_ang + angle_change
+        # Normalize to [-pi, pi] to avoid accumulation
+        while target_ang > math.pi: target_ang -= 2 * math.pi
+        while target_ang < -math.pi: target_ang += 2 * math.pi
         if hasattr(self.browser, 'send_action_get_data'):
             # Combined: send action + read pre-wait state in ONE call
             self.browser.send_action_get_data(target_ang, boost)
@@ -670,6 +664,48 @@ class SlitherEnv:
         new_snake = data.get('self', {})
         new_len = new_snake.get('len', 0)
         new_x, new_y = new_snake.get('x', 0), new_snake.get('y', 0)
+
+        # === MOVEMENT VECTOR ANALYSIS ===
+        # Log every step for first 20 steps, then every 10
+        if self.steps_in_episode <= 20 or self.steps_in_episode % 10 == 0:
+            dx = new_x - pre_x
+            dy = new_y - pre_y
+            move_dist = math.hypot(dx, dy)
+            # Actual movement direction (atan2 in slither convention: 0=East, Y-down)
+            move_ang = math.atan2(dy, dx) if move_dist > 0.5 else float('nan')
+            move_deg = math.degrees(move_ang) if not math.isnan(move_ang) else 0
+
+            post_ang = new_snake.get('ang', 0)
+            post_wang = new_snake.get('wang', None)
+            post_eang = new_snake.get('eang', None)
+
+            def _fmt_ang(v):
+                return f"{math.degrees(v):+7.1f}°" if isinstance(v, (int, float)) else "     N/A"
+
+            def _ang_diff_deg(a, b):
+                if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
+                    return "    N/A"
+                if math.isnan(a): return "    N/A"
+                d = a - b
+                while d > math.pi: d -= 2*math.pi
+                while d < -math.pi: d += 2*math.pi
+                return f"{math.degrees(d):+7.1f}°"
+
+            act_names = ['FWD','L1','R1','L2','R2','L3','R3','LU','RU','BST']
+            act_name = act_names[action] if action < len(act_names) else f'?{action}'
+            target_ang_val = pre_ang + angle_change
+
+            line = (
+                f"step={self.steps_in_episode:3d} {act_name:3s} | "
+                f"PRE({pre_x:6.0f},{pre_y:6.0f}) POST({new_x:6.0f},{new_y:6.0f}) | "
+                f"dx={dx:+6.0f} dy={dy:+6.0f} dist={move_dist:5.0f} | "
+                f"MOVE={move_deg:+7.1f}° | "
+                f"pre_ang={_fmt_ang(pre_ang)} wang={_fmt_ang(pre_wang)} eang={_fmt_ang(pre_eang)} | "
+                f"target={_fmt_ang(target_ang_val)} post_ang={_fmt_ang(post_ang)} post_wang={_fmt_ang(post_wang)} post_eang={_fmt_ang(post_eang)} | "
+                f"ERR(move-ang)={_ang_diff_deg(move_ang, pre_ang)} ERR(move-eang)={_ang_diff_deg(move_ang, pre_eang)}"
+            )
+            with open("logs/nav_debug.log", "a") as _f:
+                _f.write(line + "\n")
 
         # Update wall tracking from post-action data (Python radial logic)
         self._update_from_game_data(data)
@@ -755,7 +791,7 @@ class SlitherEnv:
     def _matrix_zeros(self):
         return {
             'matrix': np.zeros((3, self.matrix_size, self.matrix_size), dtype=np.float32),
-            'sectors': np.zeros(75, dtype=np.float32),
+            'sectors': np.zeros(99, dtype=np.float32),
         }
 
     def _compute_sectors(self, data):
@@ -763,19 +799,20 @@ class SlitherEnv:
         Compute 75-float sector vector (egocentric).
         24 sectors × 15° covering 360°. Sector 0 = straight ahead.
 
-        Layout (75 floats):
+        Layout (99 floats):
           [0..23]  food_score[i]      — closest food per sector, 1 - dist/scope
           [24..47] obstacle_score[i]  — closest enemy/wall per sector
           [48..71] obstacle_type[i]   — -1=none, 0=body/wall, 1=head
-          [72]     wall_dist_norm     — dist_to_wall / scope
-          [73]     snake_length_norm  — length / 500
-          [74]     speed_norm         — speed / 20
+          [72..95] enemy_approach[i]  — +1=heading toward me, -1=away, 0=none
+          [96]     wall_dist_norm     — dist_to_wall / scope
+          [97]     snake_length_norm  — length / 500
+          [98]     speed_norm         — speed / 20
         """
         NUM_SECTORS = 24
-        SCOPE = 1500.0
+        SCOPE = 2000.0
         SECTOR_ANGLE = 2 * math.pi / NUM_SECTORS  # 15° in radians
 
-        sectors = np.zeros(75, dtype=np.float32)
+        sectors = np.zeros(99, dtype=np.float32)
         # Initialize obstacle types to -1 (no obstacle)
         sectors[48:72] = -1.0
 
@@ -837,6 +874,7 @@ class SlitherEnv:
         for e in enemies:
             ex, ey = e.get('x', 0), e.get('y', 0)
             e_sc = e.get('sc', 1.0)
+            e_ang = e.get('ang', 0)
             half_width = e_sc * 29.0 * 0.5  # body half-width
 
             # Head
@@ -849,6 +887,17 @@ class SlitherEnv:
                 if sc > sectors[24 + si]:
                     sectors[24 + si] = sc
                     sectors[48 + si] = 1.0  # head type
+
+                    # Enemy approach: dot product of enemy velocity toward us
+                    # Enemy heading vector (slither: ang=0 → East, Y-down)
+                    e_vx = math.cos(e_ang)
+                    e_vy = math.sin(e_ang)
+                    # Vector from enemy to us
+                    to_us_x, to_us_y = mx - ex, my_ - ey
+                    to_us_len = max(dist, 1.0)
+                    # Dot product: +1 = heading straight at us, -1 = away
+                    approach = (e_vx * to_us_x + e_vy * to_us_y) / to_us_len
+                    sectors[72 + si] = max(-1.0, min(1.0, approach))
 
             # Body points
             for pt in e.get('pts', []):
@@ -907,9 +956,9 @@ class SlitherEnv:
                         sectors[48 + si] = 0.0  # wall = body type (solid obstacle)
 
         # --- Global features ---
-        sectors[72] = min(1.0, self.last_dist_to_wall / SCOPE)
-        sectors[73] = min(1.0, snake_len / 500.0)
-        sectors[74] = min(1.0, spd / 20.0) if spd else 0.0
+        sectors[96] = min(1.0, self.last_dist_to_wall / SCOPE)
+        sectors[97] = min(1.0, snake_len / 500.0)
+        sectors[98] = min(1.0, spd / 20.0) if spd else 0.0
 
         return sectors
 

@@ -24,7 +24,7 @@ log()     { echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC} $1"; }
 
-INTERVAL=3600
+INTERVAL=600
 
 echo ""
 echo -e "${GREEN}========================================${NC}"

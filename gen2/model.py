@@ -69,21 +69,24 @@ class HybridDuelingDQN(nn.Module):
     """
     Hybrid CNN + Sector Vector architecture.
     CNN branch processes spatial matrix (food/enemies/self).
-    Sector branch processes 75-float vector with precise distances.
+    Sector branch processes 99-float vector with precise distances + enemy approach.
     """
-    def __init__(self, input_channels, action_dim=10, input_size=(64, 64), sector_dim=75):
+    def __init__(self, input_channels, action_dim=10, input_size=(64, 64), sector_dim=99):
         super(HybridDuelingDQN, self).__init__()
 
         # --- CNN Branch (spatial matrix) ---
         self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+        # Extra conv for 128x128: compresses 12x12 -> 5x5 with stride=2
+        self.conv4 = nn.Conv2d(64, 64, kernel_size=3, stride=2)
 
         with torch.no_grad():
             dummy = torch.zeros(1, input_channels, *input_size)
             x = F.leaky_relu(self.conv1(dummy), 0.01)
             x = F.leaky_relu(self.conv2(x), 0.01)
             x = F.leaky_relu(self.conv3(x), 0.01)
+            x = F.leaky_relu(self.conv4(x), 0.01)
             self.cnn_flat_size = x.view(1, -1).size(1)
 
         # --- Sector Branch (scalar vector) ---
@@ -128,6 +131,7 @@ class HybridDuelingDQN(nn.Module):
         x = F.leaky_relu(self.conv1(matrix), 0.01)
         x = F.leaky_relu(self.conv2(x), 0.01)
         x = F.leaky_relu(self.conv3(x), 0.01)
+        x = F.leaky_relu(self.conv4(x), 0.01)
         x = x.reshape(x.size(0), -1)
 
         # Sector branch

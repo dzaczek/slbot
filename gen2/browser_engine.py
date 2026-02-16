@@ -7,6 +7,8 @@ import time
 import math
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
 
 def log(msg):
     print(msg, flush=True)
@@ -66,6 +68,7 @@ class SlitherBrowser:
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.set_page_load_timeout(30)
         self._fast_getstate_injected = False
+        self._canvas_element = None  # Cached canvas WebElement for ActionChains
         log(f"[BROWSER] Connecting to {self.base_url}...")
         self.driver.get(self.base_url)
         time.sleep(3)
@@ -179,50 +182,41 @@ class SlitherBrowser:
     def inject_override_script(self):
         """
         Injects JS overrides for bot control.
+        Steering is done via CDP Input.dispatchMouseEvent (trusted mouse events).
+        This only handles graphics optimization and boost setup.
         """
         js_code = """
         // Graphics optimization
         if (typeof window.want_quality !== 'undefined') window.want_quality = 0;
         if (typeof window.high_quality !== 'undefined') window.high_quality = false;
         if (typeof window.render_mode !== 'undefined') window.render_mode = 1;
-        
+
         // Disable visual effects
         window.redraw = window.redraw || function(){};
-        
-        // Bot steering: DIRECT angle override via game loop hook
-        // Problem: game uses closure-scoped xm/ym that we can't access,
-        // and synthetic MouseEvents have isTrusted:false which may be ignored.
-        // Solution: hook into the game's oef() render loop and force the
-        // snake's desired angle (wang) directly every frame.
-        window._botSteering = true;
-        window._botTargetAng = 0;  // target angle in radians
 
-        // Strategy 1: Patch oef() to force wang (wanted angle) every frame
-        // The game stores the snake object and sets snake.wang = atan2(...)
-        // We override it AFTER the game computes it but BEFORE physics step
-        if (window._botSteerInterval) clearInterval(window._botSteerInterval);
-        window._botSteerInterval = setInterval(function() {
-            if (!window._botSteering || !window.slither) return;
-            var s = window.slither;
-            // Force the snake's wanted angle directly
-            if (typeof s.wang !== 'undefined') {
-                s.wang = window._botTargetAng;
-            }
-            // Also try eang (effective/target angle) if it exists
-            if (typeof s.eang !== 'undefined') {
-                s.eang = window._botTargetAng;
-            }
-            // Fallback: set xm/ym too
-            var canvas = document.getElementById('mc') || document.querySelector('canvas');
-            var cx = canvas ? canvas.width/2 : 400;
-            var cy = canvas ? canvas.height/2 : 300;
-            window.xm = cx + Math.cos(window._botTargetAng) * 300;
-            window.ym = cy + Math.sin(window._botTargetAng) * 300;
-            if (typeof window.mx !== 'undefined') window.mx = window.xm;
-            if (typeof window.my !== 'undefined') window.my = window.ym;
-        }, 8);  // 125fps — faster than game loop to guarantee coverage
-        
-        console.log("SlitherBot: Controls injected.");
+        window._botSteering = true;
+        window._botTargetAng = 0;
+
+        // Clean up old approaches
+        if (window._botSteerInterval) { clearInterval(window._botSteerInterval); window._botSteerInterval = null; }
+
+        // Undo any defineProperty on wang from previous injection
+        if (window.slither) {
+            try {
+                var desc = Object.getOwnPropertyDescriptor(window.slither, 'wang');
+                if (desc && (desc.get || desc.set)) {
+                    delete window.slither.wang;
+                    window.slither.wang = window.slither.ang || 0;
+                }
+            } catch(e) {}
+        }
+
+        // Store canvas dimensions
+        var canvas = document.getElementById('mc') || document.querySelector('canvas');
+        window._botCanvasW = canvas ? canvas.width : 800;
+        window._botCanvasH = canvas ? canvas.height : 600;
+
+        console.log("SlitherBot: Controls injected (CDP mouse steering).");
         """
         try:
             self.driver.execute_script(js_code)
@@ -280,7 +274,7 @@ class SlitherBrowser:
                 sc: window.slither.sc,
                 len: window.slither.pts ? window.slither.pts.length : 0,
                 pts: my_pts,
-                wang: window.slither.wang, eang: window.slither.eang
+                wang: window.slither.wang, eang: window.slither.ehang
             };
 
             var visible_foods = [];
@@ -391,24 +385,14 @@ class SlitherBrowser:
             };
         };
 
-        // Combined: set action + return current state in one call
+        // Combined: set boost + return current state in one call
+        // (Steering is handled via CDP mouse events, not JS)
         window._botActAndRead = function(ang, boost) {
+            // Set xm/ym directly — game computes wang = atan2(ym, xm)
+            xm = Math.cos(ang) * 300;
+            ym = Math.sin(ang) * 300;
+            window._botTargetAng = ang;
             if (window.slither) {
-                // Set target angle directly — the setInterval loop
-                // forces wang/eang every frame
-                window._botTargetAng = ang;
-                // Also force immediately
-                if (typeof window.slither.wang !== 'undefined') window.slither.wang = ang;
-                if (typeof window.slither.eang !== 'undefined') window.slither.eang = ang;
-                // Fallback: xm/ym
-                var canvas = document.getElementById('mc') || document.querySelector('canvas');
-                var w = canvas ? canvas.width : 800;
-                var h = canvas ? canvas.height : 600;
-                var centerX = w/2, centerY = h/2;
-                window.xm = centerX + Math.cos(ang) * 300;
-                window.ym = centerY + Math.sin(ang) * 300;
-                if (typeof window.mx !== 'undefined') window.mx = window.xm;
-                if (typeof window.my !== 'undefined') window.my = window.ym;
                 if (boost) {
                     window.accelerating = true;
                     if (window.setAcceleration) window.setAcceleration(1);
@@ -579,6 +563,8 @@ class SlitherBrowser:
                 x: window.slither.xx,
                 y: window.slither.yy,
                 ang: window.slither.ang,
+                wang: window.slither.wang,
+                eang: window.slither.eang,
                 sp: window.slither.sp,
                 sc: window.slither.sc,
                 len: window.slither.pts ? window.slither.pts.length : 0,
@@ -957,83 +943,62 @@ class SlitherBrowser:
         except Exception as e:
             return {"dead": True}
 
+    def _get_canvas(self):
+        """Get cached canvas WebElement, re-find if stale."""
+        if self._canvas_element is not None:
+            try:
+                # Quick staleness check
+                self._canvas_element.is_enabled()
+                return self._canvas_element
+            except Exception:
+                self._canvas_element = None
+        try:
+            self._canvas_element = self.driver.find_element(By.ID, 'mc')
+        except Exception:
+            try:
+                self._canvas_element = self.driver.find_element(By.TAG_NAME, 'canvas')
+            except Exception:
+                self._canvas_element = None
+        return self._canvas_element
+
     def send_action(self, angle, boost):
         """
-        Sends steering commands to the game.
+        Sends steering commands by setting the game's global xm/ym variables.
+        The game's onmousemove handler uses: xm = e.clientX - ww/2; ym = e.clientY - hh/2
+        and the game loop reads xm/ym to compute wang = atan2(ym, xm).
+        We set xm/ym directly — no mouse events needed.
         angle: target direction in radians (-PI to PI)
         boost: 0 or 1
         """
         is_boost = 1 if boost > 0.5 else 0
-        
-        control_js = f"""
-        var ang = {angle};
-        var is_boost = {is_boost};
 
-        if (window.slither) {{
-            var canvas = document.getElementById('mc') || document.querySelector('canvas');
-            var w = canvas ? canvas.width : 800;
-            var h = canvas ? canvas.height : 600;
-            var centerX = w / 2;
-            var centerY = h / 2;
-
-            var radius = 300;
-            var target_x = centerX + Math.cos(ang) * radius;
-            var target_y = centerY + Math.sin(ang) * radius;
-
-            // Set target angle directly for per-frame steering loop
-            window._botTargetAng = ang;
-            // Force immediately on snake object
-            if (window.slither && typeof window.slither.wang !== 'undefined') window.slither.wang = ang;
-            if (window.slither && typeof window.slither.eang !== 'undefined') window.slither.eang = ang;
-            // Fallback: set xm/ym
-            window.xm = target_x;
-            window.ym = target_y;
-            if (typeof window.mx !== 'undefined') window.mx = target_x;
-            if (typeof window.my !== 'undefined') window.my = target_y;
-
-            // Force angle directly if game exposes it
-            if (typeof window.desired_ang !== 'undefined') window.desired_ang = ang;
-
-            // Boost control
-            if (is_boost) {{
-                window.accelerating = true;
-                if (window.bso2) {{
-                    try {{ window.bso2.send(new Uint8Array([253])); }} catch(e) {{}}
-                }}
-            }} else {{
-                window.accelerating = false;
-            }}
-        }}
-        """
         try:
-            # CDP path: send via DevTools (faster, ~1-2ms vs ~10-15ms)
+            # CDP interceptor path (WebSocket-based)
             if self._cdp and self._cdp.active:
                 self._cdp.send_action(angle, boost)
                 return
-            self.driver.execute_script(control_js)
-        except:
+
+            # Set xm/ym directly — game computes wang = atan2(ym, xm)
+            # Distance 300 from origin (0,0 = screen center in game coords)
+            boost_js = "window.accelerating=true;if(window.setAcceleration)window.setAcceleration(1);" if is_boost else "window.accelerating=false;"
+            self.driver.execute_script(
+                f"xm=Math.cos({angle})*300;ym=Math.sin({angle})*300;"
+                f"window._botTargetAng={angle};{boost_js}"
+            )
+        except Exception as e:
             pass
 
     def send_action_get_data(self, angle, boost):
         """
-        Combined: send action AND read game state in ONE call.
-        CDP: action via DevTools + state from memory (~1ms total).
-        Selenium: combined JS call (~10-15ms).
+        Combined: send action AND read game state in one call.
         """
-        # CDP path: instant
+        # CDP interceptor path: instant
         if self._cdp and self._cdp.active:
             return self._cdp.send_action_get_data(angle, boost)
-        is_boost = 1 if boost > 0.5 else 0
-        if getattr(self, '_fast_getstate_injected', False):
-            try:
-                return self.driver.execute_script(
-                    f"return window._botActAndRead({angle},{is_boost});"
-                )
-            except:
-                return {"dead": True}
-        else:
-            self.send_action(angle, boost)
-            return self.get_game_data()
+
+        # Send steering + read state
+        self.send_action(angle, boost)
+        return self.get_game_data()
 
     def force_restart(self):
         """
@@ -1053,6 +1018,8 @@ class SlitherBrowser:
                 self.driver.execute_script("if (window.connect) window.connect();")
 
             time.sleep(0.5)
+            self._canvas_element = None  # Reset cached canvas
+            self._canvas_center = None   # Reset cached center
             self.inject_override_script()
             self.inject_fast_getstate()
             # Reset CDP state so it picks up the new game WS connection
@@ -1061,6 +1028,8 @@ class SlitherBrowser:
 
         except Exception as e:
             log(f"[RESTART] Error: {e}. Refreshing page...")
+            self._canvas_element = None
+            self._canvas_center = None
             self.driver.refresh()
             time.sleep(3)
             self._handle_login()

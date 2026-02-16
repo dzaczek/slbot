@@ -6,11 +6,14 @@ import numpy as np
 import random
 import time
 import os
+import logging
 from collections import deque
 
 from config import Config
 from model import DuelingDQN, HybridDuelingDQN
 from per import PrioritizedReplayBuffer
+
+logger = logging.getLogger("slitherbot")
 
 class DDQNAgent:
     def __init__(self, config: Config):
@@ -24,7 +27,7 @@ class DDQNAgent:
         else:
             self.device = torch.device("cpu")
 
-        print(f"Agent running on device: {self.device}")
+        logger.info(f"Agent running on device: {self.device}")
 
         # Calculate input channels (3 base channels * frame_stack)
         self.input_channels = 3 * config.env.frame_stack
@@ -116,7 +119,7 @@ class DDQNAgent:
         else:
             new_steps = -decay * np.log(ratio)
 
-        print(f"  [Autonomy] Boosting Exploration: Eps {self.get_epsilon():.3f} -> {target_eps:.3f} (Reset steps to {int(new_steps)})")
+        logger.info(f"  Boosting Exploration: Eps {self.get_epsilon():.3f} -> {target_eps:.3f} (Reset steps to {int(new_steps)})")
         self.steps_done = int(new_steps)
 
     def _stack_frames(self, frames):
@@ -236,7 +239,7 @@ class DDQNAgent:
     def set_gamma(self, gamma):
         """Set gamma for current curriculum stage."""
         self.current_gamma = gamma
-        print(f"  [Agent] Gamma set to {gamma} (effective n-step gamma: {gamma**self.n_step:.3f})")
+        logger.info(f"  Gamma set to {gamma} (effective n-step gamma: {gamma**self.n_step:.3f})")
 
     def remember_nstep(self, state, action, reward, next_state, done, agent_id=0):
         """
@@ -394,14 +397,14 @@ class DDQNAgent:
         missing_p, unexpected_p = self.policy_net.load_state_dict(checkpoint['policy_net_state'], strict=False)
         missing_t, unexpected_t = self.target_net.load_state_dict(checkpoint['target_net_state'], strict=False)
         if missing_p:
-            print(f"  [Checkpoint] Policy net - new layers (randomly init): {len(missing_p)} params")
+            logger.info(f"  Checkpoint: Policy net - new layers (randomly init): {len(missing_p)} params")
         if unexpected_p:
-            print(f"  [Checkpoint] Policy net - dropped layers: {len(unexpected_p)} params")
+            logger.info(f"  Checkpoint: Policy net - dropped layers: {len(unexpected_p)} params")
         # Only load optimizer if architectures match (no missing keys)
         if not missing_p and not unexpected_p:
             self.optimizer.load_state_dict(checkpoint['optimizer_state'])
         else:
-            print(f"  [Checkpoint] Architecture changed - optimizer reset to fresh state")
+            logger.info(f"  Checkpoint: Architecture changed - optimizer reset to fresh state")
         self.steps_done = checkpoint['steps_done']
 
         max_steps = checkpoint.get('max_steps', 200)  # Default to 200 for old checkpoints

@@ -12,6 +12,23 @@ import argparse
 from collections import deque
 import logging
 import psutil
+import threading
+import signal
+
+# Rich TUI Dashboard (optional)
+try:
+    from rich.live import Live
+    from rich.layout import Layout
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.text import Text
+    from rich.console import Console
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
+# Global graceful shutdown flag (set by Ctrl+E listener)
+_shutdown_requested = False
 
 # Add gen2 to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -26,26 +43,533 @@ os.makedirs("logs", exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Create handlers
-c_handler = logging.StreamHandler()
+# Create handlers (file only — console output handled by Rich dashboard)
 f_handler_app = logging.FileHandler('logs/app.log')
 f_handler_train = logging.FileHandler('logs/train.log')
 
-c_handler.setLevel(logging.INFO)
 f_handler_app.setLevel(logging.INFO)
 f_handler_train.setLevel(logging.INFO)
 
 # Create formatters and add it to handlers
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-c_handler.setFormatter(formatter)
 f_handler_app.setFormatter(formatter)
 f_handler_train.setFormatter(formatter)
 
 # Add handlers to the logger
 if not logger.hasHandlers():
-    logger.addHandler(c_handler)
     logger.addHandler(f_handler_app)
     logger.addHandler(f_handler_train)
+
+
+class TrainingDashboard:
+    """Rich TUI dashboard for real-time training visualization."""
+
+    SPARKLINE_CHARS = " ▁▂▃▄▅▆▇█"
+
+    def __init__(self):
+        self.console = Console()
+        self.live = None
+        self.start_time = time.time()
+        self._key_thread = None
+        # Rolling data
+        self.reward_history = deque(maxlen=100)
+        self.steps_history = deque(maxlen=100)
+        self.food_history = deque(maxlen=100)
+        self.death_causes = deque(maxlen=100)
+        self.action_history = deque(maxlen=100)
+        self.loss_history = deque(maxlen=100)
+        self.epsilon_history = deque(maxlen=100)
+        self.q_mean_history = deque(maxlen=100)
+        self.td_error_history = deque(maxlen=100)
+        self.food_ratio_history = deque(maxlen=100)
+        # Long-term history for learning progress (500 episodes)
+        self.long_steps = deque(maxlen=500)
+        self.long_reward = deque(maxlen=500)
+        self.long_food = deque(maxlen=500)
+        self.long_survival_sma = deque(maxlen=500)  # SMA20 of steps
+        self.long_reward_sma = deque(maxlen=500)    # SMA20 of reward
+        self.events = deque(maxlen=12)
+        # Current episode data
+        self.episode = 0
+        self.stage = 1
+        self.stage_name = ""
+        self.epsilon = 1.0
+        self.lr = 0.0
+        self.loss = 0.0
+        self.q_mean = 0.0
+        self.q_max = 0.0
+        self.td_error = 0.0
+        self.grad_norm = 0.0
+        self.num_agents = 1
+        self.uid = ""
+        self.style_name = ""
+        self.best_avg_reward = -float('inf')
+        self.episodes_per_min = 0.0
+        self._ep_timestamps = deque(maxlen=60)
+        # Agent board: list of dicts per agent
+        self.agents_board = []
+        self._last_board_refresh = 0.0
+
+    def start(self):
+        if not RICH_AVAILABLE:
+            return
+        self.start_time = time.time()
+        self.live = Live(console=self.console,
+                         refresh_per_second=2, screen=True,
+                         get_renderable=self._build_layout)
+        self.live.start()
+        self._start_key_listener()
+
+    def stop(self):
+        if self.live:
+            self.live.stop()
+            self.live = None
+
+    def _start_key_listener(self):
+        """Background thread listening for Ctrl+E (\\x05) to request graceful shutdown."""
+        import tty, termios
+        global _shutdown_requested
+
+        def _listen():
+            global _shutdown_requested
+            fd = sys.stdin.fileno()
+            try:
+                old_settings = termios.tcgetattr(fd)
+            except termios.error:
+                return
+            try:
+                tty.setcbreak(fd)
+                while self.live and not _shutdown_requested:
+                    import select
+                    rlist, _, _ = select.select([sys.stdin], [], [], 0.2)
+                    if rlist:
+                        ch = sys.stdin.read(1)
+                        if ch == '\x05':  # Ctrl+E
+                            _shutdown_requested = True
+                            self.log_event("Ctrl+E: Graceful shutdown requested — finishing current episodes...")
+                            break
+            except Exception:
+                pass
+            finally:
+                try:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                except Exception:
+                    pass
+
+        self._key_thread = threading.Thread(target=_listen, daemon=True)
+        self._key_thread.start()
+
+    def log_event(self, msg):
+        ts = time.strftime("%H:%M:%S")
+        self.events.append(f"{ts} {msg}")
+        self._refresh()
+
+    def update(self, episode, stage, stage_name, epsilon, lr, loss, q_mean, q_max,
+               td_error, grad_norm, reward, steps, food, cause, action_pcts, num_agents):
+        self.episode = episode
+        self.stage = stage
+        self.stage_name = stage_name
+        self.epsilon = epsilon
+        self.lr = lr
+        self.loss = loss
+        self.q_mean = q_mean
+        self.q_max = q_max
+        self.td_error = td_error
+        self.grad_norm = grad_norm
+        self.num_agents = num_agents
+        self.reward_history.append(reward)
+        self.steps_history.append(steps)
+        self.food_history.append(food)
+        self.death_causes.append(cause)
+        self.action_history.append(action_pcts)
+        self.loss_history.append(loss)
+        self.epsilon_history.append(epsilon)
+        self.q_mean_history.append(q_mean)
+        self.td_error_history.append(td_error)
+        fr = food / max(steps, 1)
+        self.food_ratio_history.append(fr)
+        # Long-term tracking
+        self.long_steps.append(steps)
+        self.long_reward.append(reward)
+        self.long_food.append(food)
+        # Compute SMA20
+        sma_window = min(20, len(self.long_steps))
+        sma_steps = sum(list(self.long_steps)[-sma_window:]) / sma_window
+        sma_reward = sum(list(self.long_reward)[-sma_window:]) / sma_window
+        self.long_survival_sma.append(sma_steps)
+        self.long_reward_sma.append(sma_reward)
+        # Track best
+        if len(self.reward_history) >= 20:
+            avg = sum(self.reward_history) / len(self.reward_history)
+            if avg > self.best_avg_reward:
+                self.best_avg_reward = avg
+        # Episodes per minute
+        now = time.time()
+        self._ep_timestamps.append(now)
+        if len(self._ep_timestamps) >= 2:
+            span = self._ep_timestamps[-1] - self._ep_timestamps[0]
+            if span > 0:
+                self.episodes_per_min = (len(self._ep_timestamps) - 1) / span * 60
+        self._refresh()
+
+    def update_agent_board(self, agents_data):
+        """Update live agent board. agents_data: list of dicts per agent.
+        Each dict: {name, reward, food, steps, ep_time, total_eps, last_cause}
+        """
+        self.agents_board = agents_data
+        now = time.time()
+        if now - self._last_board_refresh >= 0.5:
+            self._last_board_refresh = now
+            self._refresh()
+
+    def _refresh(self):
+        if self.live:
+            try:
+                self.live.refresh()
+            except Exception as e:
+                logger.debug(f"[TUI] _refresh error: {e}")
+
+    def _sparkline(self, data, width=40):
+        if not data:
+            return ""
+        values = list(data)[-width:]
+        if len(values) < 2:
+            return self.SPARKLINE_CHARS[4] * len(values)
+        lo, hi = min(values), max(values)
+        rng = hi - lo if hi != lo else 1
+        chars = []
+        for v in values:
+            idx = int((v - lo) / rng * 8)
+            idx = max(0, min(8, idx))
+            chars.append(self.SPARKLINE_CHARS[idx])
+        return "".join(chars)
+
+    def _bar(self, pct, width=10):
+        filled = int(pct / 100 * width)
+        return "█" * filled + "░" * (width - filled)
+
+    def _elapsed(self):
+        secs = int(time.time() - self.start_time)
+        h, m, s = secs // 3600, (secs % 3600) // 60, secs % 60
+        return f"{h:02d}:{m:02d}:{s:02d}"
+
+    def _build_layout(self):
+        global _shutdown_requested
+        layout = Layout()
+        layout.split_column(
+            Layout(name="header", size=3),
+            Layout(name="body_upper"),
+            Layout(name="body_lower", size=12),
+            Layout(name="footer", size=3),
+            Layout(name="bottom_bar"),
+        )
+        layout["body_upper"].split_row(
+            Layout(name="left", ratio=1),
+            Layout(name="middle", ratio=1),
+            Layout(name="right", ratio=1),
+        )
+
+        # Header
+        try:
+            cpu = psutil.cpu_percent(interval=None)
+            ram = psutil.virtual_memory()
+            ram_free = ram.available / (1024 * 1024)
+            sys_info = f"CPU:{cpu:.0f}%  RAM:{ram_free:.0f}MB"
+        except Exception:
+            sys_info = ""
+
+        header_text = Text()
+        header_text.append("  SlitherBot DQN", style="bold cyan")
+        header_text.append(f"  │  {self.style_name}", style="bold white")
+        header_text.append(f"  │  UID: {self.uid}", style="dim")
+        header_text.append(f"  │  {self._elapsed()}", style="green")
+        header_text.append(f"  │  {self.num_agents} agents", style="yellow")
+        header_text.append(f"  │  {self.episodes_per_min:.1f} ep/min", style="magenta")
+        header_text.append(f"  │  {sys_info}", style="dim")
+        if _shutdown_requested:
+            header_text.append("  │  STOPPING...", style="bold red")
+        layout["header"].update(Panel(header_text, style="bold blue"))
+
+        # ── LEFT COLUMN: Training Status + Performance ──
+        left_layout = Layout()
+        left_layout.split_column(
+            Layout(name="status", ratio=2),
+            Layout(name="perf", ratio=1),
+        )
+
+        status_table = Table(show_header=False, box=None, padding=(0, 1))
+        status_table.add_column("key", style="bold", width=12)
+        status_table.add_column("value")
+        status_table.add_row("Episode", f"{self.episode:,}")
+        status_table.add_row("Stage", f"S{self.stage}: {self.stage_name}")
+        status_table.add_row("Epsilon", f"{self.epsilon:.4f}")
+        status_table.add_row("LR", f"{self.lr:.6f}")
+        status_table.add_row("Loss", f"{self.loss:.4f}")
+        status_table.add_row("Q Mean/Max", f"{self.q_mean:.2f} / {self.q_max:.2f}")
+        status_table.add_row("TD Error", f"{self.td_error:.4f}")
+        status_table.add_row("Grad Norm", f"{self.grad_norm:.4f}")
+        left_layout["status"].update(Panel(status_table, title="[bold]Training Status", border_style="cyan"))
+
+        # Performance summary
+        perf_table = Table(show_header=False, box=None, padding=(0, 1))
+        perf_table.add_column("key", style="bold", width=12)
+        perf_table.add_column("value")
+        best_str = f"{self.best_avg_reward:.2f}" if self.best_avg_reward > -1e9 else "—"
+        perf_table.add_row("Best Avg", best_str)
+        if self.reward_history:
+            last10 = list(self.reward_history)[-10:]
+            perf_table.add_row("Last 10 Avg", f"{sum(last10)/len(last10):.2f}")
+        if self.food_ratio_history:
+            avg_fr = sum(self.food_ratio_history) / len(self.food_ratio_history)
+            perf_table.add_row("Food/Step", f"{avg_fr:.4f}")
+        left_layout["perf"].update(Panel(perf_table, title="[bold]Performance", border_style="green"))
+        layout["left"].update(left_layout)
+
+        # ── MIDDLE COLUMN: Averages + Deaths + Epsilon/Loss sparklines ──
+        mid_layout = Layout()
+        mid_layout.split_column(
+            Layout(name="averages", ratio=1),
+            Layout(name="deaths", ratio=1),
+            Layout(name="model_trends", ratio=1),
+        )
+
+        avg_table = Table(show_header=False, box=None, padding=(0, 1))
+        avg_table.add_column("key", style="bold", width=12)
+        avg_table.add_column("value")
+        if self.reward_history:
+            avg_r = sum(self.reward_history) / len(self.reward_history)
+            avg_s = sum(self.steps_history) / len(self.steps_history)
+            avg_f = sum(self.food_history) / len(self.food_history)
+            avg_table.add_row("Avg Reward", f"{avg_r:.2f}")
+            avg_table.add_row("Avg Steps", f"{avg_s:.1f}")
+            avg_table.add_row("Avg Food", f"{avg_f:.2f}")
+            avg_table.add_row("Window", f"{len(self.reward_history)}/100")
+        else:
+            avg_table.add_row("", "Waiting for data...")
+        mid_layout["averages"].update(Panel(avg_table, title="[bold]Averages (100ep)", border_style="green"))
+
+        # Death causes
+        death_table = Table(show_header=False, box=None, padding=(0, 1))
+        death_table.add_column("cause", style="bold", width=12)
+        death_table.add_column("bar")
+        if self.death_causes:
+            total = len(self.death_causes)
+            causes_count = {}
+            for c in self.death_causes:
+                causes_count[c] = causes_count.get(c, 0) + 1
+            for cause_name in ["Wall", "SnakeCollision", "MaxSteps", "InvalidFrame", "BrowserError"]:
+                cnt = causes_count.get(cause_name, 0)
+                pct = cnt / total * 100
+                if cnt > 0:
+                    color = "red" if cause_name == "Wall" else "yellow" if cause_name == "SnakeCollision" else "dim"
+                    death_table.add_row(cause_name[:10], f"[{color}]{pct:5.1f}% {self._bar(pct, 8)}[/]")
+        mid_layout["deaths"].update(Panel(death_table, title="[bold]Deaths (100ep)", border_style="red"))
+
+        # Model trends (epsilon, loss, Q-mean, TD error)
+        mt = Text()
+        mt.append("Epsilon: ", style="bold")
+        mt.append(self._sparkline(self.epsilon_history, 30), style="yellow")
+        mt.append("\n")
+        mt.append("Loss:    ", style="bold")
+        mt.append(self._sparkline(self.loss_history, 30), style="red")
+        mt.append("\n")
+        mt.append("Q-Mean:  ", style="bold")
+        mt.append(self._sparkline(self.q_mean_history, 30), style="cyan")
+        mt.append("\n")
+        mt.append("TD Err:  ", style="bold")
+        mt.append(self._sparkline(self.td_error_history, 30), style="magenta")
+        mid_layout["model_trends"].update(Panel(mt, title="[bold]Model Trends", border_style="blue"))
+        layout["middle"].update(mid_layout)
+
+        # ── RIGHT COLUMN: Reward/Steps/Food sparklines + Food/Step + Actions ──
+        right_layout = Layout()
+        right_layout.split_column(
+            Layout(name="trends", ratio=2),
+            Layout(name="actions", ratio=1),
+        )
+
+        trend_text = Text()
+        trend_text.append("Reward:    ", style="bold")
+        trend_text.append(self._sparkline(self.reward_history), style="green")
+        if self.reward_history:
+            trend_text.append(f"  {list(self.reward_history)[-1]:.1f}", style="dim")
+        trend_text.append("\n\n")
+        trend_text.append("Steps:     ", style="bold")
+        trend_text.append(self._sparkline(self.steps_history), style="cyan")
+        if self.steps_history:
+            trend_text.append(f"  {list(self.steps_history)[-1]:.0f}", style="dim")
+        trend_text.append("\n\n")
+        trend_text.append("Food:      ", style="bold")
+        trend_text.append(self._sparkline(self.food_history), style="yellow")
+        if self.food_history:
+            trend_text.append(f"  {list(self.food_history)[-1]:.0f}", style="dim")
+        trend_text.append("\n\n")
+        trend_text.append("Food/Step: ", style="bold")
+        trend_text.append(self._sparkline(self.food_ratio_history), style="magenta")
+        if self.food_ratio_history:
+            trend_text.append(f"  {list(self.food_ratio_history)[-1]:.4f}", style="dim")
+        right_layout["trends"].update(Panel(trend_text, title="[bold]Episode Trends (100ep)", border_style="magenta"))
+
+        # Action distribution
+        act_table = Table(show_header=False, box=None, padding=(0, 1))
+        act_table.add_column("action", style="bold", width=10)
+        act_table.add_column("bar")
+        action_names = ["Straight", "Gentle", "Medium", "Sharp", "UTurn", "Boost"]
+        if self.action_history:
+            avg_acts = [0.0] * 6
+            for ap in self.action_history:
+                for j in range(6):
+                    avg_acts[j] += ap[j]
+            n = len(self.action_history)
+            avg_acts = [a / n * 100 for a in avg_acts]
+            for name, pct in zip(action_names, avg_acts):
+                act_table.add_row(name, f"{pct:5.1f}% {self._bar(pct, 12)}")
+        right_layout["actions"].update(Panel(act_table, title="[bold]Actions (100ep)", border_style="blue"))
+        layout["right"].update(right_layout)
+
+        # ── BOTTOM ROW: Learning Progress ──
+        progress_layout = Layout()
+        progress_layout.split_row(
+            Layout(name="survival_chart", ratio=2),
+            Layout(name="survival_stats", ratio=1),
+        )
+
+        # Survival sparkline (long-term SMA20, up to 500 episodes)
+        surv_text = Text()
+        surv_text.append("Survival SMA20:  ", style="bold")
+        surv_text.append(self._sparkline(self.long_survival_sma, 60), style="green")
+        if self.long_survival_sma:
+            surv_text.append(f"  {list(self.long_survival_sma)[-1]:.0f}", style="dim green")
+        surv_text.append("\n\n")
+        surv_text.append("Reward SMA20:    ", style="bold")
+        surv_text.append(self._sparkline(self.long_reward_sma, 60), style="cyan")
+        if self.long_reward_sma:
+            surv_text.append(f"  {list(self.long_reward_sma)[-1]:.1f}", style="dim cyan")
+        surv_text.append("\n\n")
+        surv_text.append("Food (raw):      ", style="bold")
+        surv_text.append(self._sparkline(self.long_food, 60), style="yellow")
+        if self.long_food:
+            surv_text.append(f"  {list(self.long_food)[-1]:.0f}", style="dim yellow")
+        progress_layout["survival_chart"].update(
+            Panel(surv_text, title=f"[bold]Learning Progress ({len(self.long_steps)}/500 ep)", border_style="green"))
+
+        # Survival stats: min/avg/max + trend arrows
+        stat_text = Text()
+        if self.steps_history:
+            s_list = list(self.steps_history)
+            r_list = list(self.reward_history)
+            f_list = list(self.food_history)
+            s_min, s_avg, s_max = min(s_list), sum(s_list)/len(s_list), max(s_list)
+            r_min, r_avg, r_max = min(r_list), sum(r_list)/len(r_list), max(r_list)
+            f_min, f_avg, f_max = min(f_list), sum(f_list)/len(f_list), max(f_list)
+
+            # Trend: compare last 20 vs previous 20
+            def _trend(data):
+                if len(data) < 40:
+                    return "—", "dim"
+                recent = list(data)[-20:]
+                prev = list(data)[-40:-20]
+                r_avg = sum(recent) / len(recent)
+                p_avg = sum(prev) / len(prev)
+                diff = (r_avg - p_avg) / max(abs(p_avg), 0.01) * 100
+                if diff > 10:
+                    return f"▲ +{diff:.0f}%", "bold green"
+                elif diff > 2:
+                    return f"↗ +{diff:.0f}%", "green"
+                elif diff < -10:
+                    return f"▼ {diff:.0f}%", "bold red"
+                elif diff < -2:
+                    return f"↘ {diff:.0f}%", "red"
+                else:
+                    return f"→ {diff:+.0f}%", "yellow"
+
+            s_trend, s_style = _trend(self.long_steps)
+            r_trend, r_style = _trend(self.long_reward)
+            f_trend, f_style = _trend(self.long_food)
+
+            stat_text.append("         Min   Avg   Max  Trend\n", style="bold dim")
+            stat_text.append(f"Steps  {s_min:5.0f} {s_avg:5.0f} {s_max:5.0f}  ")
+            stat_text.append(f"{s_trend}\n", style=s_style)
+            stat_text.append(f"Reward {r_min:5.1f} {r_avg:5.1f} {r_max:5.1f}  ")
+            stat_text.append(f"{r_trend}\n", style=r_style)
+            stat_text.append(f"Food   {f_min:5.0f} {f_avg:5.0f} {f_max:5.0f}  ")
+            stat_text.append(f"{f_trend}\n", style=f_style)
+
+            # All-time bests
+            if len(self.long_steps) > 0:
+                stat_text.append("\n")
+                stat_text.append(f"All-time max steps:  ", style="dim")
+                stat_text.append(f"{max(self.long_steps):.0f}\n", style="bold green")
+                stat_text.append(f"All-time max reward: ", style="dim")
+                stat_text.append(f"{max(self.long_reward):.1f}", style="bold green")
+        else:
+            stat_text.append("Waiting for data...", style="dim")
+
+        progress_layout["survival_stats"].update(
+            Panel(stat_text, title="[bold]Survival Stats (100ep)", border_style="cyan"))
+        layout["body_lower"].update(progress_layout)
+
+        # Footer
+        footer_text = Text()
+        footer_text.append("  Ctrl+C", style="bold red")
+        footer_text.append(" Force quit  │  ", style="dim")
+        footer_text.append("Ctrl+E", style="bold yellow")
+        footer_text.append(" Graceful shutdown (finish episodes, save, exit)", style="dim")
+        layout["footer"].update(Panel(footer_text, style="dim"))
+
+        # ── BOTTOM BAR: Agents Board + Events ──
+        layout["bottom_bar"].split_row(
+            Layout(name="agents_board", ratio=1),
+            Layout(name="events", ratio=1),
+        )
+
+        # Agents Board
+        agent_table = Table(box=None, padding=(0, 1), expand=True)
+        agent_table.add_column("#", style="dim", width=3)
+        agent_table.add_column("Name", style="bold cyan", width=12)
+        agent_table.add_column("Reward", justify="right", width=8)
+        agent_table.add_column("Food", justify="right", width=5)
+        agent_table.add_column("Steps", justify="right", width=6)
+        agent_table.add_column("Time", justify="right", width=7)
+        agent_table.add_column("Eps", justify="right", width=5)
+        agent_table.add_column("Last Death", width=11)
+
+        if self.agents_board:
+            for a in self.agents_board:
+                ep_secs = int(a.get('ep_time', 0))
+                if ep_secs >= 60:
+                    time_str = f"{ep_secs // 60}m{ep_secs % 60:02d}s"
+                else:
+                    time_str = f"{ep_secs}s"
+                reward_val = a.get('reward', 0)
+                rw_style = "green" if reward_val > 0 else "red" if reward_val < 0 else "dim"
+                cause = a.get('last_cause', '—')
+                cause_style = "red" if cause == "Wall" else "yellow" if cause == "Snake" else "dim"
+                agent_table.add_row(
+                    str(a.get('idx', 0)),
+                    a.get('name', '?'),
+                    f"[{rw_style}]{reward_val:.2f}[/]",
+                    str(a.get('food', 0)),
+                    str(a.get('steps', 0)),
+                    time_str,
+                    str(a.get('total_eps', 0)),
+                    f"[{cause_style}]{cause}[/]",
+                )
+        else:
+            agent_table.add_row("—", "Waiting...", "", "", "", "", "", "")
+
+        layout["agents_board"].update(Panel(agent_table, title="[bold]Agents Board", border_style="cyan"))
+
+        # Events
+        event_lines = Text()
+        if self.events:
+            for ev in self.events:
+                event_lines.append(ev + "\n")
+        else:
+            event_lines.append("Waiting for events...\n", style="dim")
+        layout["events"].update(Panel(event_lines, title="[bold]Events", border_style="yellow"))
+
+        return layout
 
 
 def generate_uid():
@@ -249,7 +773,7 @@ class CurriculumManager:
 
             if blocked:
                 if len(self.episode_steps_history) % 50 == 0:
-                    print(f"  [Curriculum] Compound blocked: {', '.join(blocked)}")
+                    logger.info(f"  [Curriculum] Compound blocked: {', '.join(blocked)}")
                 return False
 
             self._promote()
@@ -292,7 +816,7 @@ class CurriculumManager:
                 wall_ratio = wall_deaths / len(recent_causes)
                 if wall_ratio > wall_death_max:
                     if len(self.episode_steps_history) % 50 == 0:
-                        print(f"  [Curriculum] avg_steps={avg:.0f} OK but wall_death={wall_ratio:.0%} > {wall_death_max:.0%} — blocked")
+                        logger.info(f"  [Curriculum] avg_steps={avg:.0f} OK but wall_death={wall_ratio:.0%} > {wall_death_max:.0%} — blocked")
                     return False
 
             self._promote()
@@ -305,9 +829,12 @@ class CurriculumManager:
         old_name = stages[self.current_stage]["name"]
         self.current_stage = min(self.current_stage + 1, max(stages.keys()))
         new_name = stages[self.current_stage]["name"]
-        print(f"\n{'='*60}")
-        print(f"  STAGE UP! {old_name} -> {new_name} (Stage {self.current_stage})")
-        print(f"{'='*60}\n")
+        logger.info(f"STAGE UP! {old_name} -> {new_name} (Stage {self.current_stage})")
+        # Clear history so new stage must earn its own promotion
+        self.episode_food_history.clear()
+        self.episode_steps_history.clear()
+        self.episode_food_ratio_history.clear()
+        self.episode_cause_history.clear()
 
     def get_state(self):
         """Serialize for checkpoint."""
@@ -595,8 +1122,14 @@ class VecFrameStack:
     def set_stage(self, stage_config):
         self.venv.set_stage(stage_config)
 
-def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, frame_skip, view_plus=False, base_url="http://slither.io", backend="selenium", ws_server_url=""):
+def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, frame_skip, view_plus=False, base_url="http://slither.io", backend="selenium", ws_server_url="", suppress_stdout=False):
     parent_remote.close()
+
+    # Suppress stdout/stderr in workers to avoid corrupting Rich TUI
+    if suppress_stdout:
+        devnull = open(os.devnull, 'w')
+        sys.stdout = devnull
+        sys.stderr = devnull
 
     picard_names = [
         "Picard", "Riker", "Data", "Worf", "Troi", "LaForge",
@@ -645,7 +1178,7 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
         remote.close()
 
 class SubprocVecEnv:
-    def __init__(self, num_agents, matrix_size, frame_skip, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io", backend="selenium", ws_server_url=""):
+    def __init__(self, num_agents, matrix_size, frame_skip, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io", backend="selenium", ws_server_url="", suppress_stdout=False):
         self.num_agents = num_agents
         # Store constructor args for spawning new workers dynamically
         self._matrix_size = matrix_size
@@ -654,6 +1187,7 @@ class SubprocVecEnv:
         self._base_url = base_url
         self._backend = backend
         self._ws_server_url = ws_server_url
+        self._suppress_stdout = suppress_stdout
         self._current_stage_config = None
 
         pipes = [mp.Pipe() for _ in range(num_agents)]
@@ -667,7 +1201,7 @@ class SubprocVecEnv:
             agent_view_plus = view_plus and (i == 0) and not is_headless
             p = mp.Process(
                 target=worker,
-                args=(work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, frame_skip, agent_view_plus, base_url, backend, ws_server_url),
+                args=(work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, frame_skip, agent_view_plus, base_url, backend, ws_server_url, suppress_stdout),
             )
             p.daemon = True
             p.start()
@@ -676,27 +1210,106 @@ class SubprocVecEnv:
         for remote in work_remotes:
             remote.close()
 
+    def _make_dummy_obs(self):
+        """Return a zero observation for when respawn fails."""
+        return {
+            'matrix': np.zeros((3, self._matrix_size, self._matrix_size), dtype=np.float32),
+            'sectors': np.zeros(99, dtype=np.float32),
+        }
+
+    def _respawn_worker(self, index, max_retries=3):
+        """Respawn a crashed worker process with retries."""
+        for attempt in range(max_retries):
+            logger.warning(f"[SubprocVecEnv] Respawning worker {index} (attempt {attempt+1}/{max_retries})...")
+            try:
+                self.ps[index].terminate()
+                self.ps[index].join(timeout=3)
+            except Exception:
+                pass
+            try:
+                self.remotes[index].close()
+            except Exception:
+                pass
+
+            remote, work_remote = mp.Pipe()
+            p = mp.Process(
+                target=worker,
+                args=(work_remote, remote, index, True, self._nickname,
+                      self._matrix_size, self._frame_skip, False, self._base_url,
+                      self._backend, self._ws_server_url, self._suppress_stdout),
+            )
+            p.daemon = True
+            p.start()
+            work_remote.close()
+            self.remotes[index] = remote
+            self.ps[index] = p
+
+            try:
+                if self._current_stage_config is not None:
+                    remote.send(('set_stage', self._current_stage_config))
+                    remote.recv()
+
+                remote.send(('reset', None))
+                obs = remote.recv()
+                logger.info(f"[SubprocVecEnv] Worker {index} respawned successfully.")
+                return obs
+            except (EOFError, BrokenPipeError, ConnectionResetError) as e:
+                logger.warning(f"[SubprocVecEnv] Respawn attempt {attempt+1} failed: {e}")
+                time.sleep(2)
+
+        logger.error(f"[SubprocVecEnv] Worker {index} failed after {max_retries} retries. Using dummy obs.")
+        return self._make_dummy_obs()
+
     def reset(self):
         for remote in self.remotes:
             remote.send(('reset', None))
         return [remote.recv() for remote in self.remotes]
 
     def reset_one(self, index):
-        self.remotes[index].send(('reset_one', None))
-        return self.remotes[index].recv()
+        try:
+            self.remotes[index].send(('reset_one', None))
+            return self.remotes[index].recv()
+        except (EOFError, BrokenPipeError, ConnectionResetError):
+            return self._respawn_worker(index)
 
     def step(self, actions):
         for remote, action in zip(self.remotes, actions):
-            remote.send(('step', action))
-        results = [remote.recv() for remote in self.remotes]
+            try:
+                remote.send(('step', action))
+            except (EOFError, BrokenPipeError, ConnectionResetError):
+                pass  # will be caught on recv
+
+        results = []
+        for i, remote in enumerate(self.remotes):
+            try:
+                results.append(remote.recv())
+            except (EOFError, BrokenPipeError, ConnectionResetError):
+                logger.warning(f"[SubprocVecEnv] Worker {i} crashed (EOFError). Respawning...")
+                obs = self._respawn_worker(i)
+                # Return a "death" result for this agent
+                zero_obs = obs
+                results.append((zero_obs, 0.0, True, {
+                    'terminal_observation': obs,
+                    'cause': 'BrowserError',
+                    'food_eaten': 0,
+                    'pos': (0, 0),
+                    'wall_dist': -1,
+                    'enemy_dist': -1,
+                }))
         states, rewards, dones, infos = zip(*results)
         return states, rewards, dones, infos
 
     def close(self):
-        for remote in self.remotes:
-            remote.send(('close', None))
+        for i, remote in enumerate(self.remotes):
+            try:
+                remote.send(('close', None))
+            except (EOFError, BrokenPipeError, ConnectionResetError):
+                pass
         for p in self.ps:
-            p.join()
+            try:
+                p.join(timeout=5)
+            except Exception:
+                p.terminate()
 
     def set_stage(self, stage_config):
         """Send curriculum stage config to all workers."""
@@ -714,7 +1327,7 @@ class SubprocVecEnv:
             target=worker,
             args=(work_remote, remote, i, True, self._nickname,
                   self._matrix_size, self._frame_skip, False, self._base_url,
-                  self._backend, self._ws_server_url),
+                  self._backend, self._ws_server_url, self._suppress_stdout),
         )
         p.daemon = True
         p.start()
@@ -815,6 +1428,7 @@ def train(args):
         base_url=args.url,
         backend=cfg.browser_backend,
         ws_server_url=cfg.ws_server_url,
+        suppress_stdout=RICH_AVAILABLE,
     )
     env = VecFrameStack(raw_env, k=cfg.env.frame_stack)
 
@@ -843,6 +1457,15 @@ def train(args):
         # Restore curriculum state only if we are in curriculum mode
         if curriculum.mode == 'curriculum' and supervisor_state:
             curriculum.load_state(supervisor_state)
+
+        # --stage flag overrides checkpoint stage
+        if args.stage > 0 and curriculum.current_stage != args.stage:
+            logger.info(f"  --stage override: {curriculum.current_stage} -> {args.stage}")
+            curriculum.current_stage = args.stage
+            curriculum.episode_food_history.clear()
+            curriculum.episode_steps_history.clear()
+            curriculum.episode_food_ratio_history.clear()
+            curriculum.episode_cause_history.clear()
 
         logger.info(f"Resumed from episode {start_episode}")
         if curriculum.mode == 'curriculum':
@@ -900,8 +1523,26 @@ def train(args):
     # Death Counters
     death_stats = {"Wall": 0, "SnakeCollision": 0, "InvalidFrame": 0, "BrowserError": 0, "MaxSteps": 0}
 
+    # Per-agent board tracking
+    AGENT_NAMES = ["Picard", "Riker", "Data", "Worf", "Troi", "LaForge",
+                   "Crusher", "Q", "Seven", "Raffi", "Rios", "Jurati"]
+    agent_ep_start = [time.time()] * cfg.env.num_agents
+    agent_total_eps = [0] * cfg.env.num_agents
+    agent_last_cause = ["—"] * cfg.env.num_agents
+
     # Initial Reset
     states = env.reset()
+
+    # Initialize Rich TUI Dashboard
+    dashboard = None
+    if RICH_AVAILABLE:
+        dashboard = TrainingDashboard()
+        dashboard.uid = run_uid
+        dashboard.style_name = style_name
+        dashboard.num_agents = cfg.env.num_agents
+        dashboard.stage = curriculum.current_stage
+        dashboard.stage_name = curriculum.get_config()['name']
+        dashboard.start()
 
     def finalize_episode(agent_index, terminal_state, cause, force_done_flag):
         nonlocal start_episode, max_steps_per_episode, best_avg_reward, episodes_since_improvement
@@ -971,6 +1612,16 @@ def train(args):
                     f"{q_mean:.4f},{q_max:.4f},{td_err:.4f},{g_norm:.4f},"
                     f"{act_pcts[0]:.3f},{act_pcts[1]:.3f},{act_pcts[2]:.3f},{act_pcts[3]:.3f},{act_pcts[4]:.3f},{act_pcts[5]:.3f},{env.num_agents}\n")
 
+        # Update dashboard
+        if dashboard:
+            dashboard.update(
+                episode=start_episode, stage=curriculum.current_stage,
+                stage_name=stage_name, epsilon=eps, lr=lr, loss=loss_val,
+                q_mean=q_mean, q_max=q_max, td_error=td_err, grad_norm=g_norm,
+                reward=total_reward, steps=total_steps_local, food=food_eaten,
+                cause=cause_label, action_pcts=act_pcts, num_agents=env.num_agents,
+            )
+
         # Autonomy Logic (Scheduler & Watchdog)
         reward_window.append(total_reward)
         if len(reward_window) >= 20:
@@ -990,6 +1641,8 @@ def train(args):
                     backup_path = os.path.join(backup_dir, backup_name)
                     agent.save_checkpoint(backup_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
                     logger.info(f"  >> New Best Avg Reward: {avg_reward:.2f}. Saved backup: {backup_name}")
+                    if dashboard:
+                        dashboard.log_event(f"New best avg reward: {avg_reward:.2f} — saved {backup_name}")
 
             else:
                 episodes_since_improvement += 1
@@ -997,7 +1650,9 @@ def train(args):
             if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
                 current_eps = agent.get_epsilon()
                 new_eps = max(current_eps + 0.1, 0.3)
-                logger.info(f"\n[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle eps boost: {current_eps:.3f} -> {new_eps:.3f}. LR unchanged.")
+                logger.info(f"[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle eps boost: {current_eps:.3f} -> {new_eps:.3f}. LR unchanged.")
+                if dashboard:
+                    dashboard.log_event(f"Stagnation ({episodes_since_improvement} eps) — eps boost {current_eps:.3f} -> {new_eps:.3f}")
                 agent.boost_exploration(target_eps=new_eps)
                 # Do NOT reset LR — let the network keep learning at current rate
                 episodes_since_improvement = 0
@@ -1008,6 +1663,8 @@ def train(args):
             updated_stage_cfg = super_pattern.maybe_update()
             if updated_stage_cfg:
                 env.set_stage(updated_stage_cfg)
+                if dashboard:
+                    dashboard.log_event("SuperPattern adjusted rewards")
 
         # Track metrics for curriculum promotion
         curriculum.record_episode(food_eaten, total_steps_local, cause_label)
@@ -1021,9 +1678,16 @@ def train(args):
             super_pattern.reset_stage(stage_cfg)
             # Save checkpoint on promotion
             agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
+            if dashboard:
+                dashboard.log_event(f"STAGE UP -> S{curriculum.current_stage}: {stage_cfg['name']}")
 
         if start_episode % cfg.opt.checkpoint_every == 0:
             agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
+
+        # Per-agent board tracking
+        agent_total_eps[agent_index] += 1
+        agent_last_cause[agent_index] = cause_label[:10]
+        agent_ep_start[agent_index] = time.time()
 
         episode_rewards[agent_index] = 0
         episode_steps[agent_index] = 0
@@ -1031,7 +1695,7 @@ def train(args):
         episode_actions[agent_index] = [0]*6
 
     try:
-        while start_episode < cfg.opt.max_episodes:
+        while start_episode < cfg.opt.max_episodes and not _shutdown_requested:
             batch_count += 1
 
             # LR Warmup (based on batch_count, independent of num_agents)
@@ -1086,6 +1750,23 @@ def train(args):
                 else:
                     agent.remember_nstep(states[i], actions[i], rewards[i], next_states[i], False, agent_id=i)
 
+            # Update agent board (live per-step)
+            if dashboard:
+                now = time.time()
+                board = []
+                for i in range(env.num_agents):
+                    board.append({
+                        'idx': i,
+                        'name': AGENT_NAMES[i % len(AGENT_NAMES)],
+                        'reward': episode_rewards[i],
+                        'food': episode_food[i],
+                        'steps': episode_steps[i],
+                        'ep_time': now - agent_ep_start[i],
+                        'total_eps': agent_total_eps[i],
+                        'last_cause': agent_last_cause[i],
+                    })
+                dashboard.update_agent_board(board)
+
             # Update states
             states = list(next_states) if not isinstance(next_states, list) else next_states
 
@@ -1099,22 +1780,32 @@ def train(args):
                     episode_steps.append(0)
                     episode_food.append(0)
                     episode_actions.append([0] * 6)
+                    agent_ep_start.append(time.time())
+                    agent_total_eps.append(0)
+                    agent_last_cause.append("—")
                     states.append(new_state)
                     logger.info(f"[AUTO-SCALE] Added agent #{env.num_agents} "
                                 f"(CPU:{metrics['cpu_percent']:.0f}% "
                                 f"RAM:{metrics['ram_free_mb']:.0f}MB "
                                 f"Step:{metrics['avg_step_ms']:.0f}ms)")
+                    if dashboard:
+                        dashboard.log_event(f"Scale UP -> {env.num_agents} agents")
                 elif rec < 0 and env.num_agents > 1:
                     env.remove_agent()
                     episode_rewards.pop()
                     episode_steps.pop()
                     episode_food.pop()
                     episode_actions.pop()
+                    agent_ep_start.pop()
+                    agent_total_eps.pop()
+                    agent_last_cause.pop()
                     states.pop()
                     logger.info(f"[AUTO-SCALE] Removed agent -> {env.num_agents} "
                                 f"(CPU:{metrics['cpu_percent']:.0f}% "
                                 f"RAM:{metrics['ram_free_mb']:.0f}MB "
                                 f"Step:{metrics['avg_step_ms']:.0f}ms)")
+                    if dashboard:
+                        dashboard.log_event(f"Scale DOWN -> {env.num_agents} agents")
 
             # Train
             metrics = agent.optimize_model()
@@ -1126,12 +1817,28 @@ def train(args):
             if total_steps % cfg.opt.target_update_freq == 0:
                 agent.update_target()
                 logger.info(">> Target Network Updated")
+                if dashboard:
+                    dashboard.log_event("Target network updated")
+
+        # Graceful shutdown: loop ended because _shutdown_requested
+        if _shutdown_requested:
+            if dashboard:
+                dashboard.log_event("Saving checkpoint and shutting down...")
+                dashboard._refresh()
+            logger.info("[Shutdown] Graceful shutdown via Ctrl+E. Saving checkpoint.")
+            agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
 
     except KeyboardInterrupt:
+        if dashboard:
+            dashboard.stop()
+        logger.info("[Shutdown] KeyboardInterrupt. Saving checkpoint.")
         print("Interrupted. Saving...")
         agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
     finally:
+        if dashboard:
+            dashboard.stop()
         env.close()
+        logger.info(f"[Shutdown] Training ended at episode {start_episode}. UID: {run_uid}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
