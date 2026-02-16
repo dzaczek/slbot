@@ -15,3 +15,33 @@
 2026-02-16 12:10:39,894 - INFO - [AUTO-SCALE] Added agent #2 (CPU:0% RAM:38681MB Step:94ms)
 2026-02-16 12:11:08,759 - INFO - [Shutdown] KeyboardInterrupt. Saving checkpoint.
 2026-02-16 12:11:09,345 - INFO - [Shutdown] Training ended at episode 0. UID: 20260216-554ba8a8
+2026-02-16 12:21:36,139 - INFO - Configuration:
+2026-02-16 12:21:36,139 - INFO -   Style: Standard (Curriculum)
+2026-02-16 12:21:36,139 - INFO -   Mode: curriculum
+2026-02-16 12:21:36,139 - INFO -   Agents: AUTO (start=1, max=12)
+2026-02-16 12:21:36,139 - INFO -   Frame Stack: 4
+2026-02-16 12:21:36,139 - INFO -   Resolution: (128, 128)
+2026-02-16 12:21:36,139 - INFO -   Model: HybridDuelingDQN (LeakyReLU)
+2026-02-16 12:21:36,139 - INFO -   LR: 0.0001
+2026-02-16 12:21:36,139 - INFO -   PER: True
+2026-02-16 12:21:36,139 - INFO -   Backend: selenium
+2026-02-16 12:21:36,139 - INFO - Training Run UID: 20260216-ca3059a5
+2026-02-16 12:21:36,852 - INFO -   Parent UID: 20260216-554ba8a8
+2026-02-16 12:21:36,852 - INFO -   LR was 0.00000880 (stale). Reset to 0.0001
+2026-02-16 12:21:36,852 - INFO - Resumed from episode 0
+2026-02-16 12:21:36,852 - INFO -   Stage: 1 (FOOD_VECTOR)
+2026-02-16 12:21:42,982 - INFO -   Curriculum Stage: 1 (FOOD_VECTOR)
+2026-02-16 12:21:42,982 - INFO -   Max Steps: 300
+2026-02-16 12:22:02,511 - INFO - [AUTO-SCALE] Added agent #2 (CPU:69% RAM:38678MB Step:98ms)
+2026-02-16 12:22:04,804 - INFO - Ep 1 | S1:FOOD_VECTOR | Rw: 21.03 | St: 41 | Fd: 11 (0.268/st) | Eps: 0.975 | L: 0.0000 | Q: 0.00/0.00 | SnakeCollision | Pos:(29641,29155) Wall:9526 Enemy:412
+2026-02-16 12:22:09,580 - INFO - Ep 2 | S1:FOOD_VECTOR | Rw: -9.90 | St: 2 | Fd: 1 (0.500/st) | Eps: 0.975 | L: 0.0000 | Q: 0.00/0.00 | SnakeCollision | Pos:(38233,36183) Wall:7251 Enemy:846
+2026-02-16 12:22:19,947 - INFO - Ep 3 | S1:FOOD_VECTOR | Rw: 53.75 | St: 38 | Fd: 22 (0.579/st) | Eps: 0.971 | L: 29.9265 | Q: 4.86/10.38 | SnakeCollision | Pos:(39559,28164) Wall:5728 Enemy:46
+2026-02-16 12:22:25,859 - INFO - Ep 4 | S1:FOOD_VECTOR | Rw: 49.68 | St: 45 | Fd: 20 (0.444/st) | Eps: 0.970 | L: 40.5839 | Q: 3.86/9.98 | SnakeCollision | Pos:(33091,39668) Wall:6858 Enemy:41
+2026-02-16 12:22:33,853 - INFO - Ep 5 | S1:FOOD_VECTOR | Rw: 49.29 | St: 31 | Fd: 21 (0.677/st) | Eps: 0.968 | L: 38.1014 | Q: 3.42/11.56 | SnakeCollision | Pos:(33074,39774) Wall:6753 Enemy:109
+2026-02-16 12:22:36,204 - INFO - Ep 6 | S1:FOOD_VECTOR | Rw: 26.75 | St: 24 | Fd: 16 (0.667/st) | Eps: 0.968 | L: 40.9332 | Q: 3.48/11.57 | SnakeCollision | Pos:(39710,34167) Wall:6656 Enemy:187
+2026-02-16 12:22:50,892 - INFO - Ep 7 | S1:FOOD_VECTOR | Rw: 71.35 | St: 65 | Fd: 20 (0.308/st) | Eps: 0.960 | L: 19.9883 | Q: 3.72/12.54 | SnakeCollision | Pos:(32298,41019) Wall:5524 Enemy:75
+2026-02-16 12:23:08,122 - INFO - [AUTO-SCALE] Added agent #3 (CPU:0% RAM:36287MB Step:189ms)
+2026-02-16 12:23:11,540 - INFO - Ep 8 | S1:FOOD_VECTOR | Rw: 72.20 | St: 99 | Fd: 30 (0.303/st) | Eps: 0.957 | L: 10.4744 | Q: 4.02/15.25 | SnakeCollision | Pos:(35283,25035) Wall:6000 Enemy:466
+2026-02-16 12:23:11,554 - INFO - Ep 9 | S1:FOOD_VECTOR | Rw: 53.56 | St: 33 | Fd: 21 (0.636/st) | Eps: 0.957 | L: 10.4744 | Q: 4.02/15.25 | SnakeCollision | Pos:(26280,25890) Wall:4849 Enemy:821
+2026-02-16 12:23:14,561 - INFO - [Shutdown] KeyboardInterrupt. Saving checkpoint.
+2026-02-16 12:23:15,131 - INFO - [Shutdown] Training ended at episode 9. UID: 20260216-ca3059a5
