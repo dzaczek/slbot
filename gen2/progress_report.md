@@ -1,65 +1,63 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-16 10:36:34  
-**Total Episodes:** 8890  
-**Training Sessions:** 15
+**Generated:** 2026-02-16 10:56:47  
+**Total Episodes:** 96  
+**Training Sessions:** 1
 
-## Verdict: NOT LEARNING (Confidence: 35%)
+## Verdict: NOT LEARNING (Confidence: 50%)
 
-**Goal Feasibility:** VERY UNLIKELY (<5%)
+**Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
-### Critical Issues
-- Rewards DECLINING: -82.5
+### Warnings
+- Epsilon very high (0.840) - mostly random
+
+### Positive Signals
+- Food collection improving (slope=0.0212/ep)
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 400 | 99.4 | 103.6 | 30.8 | 0.6613 | 8.0% | 81.5% | 10.5% |
-| S2 | WALL_AVOID | 383 | 231.0 | 140.3 | 30.5 | 0.7597 | 12.3% | 70.8% | 17.0% |
-| S3 | ENEMY_AVOID | 8107 | 166.1 | 77.2 | 32.0 | 0.9783 | 5.7% | 92.9% | 1.3% |
+| S1 | FOOD_VECTOR | 96 | 95.8 | 73.9 | 31.1 | 0.6742 | 8.3% | 90.6% | 1.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 165.87 | 316.65 | -40.65 | 68.07 | 113.25 | 190.54 | 377.26 | 4390.02 |
-| Steps | 81.11 | 120.33 | 1.00 | 23.00 | 55.00 | 99.00 | 205.00 | 1000.00 |
-| Food | 31.85 | 17.62 | 0.00 | 21.00 | 28.00 | 41.00 | 65.00 | 135.00 |
-| Loss | 9.34 | 6.66 | 0.00 | 4.79 | 7.98 | 12.20 | 20.69 | 119.45 |
-| Food/Step | 0.95 | 1.31 | 0.00 | 0.39 | 0.52 | 0.86 | 3.80 | 11.00 |
+| Reward | 95.80 | 53.29 | -9.90 | 57.23 | 91.81 | 130.68 | 203.03 | 254.50 |
+| Steps | 73.90 | 57.10 | 2.00 | 28.75 | 64.50 | 102.25 | 183.25 | 300.00 |
+| Food | 31.11 | 13.62 | 1.00 | 21.75 | 29.00 | 41.00 | 58.25 | 63.00 |
+| Loss | 4.70 | 2.51 | 0.33 | 2.58 | 4.59 | 5.92 | 10.29 | 11.58 |
+| Food/Step | 0.67 | 0.61 | 0.20 | 0.38 | 0.47 | 0.62 | 2.00 | 3.80 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 145.46 | 113.58 | -0.7954 | 0.0102 |
-| Last 100 | 151.41 | 111.77 | -0.5065 | 0.0171 |
-| Last 200 | 146.06 | 108.46 | +0.0128 | 0.0000 |
-| Last 500 | 143.79 | 103.36 | +0.0294 | 0.0017 |
-| Last 1000 | 138.55 | 102.00 | +0.0075 | 0.0005 |
+| Last 50 | 98.89 | 49.49 | +0.7907 | 0.0532 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
-| Wall | 545 | 6.1% | 139.9 | 256.2 |
-| SnakeCollision | 8129 | 91.4% | 61.2 | 129.8 |
-| MaxSteps | 209 | 2.4% | 703.8 | 1337.2 |
-| BrowserError | 7 | 0.1% | 2.7 | 6.0 |
+| Wall | 8 | 8.3% | 132.2 | 148.3 |
+| SnakeCollision | 87 | 90.6% | 65.9 | 89.1 |
+| MaxSteps | 1 | 1.0% | 300.0 | 254.5 |
 
 ## Goal Progress
 
 | Target | Best | Goal | Progress |
 |--------|------|------|----------|
-| Points | 135 | 6,000 | 2.2% |
-| Survival | 1000 steps | 1,800 steps | 55.6% |
+| Points | 63 | 6,000 | 1.1% |
+| Survival | 300 steps | 1,800 steps | 16.7% |
 
 ## Recommendations
 
-Major changes needed: LR, reward structure, curriculum.
+Fine-tune hyperparameters, increase training duration.
 
-1. Episodes too short. Reduce death penalties or add survival bonus.
+1. Epsilon 0.840 still high. Consider faster decay.
+
+2. Episodes too short. Reduce death penalties or add survival bonus.
 
 ## Charts
 
@@ -108,17 +106,11 @@ Major changes needed: LR, reward structure, curriculum.
 ### Q-Value & Gradient Analysis
 ![Q-Value & Gradient Analysis](chart_13_qvalue_gradients.png)
 
-### Action Distribution Analysis
-![Action Distribution Analysis](chart_14_action_distribution.png)
-
 ### Active Agents Over Time
 ![Active Agents Over Time](chart_15_auto_scaling.png)
 
 ### MaxSteps Analysis
 ![MaxSteps Analysis](chart_16_maxsteps_analysis.png)
-
-### Survival Percentiles
-![Survival Percentiles](chart_17_survival_percentiles.png)
 
 ### Steps vs Food vs Episode (3D)
 ![Steps vs Food vs Episode (3D)](chart_18_3d_steps_food_episode.png)
