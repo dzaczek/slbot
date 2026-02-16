@@ -270,3 +270,33 @@
 2026-02-16 12:58:49,372 - INFO -   Stage: 1 (FOOD_VECTOR)
 2026-02-16 12:58:55,999 - INFO -   Curriculum Stage: 1 (FOOD_VECTOR)
 2026-02-16 12:58:56,000 - INFO -   Max Steps: 300
+2026-02-16 12:59:49,252 - INFO - Ep 117 | S1:FOOD_VECTOR | Rw: 320.47 | St: 300 | Fd: 81 (0.270/st) | Eps: 0.715 | L: 0.5877 | Q: 7.60/18.52 | MaxSteps | Pos:(42468,34498) Wall:3889 Enemy:458
+2026-02-16 12:59:55,469 - WARNING - [SubprocVecEnv] Worker 0 crashed (EOFError). Respawning...
+2026-02-16 12:59:55,469 - WARNING - [SubprocVecEnv] Respawning worker 0 (attempt 1/3)...
+2026-02-16 13:00:07,698 - INFO - [SubprocVecEnv] Worker 0 respawned successfully.
+2026-02-16 13:00:07,700 - INFO - Ep 118 | S1:FOOD_VECTOR | Rw: 72.08 | St: 36 | Fd: 23 (0.639/st) | Eps: 0.712 | L: 0.7022 | Q: 8.10/19.02 | BrowserError | Pos:(0,0)
+2026-02-16 13:00:08,137 - INFO - >> Target Network Updated
+2026-02-16 13:00:19,323 - INFO - Ep 119 | S1:FOOD_VECTOR | Rw: 18.22 | St: 25 | Fd: 12 (0.480/st) | Eps: 0.710 | L: 2.8795 | Q: 7.55/17.27 | SnakeCollision | Pos:(32172,30274) Wall:11689 Enemy:61
+2026-02-16 13:00:29,865 - INFO - Ep 120 | S1:FOOD_VECTOR | Rw: 52.27 | St: 37 | Fd: 20 (0.541/st) | Eps: 0.708 | L: 0.4794 | Q: 9.15/19.35 | SnakeCollision | Pos:(34183,37337) Wall:8938 Enemy:32
+2026-02-16 13:00:29,865 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 2, 'InvalidFrame': 0, 'BrowserError': 1, 'MaxSteps': 1}
+2026-02-16 13:00:41,775 - INFO - Ep 121 | S1:FOOD_VECTOR | Rw: 59.40 | St: 46 | Fd: 23 (0.500/st) | Eps: 0.704 | L: 0.9290 | Q: 8.78/21.65 | SnakeCollision | Pos:(33897,37811) Wall:8566 Enemy:26
+2026-02-16 13:01:22,492 - INFO - Ep 122 | S1:FOOD_VECTOR | Rw: 182.10 | St: 197 | Fd: 57 (0.289/st) | Eps: 0.689 | L: 0.1776 | Q: 9.28/25.65 | SnakeCollision | Pos:(29544,30070) Wall:10099 Enemy:71
+2026-02-16 13:01:39,259 - INFO - Ep 123 | S1:FOOD_VECTOR | Rw: 89.56 | St: 74 | Fd: 28 (0.378/st) | Eps: 0.683 | L: 0.1060 | Q: 8.77/25.16 | SnakeCollision | Pos:(27832,36326) Wall:7954 Enemy:49
+2026-02-16 13:02:13,910 - INFO - Ep 124 | S1:FOOD_VECTOR | Rw: 175.63 | St: 186 | Fd: 51 (0.274/st) | Eps: 0.669 | L: 0.3380 | Q: 9.25/19.58 | SnakeCollision | Pos:(41876,25030) Wall:2017
+2026-02-16 13:02:26,100 - INFO - Ep 125 | S1:FOOD_VECTOR | Rw: 50.15 | St: 40 | Fd: 22 (0.550/st) | Eps: 0.666 | L: 0.9071 | Q: 8.46/23.13 | SnakeCollision | Pos:(37466,35610) Wall:8206 Enemy:54
+2026-02-16 13:02:42,519 - INFO - Ep 126 | S1:FOOD_VECTOR | Rw: 86.67 | St: 66 | Fd: 27 (0.409/st) | Eps: 0.662 | L: 0.2617 | Q: 7.55/27.89 | SnakeCollision | Pos:(26981,30365) Wall:8014 Enemy:39
+2026-02-16 13:03:02,887 - INFO - Ep 127 | S1:FOOD_VECTOR | Rw: 101.59 | St: 84 | Fd: 29 (0.345/st) | Eps: 0.655 | L: 0.2798 | Q: 7.34/25.66 | SnakeCollision | Pos:(41967,36020) Wall:3960 Enemy:141
+2026-02-16 13:03:46,193 - INFO - >> Target Network Updated
+2026-02-16 13:03:59,267 - INFO - Ep 128 | S1:FOOD_VECTOR | Rw: 248.15 | St: 298 | Fd: 72 (0.242/st) | Eps: 0.634 | L: 0.5386 | Q: 10.07/24.88 | SnakeCollision | Pos:(44762,35684) Wall:1389
+2026-02-16 13:04:09,666 - INFO - Ep 129 | S1:FOOD_VECTOR | Rw: 55.27 | St: 30 | Fd: 22 (0.733/st) | Eps: 0.632 | L: 0.6479 | Q: 7.57/20.44 | SnakeCollision | Pos:(34256,35616) Wall:10488 Enemy:68
+2026-02-16 13:04:25,076 - INFO - Ep 130 | S1:FOOD_VECTOR | Rw: 72.04 | St: 60 | Fd: 26 (0.433/st) | Eps: 0.628 | L: 0.5660 | Q: 9.22/23.09 | SnakeCollision | Pos:(34899,35300) Wall:10379 Enemy:18
+2026-02-16 13:04:25,076 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 12, 'InvalidFrame': 0, 'BrowserError': 1, 'MaxSteps': 1}
+2026-02-16 13:04:32,283 - INFO - Ep 131 | S1:FOOD_VECTOR | Rw: 22.55 | St: 12 | Fd: 13 (1.083/st) | Eps: 0.627 | L: 0.5718 | Q: 7.77/24.41 | SnakeCollision | Pos:(29844,24655) Wall:5650 Enemy:41
+2026-02-16 13:04:47,434 - INFO - Ep 132 | S1:FOOD_VECTOR | Rw: 74.62 | St: 46 | Fd: 26 (0.565/st) | Eps: 0.624 | L: 0.4292 | Q: 9.89/22.66 | SnakeCollision | Pos:(37708,28738) Wall:7583 Enemy:66
+2026-02-16 13:05:09,353 - INFO - Ep 133 | S1:FOOD_VECTOR | Rw: 89.36 | St: 81 | Fd: 29 (0.358/st) | Eps: 0.619 | L: 0.6885 | Q: 9.02/24.94 | SnakeCollision | Pos:(33578,35496) Wall:10876 Enemy:57
+2026-02-16 13:05:18,070 - INFO - Ep 134 | S1:FOOD_VECTOR | Rw: 46.57 | St: 26 | Fd: 19 (0.731/st) | Eps: 0.617 | L: 0.3640 | Q: 9.03/25.63 | SnakeCollision | Pos:(33779,40513) Wall:5940 Enemy:65
+2026-02-16 13:05:28,394 - INFO - Ep 135 | S1:FOOD_VECTOR | Rw: 68.81 | St: 35 | Fd: 22 (0.629/st) | Eps: 0.615 | L: 0.2591 | Q: 8.82/24.57 | SnakeCollision | Pos:(38289,26763) Wall:5846 Enemy:26
+2026-02-16 13:06:21,765 - INFO - Ep 136 | S1:FOOD_VECTOR | Rw: 202.48 | St: 292 | Fd: 76 (0.260/st) | Eps: 0.595 | L: 0.2828 | Q: 7.91/23.00 | Wall | Pos:(40552,44020) Wall:11
+2026-02-16 13:06:21,889 - INFO -   >> New Best Avg Reward: 104.40. Saved backup: best_model_20260216-7b920d7e_ep136_rw104.pth
+2026-02-16 13:06:40,822 - INFO - [Shutdown] KeyboardInterrupt. Saving checkpoint.
+2026-02-16 13:06:41,246 - INFO - [Shutdown] Training ended at episode 136. UID: 20260216-7b920d7e
