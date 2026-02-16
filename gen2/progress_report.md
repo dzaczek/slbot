@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-16 14:30:55  
-**Total Episodes:** 326  
+**Generated:** 2026-02-16 14:41:13  
+**Total Episodes:** 357  
 **Training Sessions:** 5
 
 ## Verdict: LEARNING (Confidence: 90%)
@@ -9,44 +9,44 @@
 **Goal Feasibility:** LIKELY (>60%)
 
 ### Positive Signals
-- Rewards improving: +335.2
-- Positive reward trend (slope=1.8613, R²=0.390)
-- Episodes getting longer (slope=0.935/ep)
-- Food collection improving (slope=0.1992/ep)
+- Rewards improving: +379.4
+- Positive reward trend (slope=1.8849, R²=0.428)
+- Episodes getting longer (slope=0.963/ep)
+- Food collection improving (slope=0.1942/ep)
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
 | S1 | FOOD_VECTOR | 214 | 141.4 | 125.9 | 39.6 | 0.5520 | 0.9% | 80.8% | 17.8% |
-| S2 | WALL_AVOID | 112 | 532.2 | 286.1 | 75.2 | 0.3431 | 0.0% | 63.4% | 33.0% |
+| S2 | WALL_AVOID | 143 | 552.3 | 303.8 | 77.0 | 0.3326 | 0.0% | 60.8% | 36.4% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 275.71 | 280.62 | -144.80 | 72.46 | 169.97 | 367.02 | 929.14 | 1203.89 |
-| Steps | 180.94 | 154.03 | 1.00 | 55.00 | 140.00 | 300.00 | 500.00 | 500.00 |
-| Food | 51.80 | 35.15 | 0.00 | 23.00 | 40.50 | 75.00 | 126.00 | 163.00 |
-| Loss | 4.01 | 5.78 | 0.00 | 1.30 | 2.57 | 4.18 | 13.44 | 40.93 |
-| Food/Step | 0.48 | 0.62 | 0.00 | 0.26 | 0.31 | 0.46 | 1.14 | 6.67 |
+| Reward | 306.03 | 296.94 | -144.80 | 81.75 | 186.04 | 419.34 | 924.90 | 1203.89 |
+| Steps | 197.15 | 164.51 | 1.00 | 56.00 | 150.00 | 300.00 | 500.00 | 500.00 |
+| Food | 54.55 | 36.10 | 0.00 | 24.00 | 45.00 | 78.00 | 123.80 | 163.00 |
+| Loss | 3.90 | 5.55 | 0.00 | 1.32 | 2.57 | 3.99 | 12.25 | 40.93 |
+| Food/Step | 0.46 | 0.60 | 0.00 | 0.25 | 0.30 | 0.45 | 1.09 | 6.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 514.10 | 272.05 | +4.3866 | 0.0541 |
-| Last 100 | 523.30 | 324.37 | -0.3302 | 0.0009 |
-| Last 200 | 386.37 | 306.09 | +2.5661 | 0.2343 |
+| Last 50 | 619.08 | 267.83 | +0.5829 | 0.0010 |
+| Last 100 | 521.13 | 290.86 | +3.6878 | 0.1339 |
+| Last 200 | 464.85 | 309.47 | +2.0734 | 0.1496 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 2 | 0.6% | 277.0 | 251.0 |
-| SnakeCollision | 244 | 74.8% | 113.0 | 174.9 |
-| MaxSteps | 75 | 23.0% | 398.7 | 596.6 |
-| BrowserError | 5 | 1.5% | 189.8 | 390.6 |
+| SnakeCollision | 260 | 72.8% | 121.1 | 190.9 |
+| MaxSteps | 90 | 25.2% | 415.6 | 635.3 |
+| BrowserError | 5 | 1.4% | 189.8 | 390.6 |
 
 ## Goal Progress
 
