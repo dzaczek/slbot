@@ -2864,7 +2864,7 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('chart_15_auto_scaling.png', 'Active Agents Over Time'),
             ('chart_16_maxsteps_analysis.png', 'MaxSteps Analysis'),
             ('chart_17_survival_percentiles.png', 'Survival Percentiles'),
-            ('chart_18_3d_steps_food_episode.gif', 'Steps vs Food vs Episode (3D rotating)'),
+            ('img/3d_training.gif', 'Steps vs Food vs Episode (3D rotating)'),
             ('chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D static)'),
         ]
         for fname, title in chart_files:
