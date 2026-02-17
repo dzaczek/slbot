@@ -2603,7 +2603,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         import io
         from PIL import Image as PILImage
         frames = []
-        for angle in range(0, 360, 6):  # 60 frames, 6° per frame
+        for angle in range(0, 360, 3):  # 120 frames, 3° per frame
             ax.view_init(elev=25, azim=angle)
             buf = io.BytesIO()
             fig.savefig(buf, format='png', dpi=100, facecolor=fig.get_facecolor(), bbox_inches='tight')
@@ -2612,13 +2612,13 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             buf.close()
         gif_path = os.path.join(output_dir, 'chart_18_3d_steps_food_episode.gif')
         frames[0].save(gif_path, save_all=True, append_images=frames[1:],
-                        duration=100, loop=0, optimize=True)
+                        duration=33, loop=0, optimize=True)
         # Also save to img/ for README
         img_dir = os.path.join(output_dir, 'img')
         os.makedirs(img_dir, exist_ok=True)
         img_gif_path = os.path.join(img_dir, '3d_training.gif')
         frames[0].save(img_gif_path, save_all=True, append_images=frames[1:],
-                        duration=100, loop=0, optimize=True)
+                        duration=33, loop=0, optimize=True)
         print(c(f'  Chart saved: chart_18_3d_steps_food_episode.gif (rotating)', C.GRN))
     except ImportError:
         print(c('  Pillow not installed — skipping rotating GIF (pip install Pillow)', C.YEL))
