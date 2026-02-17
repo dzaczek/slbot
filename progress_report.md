@@ -1,24 +1,27 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-17 19:28:53  
-**Total Episodes:** 4817  
+**Generated:** 2026-02-17 20:07:53  
+**Total Episodes:** 4989  
 **Training Sessions:** 19
 
-## Verdict: NOT LEARNING (Confidence: 40%)
+## Verdict: NOT LEARNING (Confidence: 35%)
 
 **Goal Feasibility:** VERY UNLIKELY (<5%)
 
 ### Critical Issues
-- Rewards DECLINING: -1058.2
+- Rewards DECLINING: -993.8
+
+### Warnings
+- Reward in plateau (< 1% change over 200 eps)
 
 ### Positive Signals
-- Epsilon low (0.114) - exploiting policy
+- Epsilon low (0.090) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 1862 | 209.1 | 212.0 | 77.1 | 0.5357 | 0.2% | 61.3% | 38.5% |
+| S1 | FOOD_VECTOR | 2034 | 211.1 | 218.3 | 79.1 | 0.5371 | 0.1% | 63.3% | 36.5% |
 | S2 | WALL_AVOID | 400 | 486.0 | 269.1 | 70.2 | 0.4690 | 0.2% | 69.8% | 29.0% |
 | S3 | ENEMY_AVOID | 714 | 16.7 | 276.3 | 64.5 | 0.6791 | 0.1% | 96.8% | 3.1% |
 | S4 | MASS_MANAGEMENT | 1841 | -958.3 | 440.3 | 59.1 | 0.6278 | 0.2% | 87.2% | 12.6% |
@@ -27,29 +30,29 @@
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | -242.61 | 3187.45 | -35299.32 | 101.49 | 255.44 | 430.28 | 956.11 | 4632.57 |
-| Steps | 313.55 | 443.21 | 1.00 | 79.00 | 189.00 | 300.00 | 2000.00 | 2000.00 |
-| Food | 67.80 | 43.88 | 0.00 | 35.00 | 61.00 | 96.00 | 139.00 | 418.00 |
-| Loss | 6.35 | 9.55 | 0.00 | 1.26 | 3.44 | 7.89 | 20.06 | 159.03 |
-| Food/Step | 0.59 | 0.89 | 0.00 | 0.27 | 0.37 | 0.53 | 1.57 | 11.00 |
+| Reward | -226.21 | 3133.51 | -35299.32 | 98.85 | 251.69 | 429.15 | 938.00 | 4632.57 |
+| Steps | 312.62 | 437.08 | 1.00 | 80.00 | 191.00 | 300.00 | 2000.00 | 2000.00 |
+| Food | 68.95 | 44.87 | 0.00 | 35.00 | 62.00 | 97.00 | 146.00 | 418.00 |
+| Loss | 6.17 | 9.44 | 0.00 | 1.19 | 3.20 | 7.67 | 19.88 | 159.03 |
+| Food/Step | 0.59 | 0.88 | 0.00 | 0.28 | 0.37 | 0.53 | 1.57 | 11.00 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 241.17 | 242.00 | -2.1049 | 0.0158 |
-| Last 100 | 241.97 | 243.20 | +0.5882 | 0.0049 |
-| Last 200 | 317.34 | 284.72 | -1.5119 | 0.0940 |
-| Last 500 | 276.51 | 241.29 | +0.2388 | 0.0204 |
-| Last 1000 | 233.21 | 204.51 | +0.1468 | 0.0430 |
+| Last 50 | 185.43 | 178.08 | -1.1791 | 0.0091 |
+| Last 100 | 225.85 | 206.99 | -1.8214 | 0.0645 |
+| Last 200 | 226.15 | 225.48 | -0.2078 | 0.0028 |
+| Last 500 | 289.26 | 259.46 | -0.3531 | 0.0386 |
+| Last 1000 | 239.12 | 215.23 | +0.1059 | 0.0202 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 8 | 0.2% | 343.6 | 515.3 |
-| SnakeCollision | 3716 | 77.1% | 190.1 | 339.2 |
-| MaxSteps | 1087 | 22.6% | 735.1 | -2235.1 |
+| SnakeCollision | 3862 | 77.4% | 191.6 | 332.5 |
+| MaxSteps | 1113 | 22.3% | 732.0 | -2168.2 |
 | InvalidFrame | 1 | 0.0% | 1197.0 | -5534.5 |
 | BrowserError | 5 | 0.1% | 189.8 | 390.6 |
 
@@ -139,7 +142,8 @@ Major changes needed: LR, reward structure, curriculum.
 | 02-17 16:39 | 4200 | `epsilon_target`=0.35, `death_snake`=-45.0 | The agent is showing good food collection (81.77 avg) but concerning signs: reward trend is negative (-16.16), nearly 50... |
 | 02-17 17:14 | 4400 | `death_snake`=-60.0, `epsilon_target`=0.3 | The agent is showing good learning progress with improving rewards and steps, but has concerning death patterns - 45.8% ... |
 | 02-17 18:54 | 4600 | `death_snake`=-75.0, `enemy_proximity_penalty`=2.0 | The agent is performing well in Stage 1 with strong reward trend (+152) and good food collection (89.75 avg). However, 5... |
+| 02-17 19:42 | 4800 | `death_snake`=-85.0, `enemy_proximity_penalty`=1.5 | The agent is dying to snake collisions 67.8% of the time in Stage 1, which should focus on food collection. The high sna... |
 
-**Total consultations:** 7  
-**Most adjusted:** `death_snake` (6x), `enemy_proximity_penalty` (4x), `epsilon_target` (2x)
+**Total consultations:** 8  
+**Most adjusted:** `death_snake` (7x), `enemy_proximity_penalty` (5x), `epsilon_target` (2x)
 
