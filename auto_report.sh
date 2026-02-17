@@ -61,13 +61,19 @@ while true; do
         fi
     done
 
-    # Auto-add all chart PNGs (catches new charts automatically)
-    for png in "$SCRIPT_DIR"/chart_*.png; do
-        [[ -f "$png" ]] || continue
-        fname="$(basename "$png")"
+    # Auto-add all chart PNGs and GIFs
+    for img in "$SCRIPT_DIR"/chart_*.png "$SCRIPT_DIR"/chart_*.gif; do
+        [[ -f "$img" ]] || continue
+        fname="$(basename "$img")"
         git -C "$REPO_ROOT" add -f "$fname" 2>&1
         added=$((added + 1))
     done
+
+    # Add rotating 3D GIF for README (in img/)
+    if [[ -f "$SCRIPT_DIR/img/3d_training.gif" ]]; then
+        git -C "$REPO_ROOT" add -f "img/3d_training.gif" 2>&1
+        added=$((added + 1))
+    fi
     log "Staged $added files"
 
     # Step 3: Check & commit & push
