@@ -1508,7 +1508,10 @@ def train(args):
 
     # Autonomy / Stabilization Vars
     reward_window = deque(maxlen=100)
+    food_window = deque(maxlen=100)
+    steps_window = deque(maxlen=100)
     best_avg_reward = -float('inf')
+    best_fitness = -float('inf')
     episodes_since_improvement = 0
 
     # Metrics tracking
@@ -1632,7 +1635,7 @@ def train(args):
             dashboard.log_event(f"AI: {short}")
 
     def finalize_episode(agent_index, terminal_state, cause, force_done_flag):
-        nonlocal start_episode, max_steps_per_episode, best_avg_reward, episodes_since_improvement
+        nonlocal start_episode, max_steps_per_episode, best_avg_reward, best_fitness, episodes_since_improvement
         total_steps_local = episode_steps[agent_index]
         total_reward = episode_rewards[agent_index]
         food_eaten = episode_food[agent_index]
@@ -1711,28 +1714,36 @@ def train(args):
 
         # Autonomy Logic (Scheduler & Watchdog)
         reward_window.append(total_reward)
+        food_window.append(food_eaten)
+        steps_window.append(total_steps_local)
         if len(reward_window) >= 20:
             avg_reward = sum(reward_window) / len(reward_window)
+            avg_food = sum(food_window) / len(food_window)
+            avg_steps = sum(steps_window) / len(steps_window)
+
+            # Fitness = survival time + food eaten (weighted)
+            # Steps dominate (survival skill), food multiplied to reward eating
+            fitness = avg_steps + avg_food * 10
 
             # Scheduler step
             agent.step_scheduler(avg_reward)
 
-            # Watchdog for stagnation
+            # Watchdog for stagnation (still tracks reward for exploration boost)
             if avg_reward > best_avg_reward:
                 best_avg_reward = avg_reward
                 episodes_since_improvement = 0
-
-                # Save PROMISING model backup
-                if avg_reward > 0: # Only backup if positive reward
-                    backup_name = f"best_model_{run_uid}_ep{start_episode}_rw{int(avg_reward)}.pth"
-                    backup_path = os.path.join(backup_dir, backup_name)
-                    agent.save_checkpoint(backup_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
-                    logger.info(f"  >> New Best Avg Reward: {avg_reward:.2f}. Saved backup: {backup_name}")
-                    if dashboard:
-                        dashboard.log_event(f"New best avg reward: {avg_reward:.2f} — saved {backup_name}")
-
             else:
                 episodes_since_improvement += 1
+
+            # Save BEST model based on fitness (steps + food), not raw reward
+            if fitness > best_fitness:
+                best_fitness = fitness
+                backup_name = f"best_model_{run_uid}_ep{start_episode}_s{int(avg_steps)}_f{int(avg_food)}.pth"
+                backup_path = os.path.join(backup_dir, backup_name)
+                agent.save_checkpoint(backup_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
+                logger.info(f"  >> New Best Fitness: {fitness:.1f} (steps={avg_steps:.1f}, food={avg_food:.1f}). Saved: {backup_name}")
+                if dashboard:
+                    dashboard.log_event(f"New best fitness: {fitness:.1f} (s={avg_steps:.0f} f={avg_food:.0f}) — saved {backup_name}")
 
             if episodes_since_improvement > cfg.opt.adaptive_eps_patience * env.num_agents:
                 current_eps = agent.get_epsilon()
@@ -1953,7 +1964,7 @@ if __name__ == "__main__":
     parser.add_argument("--backend", choices=["selenium", "websocket"], default="selenium", help="Browser backend: selenium (default) or websocket")
     parser.add_argument("--ws-server-url", type=str, default="", help="WebSocket server URL override (e.g. ws://1.2.3.4:444/slither)")
     parser.add_argument("--reset", action="store_true", help="Total reset: delete logs, CSV, checkpoints, events")
-    parser.add_argument("--ai-supervisor", choices=["claude", "openai", "gemini"], default=None, help="Enable AI Supervisor with chosen LLM provider")
+    parser.add_argument("--ai-supervisor", choices=["claude", "openai", "gemini", "ollama"], default=None, help="Enable AI Supervisor with chosen LLM provider")
     parser.add_argument("--ai-interval", type=int, default=200, help="AI Supervisor: consult every N episodes (default: 200)")
     parser.add_argument("--ai-lookback", type=int, default=500, help="AI Supervisor: analyze last N episodes (default: 500)")
     parser.add_argument("--ai-model", type=str, default=None, help="AI Supervisor: override LLM model name")

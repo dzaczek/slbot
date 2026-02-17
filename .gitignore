@@ -1,30 +1,51 @@
-venv/
-__pycache__/
-*.pyc
-.DS_Store
+# === SECRETS — NEVER COMMIT ===
+.env
+.env.local
+.env.production
+*.key
+*.pem
+*.secret
 
-# Training data and checkpoints
+# === API / AI config (contains reasoning + may leak key context) ===
+config_ai.json
+config_ai.json.tmp
+
+# === Model weights (large binaries) ===
 *.pth
-backup_*/
-gen2/backup_*/
-neat-checkpoint-*
-#training_stats.csv
-fatal_error.log
-temp_slitherbot/
-gen2/events/
-# Logs
-gen2/logs/
+*.pt
+*.onnx
+backup_models/
+
+# === Training data & logs ===
+training_stats.csv
+logs/
+events/
 chromedriver.log
 geckodriver.log
+fatal_error.log
 
+# === Generated charts ===
+chart_*.png
+progress_report.md
 
-# Environment / secrets
-.env
-gen2/.env
+# === Python ===
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
 
-# AI Supervisor
-gen2/config_ai.json
-
-# Claude Code
+# === OS / IDE ===
+.DS_Store
 .claude/
 CLAUDE.md
+
+# === Legacy backups ===
+backup_*/
+old/
+temp_slitherbot/
+
+# === Debug artifacts ===
+debug_screens/
+*.log

@@ -174,6 +174,8 @@ class AISupervisor:
         self._last_consulted_ep = 0
 
     def _default_api_key(self):
+        if self.provider == "ollama":
+            return ""  # Ollama needs no API key
         env_map = {
             "claude": "ANTHROPIC_API_KEY",
             "openai": "OPENAI_API_KEY",
@@ -187,6 +189,7 @@ class AISupervisor:
             "claude": "claude-sonnet-4-20250514",
             "openai": "gpt-4o",
             "gemini": "gemini-2.0-flash",
+            "ollama": os.environ.get("OLLAMA_MODEL", "llama3.1"),
         }
         return defaults.get(self.provider, "claude-sonnet-4-20250514")
 
@@ -463,6 +466,7 @@ class AISupervisor:
             "claude": self._call_claude,
             "openai": self._call_openai,
             "gemini": self._call_gemini,
+            "ollama": self._call_ollama,
         }
         fn = dispatch.get(self.provider)
         if not fn:
@@ -514,6 +518,31 @@ class AISupervisor:
             return response.text
         except Exception as e:
             logger.error(f"Gemini API error: {e}")
+            return None
+
+    def _call_ollama(self, prompt):
+        try:
+            import urllib.request
+            host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+            url = f"{host}/api/chat"
+            payload = json.dumps({
+                "model": self.model_name,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": prompt["system"]},
+                    {"role": "user", "content": prompt["user"]},
+                ],
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                url, data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            return data.get("message", {}).get("content", "")
+        except Exception as e:
+            logger.error(f"Ollama API error: {e}")
             return None
 
     # ------------------------------------------------------------------
@@ -595,7 +624,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="AI Supervisor — test mode")
     parser.add_argument("--test", action="store_true", help="Run one consultation without writing config")
-    parser.add_argument("--provider", choices=["claude", "openai", "gemini"], default="claude")
+    parser.add_argument("--provider", choices=["claude", "openai", "gemini", "ollama"], default="claude")
     parser.add_argument("--model", type=str, default=None, help="Override model name")
     parser.add_argument("--key", type=str, default=None, help="API key (default: from env)")
     parser.add_argument("--stats-file", type=str, default=None, help="Path to training_stats.csv")

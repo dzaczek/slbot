@@ -94,6 +94,12 @@ class SlitherEnv:
         self.boost_penalty = 0.0
         self.prev_enemy_dist = None
 
+        # Starvation penalty: escalating penalty when bot hasn't eaten for too long
+        self.starvation_penalty = 0.0        # per-step penalty rate (set by curriculum)
+        self.starvation_grace_steps = 50     # steps before penalty kicks in
+        self.starvation_max_penalty = 2.0    # cap per step
+        self.steps_since_food = 0
+
         # Frame validation (from tsrgy0)
         self.last_matrix = self._matrix_zeros()
         self.last_valid_data = None
@@ -146,9 +152,15 @@ class SlitherEnv:
         self.enemy_approach_penalty = stage_config.get('enemy_approach_penalty', 0.0)
         self.boost_penalty = stage_config.get('boost_penalty', 0.0)
 
+        # Starvation penalty
+        self.starvation_penalty = stage_config.get('starvation_penalty', 0.0)
+        self.starvation_grace_steps = stage_config.get('starvation_grace_steps', 50)
+        self.starvation_max_penalty = stage_config.get('starvation_max_penalty', 0.5)
+
         print(f"  ENV: food={self.food_reward} shaping={self.food_shaping} surv={self.survival_reward} "
               f"wall={self.death_wall_penalty} snake={self.death_snake_penalty} "
-              f"enemy_approach={self.enemy_approach_penalty} boost_pen={self.boost_penalty}")
+              f"enemy_approach={self.enemy_approach_penalty} boost_pen={self.boost_penalty} "
+              f"starv_pen={self.starvation_penalty}")
 
     def _update_from_game_data(self, data):
         """Update wall distance and map info from game data."""
@@ -411,6 +423,7 @@ class SlitherEnv:
         self.near_wall_frames = 0
         self.invalid_frame_count = 0
         self.steps_in_episode = 0
+        self.steps_since_food = 0
         # NAV debug separator
         with open("logs/nav_debug.log", "a") as _f:
             _f.write(f"\n{'='*140}\n  NEW EPISODE\n{'='*140}\n")
@@ -722,6 +735,9 @@ class SlitherEnv:
         if new_len > self.prev_length:
             food_eaten = new_len - self.prev_length
             reward += food_eaten * self.food_reward
+            self.steps_since_food = 0  # reset starvation counter
+        else:
+            self.steps_since_food += 1
         
         # 3. Length bonus (Stage 3: reward for being a big snake)
         if self.length_bonus > 0 and new_len > 0:
@@ -764,6 +780,13 @@ class SlitherEnv:
         # 8. Boost penalty (discourage boost usage in early stages)
         if self.boost_penalty > 0 and action == 9:
             reward -= self.boost_penalty
+
+        # 9. Starvation penalty: escalating penalty for not eating
+        # Kicks in after grace period, grows linearly with steps without food
+        if self.starvation_penalty > 0 and self.steps_since_food > self.starvation_grace_steps:
+            hunger = self.steps_since_food - self.starvation_grace_steps
+            penalty = min(self.starvation_penalty * hunger, self.starvation_max_penalty)
+            reward -= penalty
 
         # Update tracked values
         self.prev_length = new_len

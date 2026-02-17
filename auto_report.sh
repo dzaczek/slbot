@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Auto Report Script - SlitherBot Gen2 Training
+# Auto Report Script - SlitherBot Training
 # Runs training_progress_analyzer.py every 10 minutes and pushes to GitHub
 #
 
@@ -56,7 +56,7 @@ while true; do
     for f in "${FILES[@]}"; do
         full="$SCRIPT_DIR/$f"
         if [[ -f "$full" ]]; then
-            git -C "$REPO_ROOT" add -f "gen2/$f" 2>&1
+            git -C "$REPO_ROOT" add -f "$f" 2>&1
             added=$((added + 1))
         fi
     done
@@ -65,7 +65,7 @@ while true; do
     for png in "$SCRIPT_DIR"/chart_*.png; do
         [[ -f "$png" ]] || continue
         fname="$(basename "$png")"
-        git -C "$REPO_ROOT" add -f "gen2/$fname" 2>&1
+        git -C "$REPO_ROOT" add -f "$fname" 2>&1
         added=$((added + 1))
     done
     log "Staged $added files"

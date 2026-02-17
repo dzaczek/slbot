@@ -2605,6 +2605,59 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 #  MARKDOWN REPORT
 # ═══════════════════════════════════════════════════════
 
+def _parse_ai_supervisor_log(log_path):
+    """Parse ai_supervisor.log and extract consultation entries."""
+    import re
+    if not os.path.exists(log_path):
+        return []
+
+    entries = []
+    current = None
+
+    try:
+        with open(log_path, 'r') as f:
+            for line in f:
+                # Start of consultation
+                m = re.match(r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}).*=== AI Consultation at episode (\d+)', line)
+                if m:
+                    current = {
+                        'time': m.group(1)[5:16],  # MM-DD HH:MM
+                        'episode': int(m.group(2)),
+                        'reasoning': '',
+                        'changes': {},
+                    }
+                    continue
+
+                # Reasoning line (from LLM JSON response)
+                if current and '"reasoning":' in line:
+                    m2 = re.search(r'"reasoning":\s*"(.+?)"', line)
+                    if m2:
+                        current['reasoning'] = m2.group(1)
+                    continue
+
+                # Changes applied
+                m3 = re.match(r'.*Consultation complete in [\d.]+s\. Changes: ({.+})', line)
+                if m3 and current:
+                    try:
+                        import ast
+                        current['changes'] = ast.literal_eval(m3.group(1))
+                    except (ValueError, SyntaxError):
+                        pass
+                    entries.append(current)
+                    current = None
+                    continue
+
+                # No changes
+                if current and 'LLM recommended no changes' in line:
+                    entries.append(current)
+                    current = None
+
+    except Exception:
+        pass
+
+    return entries
+
+
 def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
     rewards = np.array([e.reward for e in episodes])
     steps = np.array([e.steps for e in episodes])
@@ -2791,6 +2844,29 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             chart_path = os.path.join(chart_dir, fname)
             if os.path.exists(chart_path):
                 f.write(f"### {title}\n![{title}]({fname})\n\n")
+
+        # AI Supervisor consultation history
+        ai_log_path = os.path.join(os.path.dirname(output_path), 'logs', 'ai_supervisor.log')
+        ai_entries = _parse_ai_supervisor_log(ai_log_path)
+        if ai_entries:
+            f.write("## AI Supervisor — Recent Changes\n\n")
+            f.write("| Time | Episode | Changes | Reasoning |\n")
+            f.write("|------|---------|---------|----------|\n")
+            for entry in ai_entries[-10:]:  # last 10 consultations
+                changes_str = ", ".join(f"`{k}`={v}" for k, v in entry['changes'].items())
+                reasoning = entry['reasoning'][:120]
+                if len(entry['reasoning']) > 120:
+                    reasoning += "..."
+                f.write(f"| {entry['time']} | {entry['episode']} | {changes_str} | {reasoning} |\n")
+            f.write(f"\n**Total consultations:** {len(ai_entries)}  \n")
+            # Count how many times each param was changed
+            param_counts = {}
+            for entry in ai_entries:
+                for k in entry['changes']:
+                    param_counts[k] = param_counts.get(k, 0) + 1
+            if param_counts:
+                sorted_params = sorted(param_counts.items(), key=lambda x: -x[1])
+                f.write("**Most adjusted:** " + ", ".join(f"`{k}` ({v}x)" for k, v in sorted_params) + "\n\n")
 
     print(c(f'  Report saved: {output_path}', C.GRN))
 

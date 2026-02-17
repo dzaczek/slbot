@@ -1,8 +1,11 @@
-# SlitherBot Gen2
+# SlitherBot
+### Training System with AI LLM Support
 
 An autonomous bot that plays [slither.io](http://slither.io) using deep reinforcement learning. The bot learns entirely from live gameplay — it controls a real browser, reads the game state through injected JavaScript, and gradually improves through a curriculum of increasingly difficult challenges.
 
 The project started as an experiment to see if a DQN agent could learn survival skills in a competitive multiplayer environment where the rules are simple but the dynamics are chaotic. It turns out the answer is "yes, but it takes a lot of tuning."
+
+![Training Dashboard TUI](img/tui.png)
 
 ## How it works
 
@@ -411,7 +414,7 @@ Training metrics are logged to CSV with columns for reward, steps, food, death c
 
 ## AI Supervisor
 
-An optional LLM-based hyperparameter tuner that runs alongside training. Every N episodes it collects training statistics, sends them to an LLM (Claude, GPT-4o, or Gemini), and applies the recommended parameter changes — all without restarting the trainer.
+An optional LLM-based hyperparameter tuner that runs alongside training. Every N episodes it collects training statistics, sends them to an LLM (Claude, GPT-4o, Gemini, or a local Ollama model), and applies the recommended parameter changes — all without restarting the trainer.
 
 ### How it works
 
@@ -477,6 +480,9 @@ python trainer.py --resume --ai-supervisor openai --ai-model gpt-4o
 
 # Use Gemini
 python trainer.py --resume --ai-supervisor gemini
+
+# Use Ollama (local, no API key needed)
+python trainer.py --resume --ai-supervisor ollama
 
 # Override API key directly
 python trainer.py --resume --ai-supervisor claude --ai-key sk-ant-...
@@ -558,7 +564,7 @@ python trainer.py --reset
 | `--auto-num-agents` | Enable agent auto-scaling |
 | `--max-agents N` | Maximum agents for auto-scale |
 | `--reset` | Delete all logs and checkpoints |
-| `--ai-supervisor {claude,openai,gemini}` | Enable AI Supervisor with chosen LLM |
+| `--ai-supervisor {claude,openai,gemini,ollama}` | Enable AI Supervisor with chosen LLM |
 | `--ai-interval N` | AI consultation interval in episodes (default: 200) |
 | `--ai-lookback N` | Episodes to analyze per consultation (default: 500) |
 | `--ai-model MODEL` | Override LLM model name |
@@ -577,12 +583,13 @@ python trainer.py --reset
 | `styles.py` | Reward weight definitions for each curriculum stage and training style |
 | `per.py` | Prioritized Experience Replay with SumTree |
 | `training_progress_analyzer.py` | Post-training analysis — 16 charts + markdown report |
-| `ai_supervisor.py` | LLM-based hyperparameter tuner (Claude/OpenAI/Gemini) |
+| `ai_supervisor.py` | LLM-based hyperparameter tuner (Claude/OpenAI/Gemini/Ollama) |
 | `training_stats.csv` | Raw episode-level metrics |
 | `config_ai.json` | AI Supervisor output — latest recommended parameters |
 | `.env.example` | Template for API keys |
 | `test_steering.py` | Deterministic steering validation test |
 | `test_steer_diag.py` | Steering method diagnostic (tests 5 approaches) |
+| `old/` | Archived gen1 code and legacy backups |
 
 ## Performance
 
