@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-17 20:29:25  
-**Total Episodes:** 5081  
+**Generated:** 2026-02-17 20:51:22  
+**Total Episodes:** 5169  
 **Training Sessions:** 19
 
 ## Verdict: NOT LEARNING (Confidence: 40%)
@@ -9,16 +9,16 @@
 **Goal Feasibility:** VERY UNLIKELY (<5%)
 
 ### Critical Issues
-- Rewards DECLINING: -951.2
+- Rewards DECLINING: -901.8
 
 ### Positive Signals
-- Epsilon low (0.085) - exploiting policy
+- Epsilon low (0.083) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 2126 | 213.3 | 221.5 | 80.1 | 0.5431 | 0.1% | 64.0% | 35.8% |
+| S1 | FOOD_VECTOR | 2214 | 214.5 | 224.4 | 81.0 | 0.5391 | 0.1% | 64.7% | 35.1% |
 | S2 | WALL_AVOID | 400 | 486.0 | 269.1 | 70.2 | 0.4690 | 0.2% | 69.8% | 29.0% |
 | S3 | ENEMY_AVOID | 714 | 16.7 | 276.3 | 64.5 | 0.6791 | 0.1% | 96.8% | 3.1% |
 | S4 | MASS_MANAGEMENT | 1841 | -958.3 | 440.3 | 59.1 | 0.6278 | 0.2% | 87.2% | 12.6% |
@@ -27,29 +27,29 @@
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | -217.38 | 3105.88 | -35299.32 | 98.49 | 250.28 | 428.76 | 933.52 | 4632.57 |
-| Steps | 312.23 | 433.97 | 1.00 | 80.00 | 192.00 | 300.00 | 1874.00 | 2000.00 |
-| Food | 69.53 | 45.30 | 0.00 | 36.00 | 62.00 | 98.00 | 151.00 | 418.00 |
-| Loss | 6.08 | 9.37 | 0.00 | 1.18 | 3.06 | 7.51 | 19.78 | 159.03 |
-| Food/Step | 0.59 | 0.89 | 0.00 | 0.28 | 0.37 | 0.52 | 1.57 | 11.00 |
+| Reward | -209.50 | 3080.06 | -35299.32 | 97.29 | 249.37 | 428.27 | 925.18 | 4632.57 |
+| Steps | 311.93 | 431.06 | 1.00 | 81.00 | 193.00 | 300.00 | 1567.20 | 2000.00 |
+| Food | 70.10 | 45.72 | 0.00 | 36.00 | 63.00 | 98.00 | 155.00 | 418.00 |
+| Loss | 6.00 | 9.32 | 0.00 | 1.17 | 2.97 | 7.43 | 19.64 | 159.03 |
+| Food/Step | 0.58 | 0.88 | 0.00 | 0.28 | 0.37 | 0.52 | 1.55 | 11.00 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 238.86 | 245.64 | +1.8555 | 0.0119 |
-| Last 100 | 249.17 | 251.59 | +0.4648 | 0.0028 |
-| Last 200 | 234.27 | 230.53 | +0.2414 | 0.0037 |
-| Last 500 | 283.95 | 266.13 | -0.3888 | 0.0445 |
-| Last 1000 | 245.27 | 224.13 | +0.0901 | 0.0135 |
+| Last 50 | 232.74 | 214.59 | -0.1671 | 0.0001 |
+| Last 100 | 261.26 | 238.92 | -0.9204 | 0.0124 |
+| Last 200 | 247.38 | 239.39 | +0.0213 | 0.0000 |
+| Last 500 | 241.79 | 235.60 | +0.0204 | 0.0002 |
+| Last 1000 | 249.52 | 230.44 | +0.0628 | 0.0062 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 8 | 0.2% | 343.6 | 515.3 |
-| SnakeCollision | 3936 | 77.5% | 192.1 | 329.1 |
-| MaxSteps | 1131 | 22.3% | 729.9 | -2122.5 |
+| SnakeCollision | 4008 | 77.5% | 192.7 | 326.1 |
+| MaxSteps | 1147 | 22.2% | 728.1 | -2084.0 |
 | InvalidFrame | 1 | 0.0% | 1197.0 | -5534.5 |
 | BrowserError | 5 | 0.1% | 189.8 | 390.6 |
 
@@ -130,6 +130,18 @@ Major changes needed: LR, reward structure, curriculum.
 
 ### Steps vs Food vs Episode (3D static)
 ![Steps vs Food vs Episode (3D static)](chart_18_3d_steps_food_episode.png)
+
+### Steps vs Reward vs Episode — Bubble (3D rotating)
+![Steps vs Reward vs Episode — Bubble (3D rotating)](img/bubble_training.gif)
+
+### Steps vs Reward vs Episode — Bubble (3D static)
+![Steps vs Reward vs Episode — Bubble (3D static)](chart_19_bubble_training.png)
+
+### Steps vs Food vs Reward (3D rotating)
+![Steps vs Food vs Reward (3D rotating)](img/3d_reward.gif)
+
+### Steps vs Food vs Reward (3D static)
+![Steps vs Food vs Reward (3D static)](chart_20_3d_reward.png)
 
 ## AI Supervisor — Recent Changes
 
