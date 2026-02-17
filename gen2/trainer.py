@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import hashlib
+import json
 import multiprocessing as mp
 import argparse
 from collections import deque
@@ -1544,6 +1545,92 @@ def train(args):
         dashboard.stage_name = curriculum.get_config()['name']
         dashboard.start()
 
+    # Initialize AI Supervisor (if enabled)
+    ai_supervisor = None
+    ai_config_path = os.path.join(base_dir, 'config_ai.json')
+    ai_config_mtime = 0  # track file modification time
+
+    if args.ai_supervisor:
+        from ai_supervisor import AISupervisor
+        ai_supervisor = AISupervisor(
+            stats_file=stats_file,
+            config_ai_path=ai_config_path,
+            provider=args.ai_supervisor,
+            api_key=args.ai_key,
+            model_name=args.ai_model,
+            interval_episodes=args.ai_interval,
+            lookback_episodes=args.ai_lookback,
+        )
+        ai_supervisor.start()
+        logger.info(f"AI Supervisor enabled: provider={args.ai_supervisor}, interval={args.ai_interval}")
+        if dashboard:
+            dashboard.log_event(f"AI Supervisor: {args.ai_supervisor}")
+
+    def _apply_ai_config():
+        """Check for new config_ai.json and apply parameter changes."""
+        nonlocal ai_config_mtime
+        if not os.path.exists(ai_config_path):
+            return
+        try:
+            mtime = os.path.getmtime(ai_config_path)
+        except OSError:
+            return
+        if mtime <= ai_config_mtime:
+            return
+        ai_config_mtime = mtime
+
+        try:
+            with open(ai_config_path, 'r') as f:
+                ai_cfg = json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            logger.error(f"[AI] Failed to read config_ai.json: {e}")
+            return
+
+        params = ai_cfg.get('parameters', {})
+        if not params:
+            return
+
+        reasoning = ai_cfg.get('reasoning', '')
+        logger.info(f"[AI] Applying config_ai.json: {params}")
+        logger.info(f"[AI] Reasoning: {reasoning}")
+
+        # Separate reward params from agent/training params
+        from ai_supervisor import TUNABLE_PARAMS
+        reward_params = {}
+        for key, value in params.items():
+            meta = TUNABLE_PARAMS.get(key)
+            if not meta:
+                continue
+            _, _, _, group = meta
+
+            if group == "reward":
+                reward_params[key] = value
+            elif key == "gamma":
+                agent.set_gamma(value)
+                logger.info(f"[AI] gamma -> {value}")
+            elif key == "lr":
+                for pg in agent.optimizer.param_groups:
+                    pg['lr'] = value
+                logger.info(f"[AI] lr -> {value}")
+            elif key == "epsilon_target":
+                agent.boost_exploration(target_eps=value)
+                logger.info(f"[AI] epsilon_target -> {value}")
+            elif key == "target_update_freq":
+                cfg.opt.target_update_freq = int(value)
+                logger.info(f"[AI] target_update_freq -> {int(value)}")
+
+        # Apply reward params to environment via stage config
+        if reward_params:
+            merged = dict(super_pattern.current_stage_cfg)
+            merged.update(reward_params)
+            env.set_stage(merged)
+            super_pattern.reset_stage(merged)
+            logger.info(f"[AI] Reward params applied: {reward_params}")
+
+        if dashboard:
+            short = reasoning[:80] + "..." if len(reasoning) > 80 else reasoning
+            dashboard.log_event(f"AI: {short}")
+
     def finalize_episode(agent_index, terminal_state, cause, force_done_flag):
         nonlocal start_episode, max_steps_per_episode, best_avg_reward, episodes_since_improvement
         total_steps_local = episode_steps[agent_index]
@@ -1647,7 +1734,7 @@ def train(args):
             else:
                 episodes_since_improvement += 1
 
-            if episodes_since_improvement > cfg.opt.adaptive_eps_patience:
+            if episodes_since_improvement > cfg.opt.adaptive_eps_patience * env.num_agents:
                 current_eps = agent.get_epsilon()
                 new_eps = max(current_eps + 0.1, 0.3)
                 logger.info(f"[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle eps boost: {current_eps:.3f} -> {new_eps:.3f}. LR unchanged.")
@@ -1683,6 +1770,11 @@ def train(args):
 
         if start_episode % cfg.opt.checkpoint_every == 0:
             agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
+
+        # AI Supervisor: notify episode and check for new config
+        if ai_supervisor:
+            ai_supervisor.notify_episode(start_episode)
+            _apply_ai_config()
 
         # Per-agent board tracking
         agent_total_eps[agent_index] += 1
@@ -1725,8 +1817,11 @@ def train(args):
 
             loss = None
 
+            # Increment total_steps once per batch step (not per agent)
+            # to keep target_update_freq independent of num_agents
+            total_steps += 1
+
             for i in range(env.num_agents):
-                total_steps += 1
                 episode_rewards[i] += rewards[i]
                 episode_steps[i] += 1
                 episode_food[i] += infos[i].get('food_eaten', 0)
@@ -1835,6 +1930,8 @@ def train(args):
         print("Interrupted. Saving...")
         agent.save_checkpoint(checkpoint_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
     finally:
+        if ai_supervisor:
+            ai_supervisor.stop()
         if dashboard:
             dashboard.stop()
         env.close()
@@ -1856,6 +1953,11 @@ if __name__ == "__main__":
     parser.add_argument("--backend", choices=["selenium", "websocket"], default="selenium", help="Browser backend: selenium (default) or websocket")
     parser.add_argument("--ws-server-url", type=str, default="", help="WebSocket server URL override (e.g. ws://1.2.3.4:444/slither)")
     parser.add_argument("--reset", action="store_true", help="Total reset: delete logs, CSV, checkpoints, events")
+    parser.add_argument("--ai-supervisor", choices=["claude", "openai", "gemini"], default=None, help="Enable AI Supervisor with chosen LLM provider")
+    parser.add_argument("--ai-interval", type=int, default=200, help="AI Supervisor: consult every N episodes (default: 200)")
+    parser.add_argument("--ai-lookback", type=int, default=500, help="AI Supervisor: analyze last N episodes (default: 500)")
+    parser.add_argument("--ai-model", type=str, default=None, help="AI Supervisor: override LLM model name")
+    parser.add_argument("--ai-key", type=str, default=None, help="AI Supervisor: API key (default: from env var)")
     args = parser.parse_args()
 
     if args.reset:

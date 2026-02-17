@@ -409,6 +409,87 @@ Every 50 episodes, the trainer saves a checkpoint containing the network weights
 
 Training metrics are logged to CSV with columns for reward, steps, food, death cause, Q-values, gradient norms, action distributions, and more.
 
+## AI Supervisor
+
+An optional LLM-based hyperparameter tuner that runs alongside training. Every N episodes it collects training statistics, sends them to an LLM (Claude, GPT-4o, or Gemini), and applies the recommended parameter changes — all without restarting the trainer.
+
+### How it works
+
+1. Every `--ai-interval` episodes (default 200), the supervisor tail-reads the last `--ai-lookback` rows (default 500) from `training_stats.csv`
+2. It aggregates: avg reward/steps/food, reward trend, death distribution, action entropy, Q-value trends, loss trends
+3. A structured prompt with the stats + current parameter values + safe ranges is sent to the chosen LLM
+4. The LLM responds with a JSON containing `reasoning` and `parameters` to change
+5. Values are validated, clamped to safe ranges, and written atomically to `config_ai.json`
+6. The trainer detects the new file (by mtime check) and applies changes live:
+   - Reward params → merged into current stage config → pushed to all env workers
+   - `gamma` → `agent.set_gamma()`
+   - `lr` → direct optimizer update
+   - `epsilon_target` → `agent.boost_exploration()`
+   - `target_update_freq` → config override
+
+### Tunable parameters
+
+| Parameter | Min | Max | Group |
+|---|---|---|---|
+| food_reward | 1.0 | 30.0 | reward |
+| food_shaping | 0.0 | 1.0 | reward |
+| survival | 0.0 | 1.0 | reward |
+| death_wall | -100 | -5 | reward |
+| death_snake | -100 | -5 | reward |
+| wall_proximity_penalty | 0.0 | 3.0 | reward |
+| enemy_proximity_penalty | 0.0 | 3.0 | reward |
+| enemy_approach_penalty | 0.0 | 2.0 | reward |
+| starvation_penalty | 0.0 | 0.05 | reward |
+| starvation_grace_steps | 20 | 200 | reward |
+| gamma | 0.8 | 0.999 | agent |
+| lr | 1e-6 | 1e-3 | agent |
+| epsilon_target | 0.05 | 0.5 | agent |
+| target_update_freq | 200 | 5000 | training |
+
+### Coexistence with SuperPatternOptimizer
+
+Both systems run concurrently without conflict:
+
+- **SuperPattern**: fast, rule-based, every 50 episodes, adjusts 4 params by ±0.02
+- **AI Supervisor**: slow, LLM-based, every 200+ episodes, can adjust any of 14 params
+
+When the AI Supervisor writes new parameters, the trainer calls `super_pattern.reset_stage()` which sets the new values as SuperPattern's baseline. SuperPattern then continues its fine-grained adjustments around whatever the AI set.
+
+### Setup
+
+```bash
+# Copy and fill in your API key
+cp .env.example .env
+# Edit .env — only the key for your chosen provider is required
+```
+
+### Usage
+
+```bash
+# Enable with Claude (default model: claude-sonnet-4-20250514)
+python trainer.py --resume --ai-supervisor claude
+
+# With custom interval and lookback
+python trainer.py --resume --ai-supervisor claude --ai-interval 100 --ai-lookback 300
+
+# Use OpenAI instead
+python trainer.py --resume --ai-supervisor openai --ai-model gpt-4o
+
+# Use Gemini
+python trainer.py --resume --ai-supervisor gemini
+
+# Override API key directly
+python trainer.py --resume --ai-supervisor claude --ai-key sk-ant-...
+
+# Test mode — one consultation, prints prompt and response, no config write
+python ai_supervisor.py --test --provider claude
+```
+
+### Output files
+
+- `config_ai.json` — latest LLM recommendations (atomically written)
+- `logs/ai_supervisor.log` — full consultation log (stats, prompts, responses, applied changes)
+
 ## Analysis
 
 The analyzer generates 16 charts and a markdown report:
@@ -477,6 +558,11 @@ python trainer.py --reset
 | `--auto-num-agents` | Enable agent auto-scaling |
 | `--max-agents N` | Maximum agents for auto-scale |
 | `--reset` | Delete all logs and checkpoints |
+| `--ai-supervisor {claude,openai,gemini}` | Enable AI Supervisor with chosen LLM |
+| `--ai-interval N` | AI consultation interval in episodes (default: 200) |
+| `--ai-lookback N` | Episodes to analyze per consultation (default: 500) |
+| `--ai-model MODEL` | Override LLM model name |
+| `--ai-key KEY` | API key (default: from `.env` or env var) |
 
 ## File Structure
 
@@ -491,7 +577,10 @@ python trainer.py --reset
 | `styles.py` | Reward weight definitions for each curriculum stage and training style |
 | `per.py` | Prioritized Experience Replay with SumTree |
 | `training_progress_analyzer.py` | Post-training analysis — 16 charts + markdown report |
+| `ai_supervisor.py` | LLM-based hyperparameter tuner (Claude/OpenAI/Gemini) |
 | `training_stats.csv` | Raw episode-level metrics |
+| `config_ai.json` | AI Supervisor output — latest recommended parameters |
+| `.env.example` | Template for API keys |
 | `test_steering.py` | Deterministic steering validation test |
 | `test_steer_diag.py` | Steering method diagnostic (tests 5 approaches) |
 

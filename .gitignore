@@ -18,6 +18,13 @@ chromedriver.log
 geckodriver.log
 
 
+# Environment / secrets
+.env
+gen2/.env
+
+# AI Supervisor
+gen2/config_ai.json
+
 # Claude Code
 .claude/
 CLAUDE.md
