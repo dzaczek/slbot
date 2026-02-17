@@ -2938,7 +2938,7 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             f.write("## AI Supervisor — Recent Changes\n\n")
             f.write("| Time | Episode | Changes | Reasoning |\n")
             f.write("|------|---------|---------|----------|\n")
-            for entry in ai_entries[-10:]:  # last 10 consultations
+            for entry in ai_entries[-100:]:
                 changes_str = ", ".join(f"`{k}`={v}" for k, v in entry['changes'].items())
                 reasoning = entry['reasoning'].replace('\n', ' ')
                 f.write(f"| {entry['time']} | {entry['episode']} | {changes_str} | {reasoning} |\n")
