@@ -714,10 +714,13 @@ class CurriculumManager:
         self.mode = self.style_config["type"] # "curriculum" or "static"
 
         self.current_stage = start_stage
-        self.episode_food_history = deque(maxlen=300)
-        self.episode_steps_history = deque(maxlen=300)
-        self.episode_food_ratio_history = deque(maxlen=300)
-        self.episode_cause_history = deque(maxlen=300)
+        # maxlen must cover the largest promote_window across all stages
+        stages = self.style_config.get("stages", {})
+        max_window = max((s.get("promote_window", 100) for s in stages.values()), default=500)
+        self.episode_food_history = deque(maxlen=max_window)
+        self.episode_steps_history = deque(maxlen=max_window)
+        self.episode_food_ratio_history = deque(maxlen=max_window)
+        self.episode_cause_history = deque(maxlen=max_window)
 
     def get_config(self):
         """Return current stage config dict."""
@@ -851,10 +854,12 @@ class CurriculumManager:
         """Restore from checkpoint."""
         if state:
             self.current_stage = state.get("stage", 1)
-            self.episode_food_history = deque(state.get("food_history", []), maxlen=300)
-            self.episode_steps_history = deque(state.get("steps_history", []), maxlen=300)
-            self.episode_food_ratio_history = deque(state.get("food_ratio_history", []), maxlen=300)
-            self.episode_cause_history = deque(state.get("cause_history", []), maxlen=300)
+            stages = self.style_config.get("stages", {})
+            max_window = max((s.get("promote_window", 100) for s in stages.values()), default=500)
+            self.episode_food_history = deque(state.get("food_history", []), maxlen=max_window)
+            self.episode_steps_history = deque(state.get("steps_history", []), maxlen=max_window)
+            self.episode_food_ratio_history = deque(state.get("food_ratio_history", []), maxlen=max_window)
+            self.episode_cause_history = deque(state.get("cause_history", []), maxlen=max_window)
 
 
 class SuperPatternOptimizer:
