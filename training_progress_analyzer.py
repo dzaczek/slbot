@@ -2598,33 +2598,90 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
     _save(fig, 'chart_18_3d_steps_food_episode.png')
 
-    # Generate rotating GIF (360° spin)
-    try:
-        import io
-        from PIL import Image as PILImage
-        frames = []
-        for angle in range(0, 360, 3):  # 120 frames, 3° per frame
-            ax.view_init(elev=25, azim=angle)
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=100, facecolor=fig.get_facecolor(), bbox_inches='tight')
-            buf.seek(0)
-            frames.append(PILImage.open(buf).copy())
-            buf.close()
-        gif_path = os.path.join(output_dir, 'chart_18_3d_steps_food_episode.gif')
-        frames[0].save(gif_path, save_all=True, append_images=frames[1:],
-                        duration=33, loop=0, optimize=True)
-        # Also save to img/ for README
-        img_dir = os.path.join(output_dir, 'img')
-        os.makedirs(img_dir, exist_ok=True)
-        img_gif_path = os.path.join(img_dir, '3d_training.gif')
-        frames[0].save(img_gif_path, save_all=True, append_images=frames[1:],
-                        duration=33, loop=0, optimize=True)
-        print(c(f'  Chart saved: chart_18_3d_steps_food_episode.gif (rotating)', C.GRN))
-    except ImportError:
-        print(c('  Pillow not installed — skipping rotating GIF (pip install Pillow)', C.YEL))
+    # ── Helper: save rotating GIF from a 3D figure ──
+    def _save_rotating_gif(fig, ax, output_dir, png_name, img_gif_name, elev=25):
+        """Generate 360° rotating GIF and save to output_dir and img/ subdir."""
+        try:
+            import io
+            from PIL import Image as PILImage
+            frames = []
+            for angle in range(0, 360, 3):  # 120 frames, 3° per frame
+                ax.view_init(elev=elev, azim=angle)
+                buf = io.BytesIO()
+                fig.savefig(buf, format='png', dpi=100, facecolor=fig.get_facecolor(), bbox_inches='tight')
+                buf.seek(0)
+                frames.append(PILImage.open(buf).copy())
+                buf.close()
+            gif_path = os.path.join(output_dir, png_name.replace('.png', '.gif'))
+            frames[0].save(gif_path, save_all=True, append_images=frames[1:],
+                            duration=33, loop=0, optimize=True)
+            if img_gif_name:
+                img_dir = os.path.join(output_dir, 'img')
+                os.makedirs(img_dir, exist_ok=True)
+                img_gif_path = os.path.join(img_dir, img_gif_name)
+                frames[0].save(img_gif_path, save_all=True, append_images=frames[1:],
+                                duration=33, loop=0, optimize=True)
+            print(c(f'  Chart saved: {img_gif_name or png_name} (rotating GIF)', C.GRN))
+        except ImportError:
+            print(c('  Pillow not installed — skipping rotating GIF (pip install Pillow)', C.YEL))
+
+    _save_rotating_gif(fig, ax, output_dir, 'chart_18_3d_steps_food_episode.png', '3d_training.gif')
     plt.close(fig)
 
-    print(c(f'\n  Total: up to 18 chart files + 1 GIF generated.', C.GRN, C.B))
+    # ──────────────────────────────────────────────────
+    # CHART 19: 3D BUBBLE — STEPS vs REWARD vs EPISODE (size=Food)
+    # ──────────────────────────────────────────────────
+    fig = plt.figure(figsize=(16, 12))
+    fig.suptitle('STEPS vs REWARD vs EPISODE — Bubble (size=Food)', fontsize=16, fontweight='bold', y=0.95)
+    ax = fig.add_subplot(111, projection='3d')
+
+    stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
+
+    # Bubble size proportional to food (min 4, max 120)
+    food_norm = food - food.min() if food.max() > food.min() else food
+    if food_norm.max() > 0:
+        bubble_sizes = 4 + (food_norm / food_norm.max()) * 116
+    else:
+        bubble_sizes = np.full(N, 10)
+
+    if N > 5000:
+        idx = np.linspace(0, N - 1, 5000, dtype=int)
+        ax.scatter(steps[idx], rewards[idx], ep_nums[idx],
+                   c=stage_colors[idx], alpha=0.3, s=bubble_sizes[idx], depthshade=True)
+    else:
+        ax.scatter(steps, rewards, ep_nums,
+                   c=stage_colors, alpha=0.3, s=bubble_sizes, depthshade=True)
+
+    # SMA trajectory
+    if N > sma_w:
+        sma_steps = moving_average(steps, sma_w)
+        sma_rewards = moving_average(rewards, sma_w)
+        sma_ep = ep_nums[sma_w - 1:]
+        ax.plot(sma_steps, sma_rewards, sma_ep,
+                color='#f0883e', linewidth=2.5, alpha=0.9, label=f'SMA-{sma_w}')
+
+    ax.set_xlabel('Steps', fontsize=11, labelpad=10)
+    ax.set_ylabel('Reward', fontsize=11, labelpad=10)
+    ax.set_zlabel('Episode', fontsize=11, labelpad=10)
+    ax.view_init(elev=25, azim=135)
+
+    from matplotlib.lines import Line2D
+    legend_elems = [Line2D([0], [0], marker='o', color='w', markerfacecolor=STAGE_COLORS_HEX.get(s, '#888'),
+                           markersize=8, label=f'Stage {s}') for s in sorted(set(stages_arr))]
+    if N > sma_w:
+        legend_elems.append(Line2D([0], [0], color='#f0883e', linewidth=2.5, label=f'SMA-{sma_w}'))
+    ax.legend(handles=legend_elems, fontsize=9, loc='upper left')
+
+    ax.xaxis.pane.set_facecolor('#161b22')
+    ax.yaxis.pane.set_facecolor('#161b22')
+    ax.zaxis.pane.set_facecolor('#161b22')
+    ax.tick_params(colors='#8b949e')
+
+    _save(fig, 'chart_19_bubble_training.png')
+    _save_rotating_gif(fig, ax, output_dir, 'chart_19_bubble_training.png', 'bubble_training.gif')
+    plt.close(fig)
+
+    print(c(f'\n  Total: up to 19 chart files + 2 GIFs generated.', C.GRN, C.B))
 
 
 # ═══════════════════════════════════════════════════════
@@ -2866,6 +2923,8 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('chart_17_survival_percentiles.png', 'Survival Percentiles'),
             ('img/3d_training.gif', 'Steps vs Food vs Episode (3D rotating)'),
             ('chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D static)'),
+            ('img/bubble_training.gif', 'Steps vs Reward vs Episode — Bubble (3D rotating)'),
+            ('chart_19_bubble_training.png', 'Steps vs Reward vs Episode — Bubble (3D static)'),
         ]
         for fname, title in chart_files:
             chart_path = os.path.join(chart_dir, fname)
@@ -2881,9 +2940,7 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             f.write("|------|---------|---------|----------|\n")
             for entry in ai_entries[-10:]:  # last 10 consultations
                 changes_str = ", ".join(f"`{k}`={v}" for k, v in entry['changes'].items())
-                reasoning = entry['reasoning'][:120]
-                if len(entry['reasoning']) > 120:
-                    reasoning += "..."
+                reasoning = entry['reasoning'].replace('\n', ' ')
                 f.write(f"| {entry['time']} | {entry['episode']} | {changes_str} | {reasoning} |\n")
             f.write(f"\n**Total consultations:** {len(ai_entries)}  \n")
             # Count how many times each param was changed

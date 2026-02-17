@@ -24,7 +24,7 @@ log()     { echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC} $1"; }
 
-INTERVAL=600
+INTERVAL=3600
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -69,11 +69,13 @@ while true; do
         added=$((added + 1))
     done
 
-    # Add rotating 3D GIF for README (in img/)
-    if [[ -f "$SCRIPT_DIR/img/3d_training.gif" ]]; then
-        git -C "$REPO_ROOT" add -f "img/3d_training.gif" 2>&1
+    # Add rotating 3D GIFs (in img/)
+    for gif in "$SCRIPT_DIR"/img/*.gif; do
+        [[ -f "$gif" ]] || continue
+        gname="img/$(basename "$gif")"
+        git -C "$REPO_ROOT" add -f "$gname" 2>&1
         added=$((added + 1))
-    fi
+    done
     log "Staged $added files"
 
     # Step 3: Check & commit & push
