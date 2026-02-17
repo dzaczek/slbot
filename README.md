@@ -24,7 +24,7 @@ The tricky part is everything in between — how to represent the game state, ho
 
 ### Neural Network
 
-We use a **Hybrid Dueling DQN** — a network with **~1.3M trainable parameters** that takes two types of input simultaneously and produces Q-values for 10 possible actions.
+We use a **Hybrid Dueling DQN** — a network with **~1.4M trainable parameters** that takes two types of input simultaneously and produces Q-values for 10 possible actions.
 
 #### Full Architecture Diagram
 
@@ -42,9 +42,9 @@ graph TB
         A1["LeakyReLU α=0.01"]
         C2["Conv2d Layer 2<br/>32 → 64 filters<br/>kernel 4x4, stride 2<br/><b>Output: 64 x 14 x 14</b>"]
         A2["LeakyReLU α=0.01"]
-        C3["Conv2d Layer 3<br/>64 → 64 filters<br/>kernel 3x3, stride 2<br/><b>Output: 64 x 6 x 6</b>"]
+        C3["Conv2d Layer 3<br/>64 → 64 filters<br/>kernel 3x3, stride 1<br/><b>Output: 64 x 12 x 12</b>"]
         A3["LeakyReLU α=0.01"]
-        C4["Conv2d Layer 4<br/>64 → 64 filters<br/>kernel 3x3, stride 1<br/><b>Output: 64 x 5 x 5</b>"]
+        C4["Conv2d Layer 4<br/>64 → 64 filters<br/>kernel 3x3, stride 2<br/><b>Output: 64 x 5 x 5</b>"]
         A4["LeakyReLU α=0.01"]
         FL["Flatten<br/><b>→ 1600 neurons</b>"]
 
@@ -115,8 +115,8 @@ graph TB
 | **CNN Branch** | | | |
 | Conv1 | 12 x 128 x 128 | 32 x 31 x 31 | LeakyReLU |
 | Conv2 | 32 x 31 x 31 | 64 x 14 x 14 | LeakyReLU |
-| Conv3 | 64 x 14 x 14 | 64 x 6 x 6 | LeakyReLU |
-| Conv4 | 64 x 6 x 6 | 64 x 5 x 5 | LeakyReLU |
+| Conv3 | 64 x 14 x 14 | 64 x 12 x 12 | LeakyReLU |
+| Conv4 | 64 x 12 x 12 | 64 x 5 x 5 | LeakyReLU |
 | Flatten | 64 x 5 x 5 | 1,600 | — |
 | **Sector Branch** | | | |
 | FC1 | 99 | 128 | LeakyReLU |
@@ -130,7 +130,7 @@ graph TB
 | **Advantage Head** | | | |
 | FC1 | 512 | 256 | LeakyReLU |
 | FC2 | 256 | 10 | — |
-| **Total** | | | **~1.3M params** |
+| **Total** | | | **~1.4M params** |
 
 #### Data Flow Diagram
 
@@ -152,7 +152,7 @@ graph LR
     end
 
     subgraph NETWORK ["HybridDuelingDQN"]
-        NN["976K params<br/>Forward pass"]
+        NN["1.4M params<br/>Forward pass"]
     end
 
     subgraph DECISION ["Action Selection"]
@@ -196,7 +196,7 @@ This helps because in many game states, *all* actions are roughly equally bad (b
 
 **Why LeakyReLU everywhere?** Standard ReLU can "die" — neurons that output zero stop receiving gradients and never recover. With a chaotic game like slither.io where the input distribution shifts as the bot learns new skills, dead neurons are a real problem. LeakyReLU (slope 0.01 for negative inputs) prevents this while being almost as fast as ReLU.
 
-**Why ~1.3M parameters?** This is intentionally moderate. Larger networks (2M+) overfit to specific game patterns and fail to generalize. Smaller networks (<500K) can't represent the complexity of multi-agent avoidance. The 128x128 resolution and 4th conv layer (added in alpha-5) give better spatial resolution without exploding parameter count.
+**Why ~1.4M parameters?** This is intentionally moderate. Larger networks (2M+) overfit to specific game patterns and fail to generalize. Smaller networks (<500K) can't represent the complexity of multi-agent avoidance. The 128x128 resolution and 4th conv layer (added in alpha-5) give better spatial resolution without exploding parameter count.
 
 ### Observation Space
 
@@ -304,7 +304,7 @@ The reward function is the heart of the whole system. Every step, the bot receiv
 
 ### How rewards flow through training
 
-Raw rewards are divided by `reward_scale` (currently 1.0) and clamped to [-10, +10] before being stored in the replay buffer. This prevents extreme values from destabilizing training.
+Raw rewards are divided by `reward_scale` (currently 1.0) and clamped to [-30, +30] before being used in loss computation. This prevents extreme values from destabilizing training while preserving meaningful n-step return differences.
 
 The network learns through **n-step returns** with variable discount factor (gamma). A higher gamma means the bot cares more about future rewards — important for learning to avoid enemies you can see coming from far away, but harder to train. That's why gamma increases across curriculum stages: 0.85 → 0.93 → 0.97.
 
@@ -318,28 +318,28 @@ Instead of throwing the bot into the deep end, we teach skills one at a time thr
 The bot starts here knowing nothing. Food reward is high (3.0), food shaping is strong (0.5), and death penalties are mild (-15). There's no enemy penalty at all — we don't want the bot to be afraid of everything, just learn to navigate toward food.
 
 - **Gamma:** 0.85 (short-term focus)
-- **Max steps:** 300 (short episodes, fast iteration)
-- **Promote when:** avg_food >= 5 AND avg_steps >= 50 over 200 episodes
+- **Max steps:** 600 (moderate episodes, enough time to find food)
+- **Promote when:** avg_food >= 12 AND avg_steps >= 80 over 400 episodes
 
 ### Stage 2: WALL_AVOID
 **Goal:** Learn to stay away from the map boundary.
 
-Food reward decreases (2.0) and wall proximity penalty increases sharply (1.5). Wall death penalty jumps to -40. The bot already knows how to eat, now it needs to learn spatial awareness.
+Food reward stays high (5.0) and wall proximity penalty increases sharply (1.5). Wall death penalty jumps to -40. The bot already knows how to eat, now it needs to learn spatial awareness.
 
 - **Gamma:** 0.93 (medium-term planning)
 - **Max steps:** 500
-- **Promote when:** avg_steps >= 55 AND wall_death_rate < 12%
+- **Promote when:** avg_steps >= 120 AND wall_death_rate < 10%
 
 ### Stage 3: ENEMY_AVOID
 **Goal:** Learn to detect and dodge enemy snakes.
 
-This is the hardest stage. The bot must maintain food collection skills while learning entirely new avoidance behaviors. Enemy proximity penalty is strong (1.5), the alert distance is large (1500 units), and snake death penalty is harsh (-40).
+This is the hardest stage. The bot must maintain food collection skills while learning entirely new avoidance behaviors. Enemy proximity penalty is strong (1.5), the alert distance is large (2000 units), and snake death penalty is harsh (-40).
 
 Food reward is kept high (5.0) so the bot doesn't "forget" how to eat — a real risk when adding strong negative signals.
 
-- **Gamma:** 0.97 (long-term planning — see the enemy coming, start turning early)
-- **Max steps:** 1000
-- **Promote when:** avg_steps >= 100
+- **Gamma:** 0.95 (long-term planning — see the enemy coming, start turning early)
+- **Max steps:** 2000
+- **Promote when:** avg_steps >= 350
 
 ### Stage 4: MASS_MANAGEMENT
 **Goal:** Optimize for long-term growth — balance food collection, survival, and strategic use of boost.
@@ -354,9 +354,9 @@ Length bonus (0.02 per unit of length) rewards the bot for being big, not just e
 
 | Parameter | S1: Food | S2: Wall | S3: Enemy | S4: Mass |
 |-----------|----------|----------|-----------|----------|
-| food_reward | 3.0 | 2.0 | 5.0 | 5.0 |
+| food_reward | 3.0 | 5.0 | 5.0 | 5.0 |
 | food_shaping | 0.5 | 0.15 | 0.1 | 0.1 |
-| survival | 0.1 | 0.5 | 0.8 | 0.3 |
+| survival | 0.1 | 0.3 | 0.3 | 0.2 |
 | death_wall | -15 | -40 | -40 | -35 |
 | death_snake | -15 | -20 | -40 | -25 |
 | wall_proximity_penalty | 0.3 | 1.5 | 0.5 | 0.5 |
@@ -364,7 +364,7 @@ Length bonus (0.02 per unit of length) rewards the bot for being big, not just e
 | enemy_approach_penalty | 0.0 | 0.0 | 0.5 | 0.3 |
 | enemy_alert_dist | 800 | 800 | 2000 | 1000 |
 | gamma | 0.85 | 0.93 | 0.95 | 0.97 |
-| max_steps | 300 | 500 | 2000 | 2000 |
+| max_steps | 600 | 500 | 2000 | 2000 |
 
 ### Alternative training styles
 
@@ -404,7 +404,7 @@ The replay buffer stores tuples of `(state, action, reward, next_state, done, ga
 Epsilon-greedy with exponential decay:
 - Start: 1.0 (100% random actions)
 - End: 0.08 (8% random)
-- Decay: calibrated so epsilon reaches ~0.5 after about 780 episodes with 5 agents
+- Decay: eps_decay=8000 steps (epsilon reaches ~0.5 after ~4700 batch steps)
 
 ### Checkpoints and Lineage
 
@@ -615,7 +615,7 @@ python trainer.py --reset
 
 **Enemy awareness upgrade** — Sectors expanded from 75 to 99 floats with 24 new `enemy_approach` channels (dot product of enemy heading vs vector-to-us). Sector scope increased from 1500 to 2000 units for earlier threat detection.
 
-**Resolution upgrade** — Matrix increased from 64x64 to 128x128 with a 4th conv layer added to keep CNN output manageable (1600 flat). Total params ~1.3M (was ~976K).
+**Resolution upgrade** — Matrix increased from 64x64 to 128x128 with a 4th conv layer added to keep CNN output manageable (1600 flat). Total params ~1.4M (was ~976K).
 
 **Other changes:**
 - Frame skip: 4 → 8 (25Hz → 12.5Hz decisions, snake can complete turns)
@@ -623,6 +623,8 @@ python trainer.py --reset
 - S3 gamma: 0.93 → 0.95, enemy_alert_dist: 1500 → 2000
 - Fixed eang override in JS steering (was causing instant angle jumps — only set wang now)
 - Added steering test suite (`test_steering.py`, `test_steer_diag.py`)
+- Reward clamp widened: [-10,+10] → [-30,+30] (preserve n-step return signal)
+- eps_decay: 50000 → 8000 (faster exploration decay)
 
 **Requires full reset** — old checkpoints incompatible (sector_dim + resolution + conv4 changed).
 
