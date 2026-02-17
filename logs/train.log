@@ -7111,3 +7111,27 @@
 2026-02-17 20:24:02,726 - INFO - Ep 4991 | S1:FOOD_VECTOR | Rw: 25.52 | St: 203 | Fd: 68 (0.335/st) | Eps: 0.086 | L: 1.8437 | Q: 6.68/27.24 | SnakeCollision | Pos:(43544,35482) Wall:2618 Enemy:518
 2026-02-17 20:24:05,888 - INFO - Ep 4992 | S1:FOOD_VECTOR | Rw: 160.38 | St: 308 | Fd: 95 (0.308/st) | Eps: 0.086 | L: 1.3987 | Q: 6.68/29.06 | SnakeCollision | Pos:(29462,34366) Wall:10414 Enemy:216
 2026-02-17 20:24:05,905 - INFO - Ep 4993 | S1:FOOD_VECTOR | Rw: 110.24 | St: 205 | Fd: 81 (0.395/st) | Eps: 0.086 | L: 1.3987 | Q: 6.68/29.06 | SnakeCollision | Pos:(32670,39628) Wall:6917 Enemy:252
+2026-02-17 20:24:10,756 - INFO - Ep 4994 | S1:FOOD_VECTOR | Rw: -31.01 | St: 5 | Fd: 19 (3.800/st) | Eps: 0.086 | L: 1.6328 | Q: 6.39/21.48 | SnakeCollision | Pos:(33515,39841) Wall:6642 Enemy:51
+2026-02-17 20:24:48,001 - INFO - Ep 4995 | S1:FOOD_VECTOR | Rw: 139.22 | St: 189 | Fd: 72 (0.381/st) | Eps: 0.086 | L: 1.6902 | Q: 8.15/43.18 | SnakeCollision | Pos:(29494,26847) Wall:7527 Enemy:39
+2026-02-17 20:24:52,596 - INFO - Ep 4996 | S1:FOOD_VECTOR | Rw: 191.17 | St: 191 | Fd: 72 (0.377/st) | Eps: 0.086 | L: 1.8830 | Q: 7.59/35.10 | SnakeCollision | Pos:(40926,35890) Wall:4979 Enemy:34
+2026-02-17 20:24:55,072 - INFO - Ep 4997 | S1:FOOD_VECTOR | Rw: 111.59 | St: 193 | Fd: 84 (0.435/st) | Eps: 0.086 | L: 2.4059 | Q: 7.23/27.92 | SnakeCollision | Pos:(33361,24626) Wall:6031 Enemy:326
+2026-02-17 20:24:59,500 - INFO - Ep 4998 | S1:FOOD_VECTOR | Rw: -24.51 | St: 4 | Fd: 21 (5.250/st) | Eps: 0.086 | L: 0.2243 | Q: 6.79/33.42 | SnakeCollision | Pos:(38873,38161) Wall:5543 Enemy:369
+2026-02-17 20:25:01,874 - INFO - Ep 4999 | S1:FOOD_VECTOR | Rw: -13.32 | St: 3 | Fd: 25 (8.333/st) | Eps: 0.086 | L: 1.2404 | Q: 7.31/24.73 | SnakeCollision | Pos:(25763,26001) Wall:4565 Enemy:442
+2026-02-17 20:25:39,233 - INFO - Ep 5000 | S1:FOOD_VECTOR | Rw: 321.52 | St: 415 | Fd: 142 (0.342/st) | Eps: 0.086 | L: 2.3269 | Q: 7.23/23.02 | SnakeCollision | Pos:(25979,25492) Wall:4353 Enemy:47
+2026-02-17 20:25:39,233 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 391, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 96}
+2026-02-17 20:26:20,317 - INFO - Ep 5001 | S1:FOOD_VECTOR | Rw: 914.25 | St: 600 | Fd: 191 (0.318/st) | Eps: 0.085 | L: 1.0665 | Q: 6.19/26.94 | MaxSteps | Pos:(38532,23669) Wall:3288 Enemy:1002
+2026-02-17 20:26:20,330 - INFO - [AI] Applying config_ai.json: {'death_snake': -95.0}
+2026-02-17 20:26:20,330 - INFO - [AI] Reasoning: The agent is dying 80.8% from snake collisions in stage 1, which should focus on food collection. The high sharp turn usage (40.6%) and declining reward trend suggest the agent is struggling with basic navigation. The death penalty for snake collision needs to be more severe to discourage this behavior.
+2026-02-17 20:26:20,330 - INFO - [AI] Reward params applied: {'death_snake': -95.0}
+2026-02-17 20:26:20,343 - INFO - Ep 5002 | S1:FOOD_VECTOR | Rw: 325.09 | St: 409 | Fd: 137 (0.335/st) | Eps: 0.085 | L: 1.0665 | Q: 6.19/26.94 | SnakeCollision | Pos:(31150,42033) Wall:4410 Enemy:62
+2026-02-17 20:26:22,673 - INFO - Ep 5003 | S1:FOOD_VECTOR | Rw: 152.56 | St: 212 | Fd: 78 (0.368/st) | Eps: 0.085 | L: 0.6838 | Q: 6.05/13.44 | SnakeCollision | Pos:(33960,38614) Wall:7771 Enemy:587
+2026-02-17 20:26:22,689 - INFO - Ep 5004 | S1:FOOD_VECTOR | Rw: 298.90 | St: 412 | Fd: 135 (0.328/st) | Eps: 0.085 | L: 0.6838 | Q: 6.05/13.44 | SnakeCollision | Pos:(35808,35522) Wall:9587 Enemy:90
+2026-02-17 20:26:26,590 - INFO - Ep 5005 | S1:FOOD_VECTOR | Rw: 369.02 | St: 412 | Fd: 134 (0.325/st) | Eps: 0.085 | L: 0.6191 | Q: 7.39/33.00 | SnakeCollision | Pos:(19523,30786) Wall:851 Enemy:547
+2026-02-17 20:26:29,044 - INFO - Ep 5006 | S1:FOOD_VECTOR | Rw: -61.83 | St: 3 | Fd: 13 (4.333/st) | Eps: 0.085 | L: 1.5601 | Q: 5.69/19.44 | SnakeCollision | Pos:(41076,32466) Wall:5470 Enemy:36
+2026-02-17 20:27:26,477 - INFO - >> Target Network Updated
+2026-02-17 20:27:52,039 - INFO - Ep 5007 | S1:FOOD_VECTOR | Rw: 269.91 | St: 435 | Fd: 141 (0.324/st) | Eps: 0.085 | L: 2.1134 | Q: 8.38/28.89 | SnakeCollision | Pos:(28098,31745) Wall:9473 Enemy:37
+2026-02-17 20:28:25,441 - INFO - Ep 5008 | S1:FOOD_VECTOR | Rw: 352.10 | St: 591 | Fd: 187 (0.316/st) | Eps: 0.085 | L: 1.8467 | Q: 5.35/15.64 | SnakeCollision | Pos:(32523,29372) Wall:10818 Enemy:50
+2026-02-17 20:28:27,758 - INFO - Ep 5009 | S1:FOOD_VECTOR | Rw: 512.41 | St: 600 | Fd: 155 (0.258/st) | Eps: 0.085 | L: 1.5444 | Q: 7.23/36.46 | MaxSteps | Pos:(30113,21037) Wall:2228 Enemy:480
+2026-02-17 20:28:28,300 - INFO - Ep 5010 | S1:FOOD_VECTOR | Rw: 630.05 | St: 600 | Fd: 191 (0.318/st) | Eps: 0.085 | L: 1.5444 | Q: 7.23/36.46 | MaxSteps | Pos:(28044,24254) Wall:4556 Enemy:659
+2026-02-17 20:28:28,300 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 398, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 99}
+2026-02-17 20:28:29,299 - INFO - Ep 5011 | S1:FOOD_VECTOR | Rw: 449.08 | St: 600 | Fd: 189 (0.315/st) | Eps: 0.085 | L: 0.9274 | Q: 7.83/36.37 | MaxSteps | Pos:(26240,28982) Wall:6748 Enemy:868
