@@ -2598,7 +2598,33 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
     _save(fig, 'chart_18_3d_steps_food_episode.png')
 
-    print(c(f'\n  Total: up to 18 chart files generated.', C.GRN, C.B))
+    # Generate rotating GIF (360° spin)
+    try:
+        import io
+        from PIL import Image as PILImage
+        frames = []
+        for angle in range(0, 360, 6):  # 60 frames, 6° per frame
+            ax.view_init(elev=25, azim=angle)
+            buf = io.BytesIO()
+            fig.savefig(buf, format='png', dpi=100, facecolor=fig.get_facecolor(), bbox_inches='tight')
+            buf.seek(0)
+            frames.append(PILImage.open(buf).copy())
+            buf.close()
+        gif_path = os.path.join(output_dir, 'chart_18_3d_steps_food_episode.gif')
+        frames[0].save(gif_path, save_all=True, append_images=frames[1:],
+                        duration=100, loop=0, optimize=True)
+        # Also save to img/ for README
+        img_dir = os.path.join(output_dir, 'img')
+        os.makedirs(img_dir, exist_ok=True)
+        img_gif_path = os.path.join(img_dir, '3d_training.gif')
+        frames[0].save(img_gif_path, save_all=True, append_images=frames[1:],
+                        duration=100, loop=0, optimize=True)
+        print(c(f'  Chart saved: chart_18_3d_steps_food_episode.gif (rotating)', C.GRN))
+    except ImportError:
+        print(c('  Pillow not installed — skipping rotating GIF (pip install Pillow)', C.YEL))
+    plt.close(fig)
+
+    print(c(f'\n  Total: up to 18 chart files + 1 GIF generated.', C.GRN, C.B))
 
 
 # ═══════════════════════════════════════════════════════
@@ -2838,7 +2864,8 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('chart_15_auto_scaling.png', 'Active Agents Over Time'),
             ('chart_16_maxsteps_analysis.png', 'MaxSteps Analysis'),
             ('chart_17_survival_percentiles.png', 'Survival Percentiles'),
-            ('chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D)'),
+            ('chart_18_3d_steps_food_episode.gif', 'Steps vs Food vs Episode (3D rotating)'),
+            ('chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D static)'),
         ]
         for fname, title in chart_files:
             chart_path = os.path.join(chart_dir, fname)

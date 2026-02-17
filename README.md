@@ -511,7 +511,9 @@ python training_progress_analyzer.py --uid 20260214-a3f7b2c1
 python training_progress_analyzer.py --latest --no-charts
 ```
 
-Charts include: training dashboard, stage progression, death analysis, food efficiency, Q-value trends, action distributions, learning detection, MaxSteps analysis, and more.
+Charts include: training dashboard, stage progression, death analysis, food efficiency, Q-value trends, action distributions, learning detection, MaxSteps analysis, and a rotating 3D scatter plot (Steps vs Food vs Episode).
+
+![3D Training Progress](img/3d_training.gif)
 
 ## Quick Start
 
