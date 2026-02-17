@@ -1,26 +1,25 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-17 14:57:11  
-**Total Episodes:** 3616  
+**Generated:** 2026-02-17 15:07:24  
+**Total Episodes:** 3678  
 **Training Sessions:** 15
 
-## Verdict: NOT LEARNING (Confidence: 40%)
+## Verdict: NOT LEARNING (Confidence: 50%)
 
-**Goal Feasibility:** VERY UNLIKELY (<5%)
+**Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
 ### Critical Issues
-- Rewards DECLINING: -1626.8
-- Negative reward trend (slope=-0.8067)
+- Rewards DECLINING: -1611.7
 
 ### Positive Signals
-- Episodes getting longer (slope=0.099/ep)
+- Episodes getting longer (slope=0.091/ep)
 - Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 661 | 168.4 | 159.3 | 56.1 | 0.6149 | 0.5% | 73.1% | 26.3% |
+| S1 | FOOD_VECTOR | 723 | 172.9 | 165.7 | 58.8 | 0.5998 | 0.4% | 70.4% | 29.0% |
 | S2 | WALL_AVOID | 400 | 486.0 | 269.1 | 70.2 | 0.4690 | 0.2% | 69.8% | 29.0% |
 | S3 | ENEMY_AVOID | 714 | 16.7 | 276.3 | 64.5 | 0.6791 | 0.1% | 96.8% | 3.1% |
 | S4 | MASS_MANAGEMENT | 1841 | -958.3 | 440.3 | 59.1 | 0.6278 | 0.2% | 87.2% | 12.6% |
@@ -29,29 +28,29 @@
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | -400.05 | 3663.63 | -35299.32 | 109.14 | 275.65 | 476.92 | 1049.98 | 4632.57 |
-| Steps | 337.62 | 503.17 | 1.00 | 67.75 | 164.00 | 330.00 | 2000.00 | 2000.00 |
-| Food | 60.87 | 41.82 | 0.00 | 31.00 | 55.00 | 82.00 | 131.25 | 418.00 |
-| Loss | 8.02 | 10.42 | 0.00 | 2.55 | 5.28 | 9.70 | 22.80 | 159.03 |
-| Food/Step | 0.62 | 0.97 | 0.00 | 0.24 | 0.36 | 0.58 | 1.88 | 11.00 |
+| Reward | -389.59 | 3633.55 | -35299.32 | 109.11 | 274.69 | 471.02 | 1041.92 | 4632.57 |
+| Steps | 335.86 | 499.23 | 1.00 | 69.00 | 165.00 | 320.00 | 2000.00 | 2000.00 |
+| Food | 61.32 | 41.82 | 0.00 | 31.00 | 56.00 | 83.00 | 130.15 | 418.00 |
+| Loss | 7.90 | 10.37 | 0.00 | 2.43 | 5.13 | 9.54 | 22.45 | 159.03 |
+| Food/Step | 0.61 | 0.96 | 0.00 | 0.24 | 0.36 | 0.57 | 1.86 | 11.00 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 186.87 | 134.67 | -0.2843 | 0.0009 |
-| Last 100 | 157.36 | 139.78 | +1.0319 | 0.0454 |
-| Last 200 | 128.44 | 152.80 | +0.3321 | 0.0157 |
-| Last 500 | -853.53 | 3778.42 | +10.7658 | 0.1691 |
-| Last 1000 | -1974.40 | 5762.93 | +2.7175 | 0.0185 |
+| Last 50 | 208.03 | 152.20 | +3.1758 | 0.0907 |
+| Last 100 | 209.93 | 145.46 | +0.4593 | 0.0083 |
+| Last 200 | 157.57 | 144.25 | +1.0172 | 0.1657 |
+| Last 500 | 185.39 | 151.03 | -0.1415 | 0.0183 |
+| Last 1000 | -1878.79 | 5636.44 | +3.7490 | 0.0369 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 8 | 0.2% | 343.6 | 515.3 |
-| SnakeCollision | 3058 | 84.6% | 195.5 | 381.5 |
-| MaxSteps | 544 | 15.0% | 1136.4 | -4804.6 |
+| SnakeCollision | 3084 | 83.8% | 195.0 | 379.1 |
+| MaxSteps | 580 | 15.8% | 1084.5 | -4487.3 |
 | InvalidFrame | 1 | 0.0% | 1197.0 | -5534.5 |
 | BrowserError | 5 | 0.1% | 189.8 | 390.6 |
 
@@ -64,7 +63,7 @@
 
 ## Recommendations
 
-Major changes needed: LR, reward structure, curriculum.
+Fine-tune hyperparameters, increase training duration.
 
 1. Average reward negative. Reduce penalties or boost food_reward.
 
