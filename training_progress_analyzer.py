@@ -64,7 +64,7 @@ def bar(value, max_val, width=30, fill_char='\u2588', empty_char='\u2591', color
 #  DATA STRUCTURES
 # ═══════════════════════════════════════════════════════
 
-STAGE_NAMES = {1: 'FOOD_VECTOR', 2: 'WALL_AVOID', 3: 'ENEMY_AVOID', 4: 'MASS_MANAGEMENT'}
+STAGE_NAMES = {1: 'FOOD_VECTOR', 2: 'WALL_AVOID', 3: 'ENEMY_AVOID', 4: 'MASS_MANAGEMENT', 5: 'MASTERY_SURVIVAL', 6: 'APEX_PREDATOR'}
 STAGE_COLORS_HEX = {1: '#ff6666', 2: '#ffaa00', 3: '#00ccff', 4: '#00ff88', 5: '#ff66ff', 6: '#ff3333'}
 CAUSE_NAMES = ['Wall', 'SnakeCollision', 'MaxSteps', 'InvalidFrame', 'BrowserError']
 CAUSE_COLORS = {'Wall': '#ff4444', 'SnakeCollision': '#ffaa00', 'MaxSteps': '#00ccff',

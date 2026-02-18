@@ -57,7 +57,11 @@ TUNABLE_PARAMS = {
     "death_snake":             (-100,  -5,    float, "reward"),
     "wall_proximity_penalty":  (0.0,   3.0,   float, "reward"),
     "enemy_proximity_penalty": (0.0,   3.0,   float, "reward"),
-    "enemy_approach_penalty":  (0.0,   2.0,   float, "reward"),
+    # Min -2.0: negative = reward for chasing (S6 Apex Predator)
+    "enemy_approach_penalty":  (-2.0,  2.0,   float, "reward"),
+    # Boost: negative = reward for boosting (S6 attack mode)
+    "boost_penalty":           (-1.0,  2.0,   float, "reward"),
+    "length_bonus":            (0.0,   0.5,   float, "reward"),
     "starvation_penalty":      (0.0,   0.05,  float, "reward"),
     "starvation_grace_steps":  (20,    200,   int,   "reward"),
     # Agent
@@ -88,7 +92,7 @@ SYSTEM_PROMPT = """\
 You are an AI supervisor for a reinforcement learning agent learning to play slither.io.
 
 The agent uses Double DQN with Prioritized Experience Replay, n-step returns, and a curriculum
-of stages (1: Food Vector, 2: Wall Avoid, 3: Enemy Avoid, 4: Mass Management).
+of stages (1: Food Vector, 2: Wall Avoid, 3: Enemy Avoid, 4: Mass Management, 5: Mastery Survival, 6: Apex Predator).
 
 Your job: analyze training statistics and recommend hyperparameter adjustments to improve learning.
 
@@ -102,9 +106,9 @@ Your job: analyze training statistics and recommend hyperparameter adjustments t
 - Make conservative changes — the agent is learning online; drastic shifts destabilize training.
 - Only change parameters you have a clear reason for. Do NOT change everything at once.
 - If training looks healthy (improving reward, reasonable death distribution), recommend NO changes.
-- Consider the current stage: early stages focus on food, later stages on survival and enemies.
+- Consider the current stage: early stages focus on food, mid stages on survival. In Stage 6 (Apex Predator), the agent should be encouraged to attack (negative enemy_approach_penalty, negative boost_penalty).
 - Lower lr if loss is unstable; raise if learning is too slow.
-- gamma should increase as the agent matures (0.85 early → 0.97+ late).
+- gamma should increase as the agent matures (0.85 early → 0.99 late).
 - epsilon_target controls minimum exploration; raise if stuck in local optima, lower if nearly converged.
 
 ## Response Format
