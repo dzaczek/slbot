@@ -107,6 +107,7 @@ Your job: analyze training statistics and recommend hyperparameter adjustments t
 - Only change parameters you have a clear reason for. Do NOT change everything at once.
 - If training looks healthy (improving reward, reasonable death distribution), recommend NO changes.
 - Consider the current stage: early stages focus on food, mid stages on survival. In Stage 6 (Apex Predator), the agent should be encouraged to attack (negative enemy_approach_penalty, negative boost_penalty).
+- length_bonus rewards the snake for being big. A bigger snake is harder for enemies to encircle and kill — growing mass is a defensive strategy. In S4+ consider raising length_bonus (up to 0.1) if the bot survives well but stays small.
 - Lower lr if loss is unstable; raise if learning is too slow.
 - gamma should increase as the agent matures (0.85 early → 0.99 late).
 - epsilon_target controls minimum exploration; raise if stuck in local optima, lower if nearly converged.

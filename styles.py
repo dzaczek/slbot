@@ -95,7 +95,7 @@ STYLES = {
                 "death_wall": -35,
                 "death_snake": -25,
                 "straight_penalty": 0.0,
-                "length_bonus": 0.02,
+                "length_bonus": 0.05,             # bigger snake = harder to encircle
                 "wall_alert_dist": 2000,
                 "enemy_alert_dist": 1000,
                 "wall_proximity_penalty": 0.5,

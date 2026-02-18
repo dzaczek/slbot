@@ -530,6 +530,7 @@ class TrainingDashboard:
         agent_table.add_column("Name", style="bold cyan", width=12)
         agent_table.add_column("Reward", justify="right", width=8)
         agent_table.add_column("Food", justify="right", width=5)
+        agent_table.add_column("Size", justify="right", width=5)
         agent_table.add_column("Steps", justify="right", width=6)
         agent_table.add_column("Time", justify="right", width=7)
         agent_table.add_column("Eps", justify="right", width=5)
@@ -546,18 +547,21 @@ class TrainingDashboard:
                 rw_style = "green" if reward_val > 0 else "red" if reward_val < 0 else "dim"
                 cause = a.get('last_cause', '—')
                 cause_style = "red" if cause == "Wall" else "yellow" if cause == "Snake" else "dim"
+                size_val = a.get('length', 0)
+                size_style = "bold green" if size_val >= 100 else "green" if size_val >= 30 else "dim"
                 agent_table.add_row(
                     str(a.get('idx', 0)),
                     a.get('name', '?'),
                     f"[{rw_style}]{reward_val:.2f}[/]",
                     str(a.get('food', 0)),
+                    f"[{size_style}]{size_val}[/]",
                     str(a.get('steps', 0)),
                     time_str,
                     str(a.get('total_eps', 0)),
                     f"[{cause_style}]{cause}[/]",
                 )
         else:
-            agent_table.add_row("—", "Waiting...", "", "", "", "", "", "")
+            agent_table.add_row("—", "Waiting...", "", "", "", "", "", "", "")
 
         layout["agents_board"].update(Panel(agent_table, title="[bold]Agents Board", border_style="cyan"))
 
@@ -1543,6 +1547,7 @@ def train(args):
     episode_rewards = [0] * cfg.env.num_agents
     episode_steps = [0] * cfg.env.num_agents
     episode_food = [0] * cfg.env.num_agents
+    agent_length = [0] * cfg.env.num_agents
     # Per-episode action distribution: [straight, gentle, medium, sharp, uturn, boost]
     episode_actions = [[0]*6 for _ in range(cfg.env.num_agents)]
     # Running training metrics from optimize_model
@@ -1819,6 +1824,7 @@ def train(args):
         episode_rewards[agent_index] = 0
         episode_steps[agent_index] = 0
         episode_food[agent_index] = 0
+        agent_length[agent_index] = 0
         episode_actions[agent_index] = [0]*6
 
     try:
@@ -1860,6 +1866,7 @@ def train(args):
                 episode_rewards[i] += rewards[i]
                 episode_steps[i] += 1
                 episode_food[i] += infos[i].get('food_eaten', 0)
+                agent_length[i] = infos[i].get('length', agent_length[i])
 
                 force_done = episode_steps[i] >= max_steps_per_episode
                 episode_done = dones[i] or force_done
@@ -1890,6 +1897,7 @@ def train(args):
                         'name': AGENT_NAMES[i % len(AGENT_NAMES)],
                         'reward': episode_rewards[i],
                         'food': episode_food[i],
+                        'length': agent_length[i],
                         'steps': episode_steps[i],
                         'ep_time': now - agent_ep_start[i],
                         'total_eps': agent_total_eps[i],
@@ -1910,6 +1918,7 @@ def train(args):
                         episode_rewards.append(0)
                         episode_steps.append(0)
                         episode_food.append(0)
+                        agent_length.append(0)
                         episode_actions.append([0] * 6)
                         agent_ep_start.append(time.time())
                         agent_total_eps.append(0)
@@ -1930,6 +1939,7 @@ def train(args):
                     episode_rewards.pop()
                     episode_steps.pop()
                     episode_food.pop()
+                    agent_length.pop()
                     episode_actions.pop()
                     agent_ep_start.pop()
                     agent_total_eps.pop()
