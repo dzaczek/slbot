@@ -1075,11 +1075,14 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     N = len(episodes)
     sma_w = min(50, N // 3) if N > 30 else max(3, N // 3)
 
+    charts_dir = os.path.join(output_dir, 'charts')
+    os.makedirs(charts_dir, exist_ok=True)
+
     def _save(fig, name):
-        path = os.path.join(output_dir, name)
+        path = os.path.join(charts_dir, name)
         fig.savefig(path, dpi=150, facecolor=fig.get_facecolor(), bbox_inches='tight')
         plt.close(fig)
-        print(c(f'  Chart saved: {name}', C.GRN))
+        print(c(f'  Chart saved: charts/{name}', C.GRN))
 
     # ──────────────────────────────────────────────────
     # CHART 1: MAIN DASHBOARD (6 panels)
@@ -2604,8 +2607,8 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     _save(fig, 'chart_18_3d_steps_food_episode.png')
 
     # ── Helper: save rotating GIF from a 3D figure ──
-    def _save_rotating_gif(fig, ax, output_dir, png_name, img_gif_name, elev=25):
-        """Generate 360° rotating GIF and save to output_dir and img/ subdir."""
+    def _save_rotating_gif(fig, ax, gif_name, elev=25):
+        """Generate 360° rotating GIF and save to charts/ subdir."""
         try:
             import io
             from PIL import Image as PILImage
@@ -2617,20 +2620,14 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
                 buf.seek(0)
                 frames.append(PILImage.open(buf).copy())
                 buf.close()
-            gif_path = os.path.join(output_dir, png_name.replace('.png', '.gif'))
+            gif_path = os.path.join(charts_dir, gif_name)
             frames[0].save(gif_path, save_all=True, append_images=frames[1:],
                             duration=33, loop=0, optimize=True)
-            if img_gif_name:
-                img_dir = os.path.join(output_dir, 'img')
-                os.makedirs(img_dir, exist_ok=True)
-                img_gif_path = os.path.join(img_dir, img_gif_name)
-                frames[0].save(img_gif_path, save_all=True, append_images=frames[1:],
-                                duration=33, loop=0, optimize=True)
-            print(c(f'  Chart saved: {img_gif_name or png_name} (rotating GIF)', C.GRN))
+            print(c(f'  Chart saved: charts/{gif_name} (rotating GIF)', C.GRN))
         except ImportError:
             print(c('  Pillow not installed — skipping rotating GIF (pip install Pillow)', C.YEL))
 
-    _save_rotating_gif(fig, ax, output_dir, 'chart_18_3d_steps_food_episode.png', '3d_training.gif')
+    _save_rotating_gif(fig, ax, 'chart_18_3d_steps_food_episode.gif')
     plt.close(fig)
 
     # ──────────────────────────────────────────────────
@@ -2686,7 +2683,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     ax.tick_params(colors='#8b949e')
 
     _save(fig, 'chart_19_bubble_training.png')
-    _save_rotating_gif(fig, ax, output_dir, 'chart_19_bubble_training.png', 'bubble_training.gif')
+    _save_rotating_gif(fig, ax, 'chart_19_bubble_training.gif')
     plt.close(fig)
 
     print(c(f'\n  Total: up to 19 chart files + 2 GIFs generated.', C.GRN, C.B))
@@ -2910,29 +2907,29 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
         f.write("## Charts\n\n")
         chart_dir = os.path.dirname(output_path)
         chart_files = [
-            ('chart_01_dashboard.png', 'Main Dashboard'),
-            ('chart_02_stage_progression.png', 'Stage Progression'),
-            ('chart_03_stage_distributions.png', 'Per-Stage Distributions'),
-            ('chart_04_hyperparameters.png', 'Hyperparameter Tracking'),
-            ('chart_05_correlations.png', 'Metric Correlations (Scatter)'),
-            ('chart_05b_correlation_heatmap.png', 'Correlation Heatmap & Rankings'),
-            ('chart_06_performance_bands.png', 'Performance Percentile Bands'),
-            ('chart_07_death_analysis.png', 'Death Analysis'),
-            ('chart_08_food_efficiency.png', 'Food Efficiency'),
-            ('chart_09_reward_distributions.png', 'Reward Distributions'),
-            ('chart_10_learning_detection.png', 'Learning Detection'),
-            ('chart_11_goal_gauges.png', 'Goal Progress'),
-            ('chart_11b_goal_over_time.png', 'Goal Progress Over Time'),
-            ('chart_12_hyperparameter_analysis.png', 'Hyperparameter Analysis'),
-            ('chart_13_qvalue_gradients.png', 'Q-Value & Gradient Analysis'),
-            ('chart_14_action_distribution.png', 'Action Distribution Analysis'),
-            ('chart_15_auto_scaling.png', 'Active Agents Over Time'),
-            ('chart_16_maxsteps_analysis.png', 'MaxSteps Analysis'),
-            ('chart_17_survival_percentiles.png', 'Survival Percentiles'),
-            ('img/3d_training.gif', 'Steps vs Food vs Episode (3D rotating)'),
-            ('chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D static)'),
-            ('img/bubble_training.gif', 'Steps vs Reward vs Episode — Bubble (3D rotating)'),
-            ('chart_19_bubble_training.png', 'Steps vs Reward vs Episode — Bubble (3D static)'),
+            ('charts/chart_01_dashboard.png', 'Main Dashboard'),
+            ('charts/chart_02_stage_progression.png', 'Stage Progression'),
+            ('charts/chart_03_stage_distributions.png', 'Per-Stage Distributions'),
+            ('charts/chart_04_hyperparameters.png', 'Hyperparameter Tracking'),
+            ('charts/chart_05_correlations.png', 'Metric Correlations (Scatter)'),
+            ('charts/chart_05b_correlation_heatmap.png', 'Correlation Heatmap & Rankings'),
+            ('charts/chart_06_performance_bands.png', 'Performance Percentile Bands'),
+            ('charts/chart_07_death_analysis.png', 'Death Analysis'),
+            ('charts/chart_08_food_efficiency.png', 'Food Efficiency'),
+            ('charts/chart_09_reward_distributions.png', 'Reward Distributions'),
+            ('charts/chart_10_learning_detection.png', 'Learning Detection'),
+            ('charts/chart_11_goal_gauges.png', 'Goal Progress'),
+            ('charts/chart_11b_goal_over_time.png', 'Goal Progress Over Time'),
+            ('charts/chart_12_hyperparameter_analysis.png', 'Hyperparameter Analysis'),
+            ('charts/chart_13_qvalue_gradients.png', 'Q-Value & Gradient Analysis'),
+            ('charts/chart_14_action_distribution.png', 'Action Distribution Analysis'),
+            ('charts/chart_15_auto_scaling.png', 'Active Agents Over Time'),
+            ('charts/chart_16_maxsteps_analysis.png', 'MaxSteps Analysis'),
+            ('charts/chart_17_survival_percentiles.png', 'Survival Percentiles'),
+            ('charts/chart_18_3d_steps_food_episode.gif', 'Steps vs Food vs Episode (3D rotating)'),
+            ('charts/chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D static)'),
+            ('charts/chart_19_bubble_training.gif', 'Steps vs Reward vs Episode — Bubble (3D rotating)'),
+            ('charts/chart_19_bubble_training.png', 'Steps vs Reward vs Episode — Bubble (3D static)'),
         ]
         for fname, title in chart_files:
             chart_path = os.path.join(chart_dir, fname)

@@ -310,7 +310,7 @@ The network learns through **n-step returns** with variable discount factor (gam
 
 ## Curriculum Learning
 
-Instead of throwing the bot into the deep end, we teach skills one at a time through a 4-stage curriculum. Each stage emphasizes different reward components and has its own promotion criteria.
+Instead of throwing the bot into the deep end, we teach skills one at a time through a 6-stage curriculum. Each stage emphasizes different reward components and has its own promotion criteria.
 
 ### Stage 1: FOOD_VECTOR
 **Goal:** Learn to eat food and move purposefully.
@@ -348,23 +348,43 @@ Length bonus (0.02 per unit of length) rewards the bot for being big, not just e
 
 - **Gamma:** 0.97
 - **Max steps:** 2000
+- **Promote when:** avg_steps >= 1000 over 500 episodes
+
+### Stage 5: MASTERY_SURVIVAL
+**Goal:** Survive indefinitely while growing as large as possible.
+
+The step limit is effectively removed (99999). Gamma is pushed to 0.99 — the bot must think far ahead. Snake collision penalty is the harshest in the curriculum (-50) and enemy proximity penalty is very high (2.0) to teach the bot to give enemies a wide berth. Length bonus is increased (0.05) to reward mass accumulation.
+
+- **Gamma:** 0.99 (far-sighted)
+- **Max steps:** 99999 (no artificial limit)
+- **Promote when:** avg_steps >= 3500 over 500 episodes
+
+### Stage 6: APEX_PREDATOR
+**Goal:** Actively hunt other snakes — cut them off using boost and consume their mass.
+
+The reward structure flips from defensive to offensive. Enemy proximity penalty drops to 0.3 (don't fear enemies), enemy approach penalty is zero (closing in is fine), and boost penalty is removed so the bot can freely use speed to cut off opponents. Snake death penalty is relaxed (-30) to accept combat risk. Food reward is maximal (10.0) because consuming a kill is the big payoff.
+
+- **Gamma:** 0.99
+- **Max steps:** 99999
 - **No promotion** — this is the final stage
 
 ### Reward weights by stage
 
-| Parameter | S1: Food | S2: Wall | S3: Enemy | S4: Mass |
-|-----------|----------|----------|-----------|----------|
-| food_reward | 3.0 | 5.0 | 5.0 | 5.0 |
-| food_shaping | 0.5 | 0.15 | 0.1 | 0.1 |
-| survival | 0.1 | 0.3 | 0.3 | 0.2 |
-| death_wall | -15 | -40 | -40 | -35 |
-| death_snake | -15 | -20 | -40 | -25 |
-| wall_proximity_penalty | 0.3 | 1.5 | 0.5 | 0.5 |
-| enemy_proximity_penalty | 0.0 | 0.0 | 1.5 | 0.8 |
-| enemy_approach_penalty | 0.0 | 0.0 | 0.5 | 0.3 |
-| enemy_alert_dist | 800 | 800 | 2000 | 1000 |
-| gamma | 0.85 | 0.93 | 0.95 | 0.97 |
-| max_steps | 600 | 500 | 2000 | 2000 |
+| Parameter | S1: Food | S2: Wall | S3: Enemy | S4: Mass | S5: Survival | S6: Predator |
+|-----------|----------|----------|-----------|----------|-------------|-------------|
+| food_reward | 3.0 | 5.0 | 5.0 | 5.0 | 8.0 | 10.0 |
+| food_shaping | 0.5 | 0.15 | 0.1 | 0.1 | 0.05 | 0.03 |
+| survival | 0.1 | 0.3 | 0.3 | 0.2 | 0.4 | 0.3 |
+| death_wall | -15 | -40 | -40 | -35 | -45 | -40 |
+| death_snake | -15 | -20 | -40 | -25 | -50 | -30 |
+| wall_proximity_penalty | 0.3 | 1.5 | 0.5 | 0.5 | 0.8 | 0.5 |
+| enemy_proximity_penalty | 0.0 | 0.0 | 1.5 | 0.8 | 2.0 | 0.3 |
+| enemy_approach_penalty | 0.0 | 0.0 | 0.5 | 0.3 | 1.0 | 0.0 |
+| boost_penalty | 0.0 | 0.0 | 0.1 | 0.0 | 0.2 | 0.0 |
+| length_bonus | 0.0 | 0.0 | 0.0 | 0.02 | 0.05 | 0.03 |
+| enemy_alert_dist | 800 | 800 | 2000 | 1000 | 2500 | 1500 |
+| gamma | 0.85 | 0.93 | 0.95 | 0.97 | 0.99 | 0.99 |
+| max_steps | 600 | 500 | 2000 | 2000 | 99999 | 99999 |
 
 ### Alternative training styles
 
@@ -432,29 +452,31 @@ An optional LLM-based hyperparameter tuner that runs alongside training. Every N
 
 ### Tunable parameters
 
-| Parameter | Min | Max | Group |
-|---|---|---|---|
-| food_reward | 1.0 | 30.0 | reward |
-| food_shaping | 0.0 | 1.0 | reward |
-| survival | 0.0 | 1.0 | reward |
-| death_wall | -100 | -5 | reward |
-| death_snake | -100 | -5 | reward |
-| wall_proximity_penalty | 0.0 | 3.0 | reward |
-| enemy_proximity_penalty | 0.0 | 3.0 | reward |
-| enemy_approach_penalty | 0.0 | 2.0 | reward |
-| starvation_penalty | 0.0 | 0.05 | reward |
-| starvation_grace_steps | 20 | 200 | reward |
-| gamma | 0.8 | 0.999 | agent |
-| lr | 1e-6 | 1e-3 | agent |
-| epsilon_target | 0.05 | 0.5 | agent |
-| target_update_freq | 200 | 5000 | training |
+| Parameter | Min | Max | Group | Notes |
+|---|---|---|---|---|
+| food_reward | 1.0 | 30.0 | reward | |
+| food_shaping | 0.0 | 1.0 | reward | |
+| survival | 0.0 | 1.0 | reward | |
+| death_wall | -100 | -5 | reward | |
+| death_snake | -100 | -5 | reward | |
+| wall_proximity_penalty | 0.0 | 3.0 | reward | |
+| enemy_proximity_penalty | 0.0 | 3.0 | reward | |
+| enemy_approach_penalty | -2.0 | 2.0 | reward | Negative = reward for chasing (S6) |
+| boost_penalty | -1.0 | 2.0 | reward | Negative = reward for boosting (S6) |
+| length_bonus | 0.0 | 0.5 | reward | Reward per unit of snake length |
+| starvation_penalty | 0.0 | 0.05 | reward | |
+| starvation_grace_steps | 20 | 200 | reward | |
+| gamma | 0.8 | 0.999 | agent | |
+| lr | 1e-6 | 1e-3 | agent | |
+| epsilon_target | 0.05 | 0.5 | agent | |
+| target_update_freq | 200 | 5000 | training | |
 
 ### Coexistence with SuperPatternOptimizer
 
 Both systems run concurrently without conflict:
 
 - **SuperPattern**: fast, rule-based, every 50 episodes, adjusts 4 params by ±0.02
-- **AI Supervisor**: slow, LLM-based, every 200+ episodes, can adjust any of 14 params
+- **AI Supervisor**: slow, LLM-based, every 200+ episodes, can adjust any of 16 params
 
 When the AI Supervisor writes new parameters, the trainer calls `super_pattern.reset_stage()` which sets the new values as SuperPattern's baseline. SuperPattern then continues its fine-grained adjustments around whatever the AI set.
 
@@ -498,7 +520,7 @@ python ai_supervisor.py --test --provider claude
 
 ## Analysis
 
-The analyzer generates 16 charts and a markdown report:
+The analyzer generates **19 charts + 2 animated GIFs** and a markdown report:
 
 ```bash
 # Analyze the latest training run
@@ -511,9 +533,43 @@ python training_progress_analyzer.py --uid 20260214-a3f7b2c1
 python training_progress_analyzer.py --latest --no-charts
 ```
 
-Charts include: training dashboard, stage progression, death analysis, food efficiency, Q-value trends, action distributions, learning detection, MaxSteps analysis, and a rotating 3D scatter plot (Steps vs Food vs Episode).
+All charts are saved to the `charts/` folder.
 
-![3D Training Progress](img/3d_training.gif)
+### Chart Gallery
+
+| # | Chart | What it shows |
+|---|-------|---------------|
+| 01 | Main Dashboard | 6-panel overview: reward, steps, food, loss, epsilon, stage timeline |
+| 02 | Stage Progression | Episode-level metrics colored by curriculum stage |
+| 03 | Stage Distributions | Violin plots comparing reward/steps/food distributions per stage |
+| 04 | Hyperparameters | LR, epsilon, beta, gamma over time |
+| 05 | Metric Correlations | Scatter plots between key metrics (steps vs reward, food vs reward, etc.) |
+| 05b | Correlation Heatmap | Full correlation matrix with R-values and rankings |
+| 06 | Performance Bands | Percentile bands (p10-p90) for reward and steps over time |
+| 07 | Death Analysis | Death cause breakdown, death rates per stage, survival curves |
+| 08 | Food Efficiency | Food/step ratio, food distribution per stage, food vs reward |
+| 09 | Reward Distributions | Histograms and density curves per stage |
+| 10 | Learning Detection | Changepoint analysis — when did the bot start improving? |
+| 11 | Goal Gauges | Dial gauges showing progress toward food and survival goals |
+| 11b | Goal Over Time | Goal metric trends (rolling average) |
+| 12 | Hyperparameter Analysis | Impact of LR/epsilon/gamma changes on performance |
+| 13 | Q-Value & Gradients | Q-value trends, TD error, gradient norms, Q vs reward scatter |
+| 14 | Action Distribution | Action frequency over time, per-stage action profiles |
+| 15 | Auto Scaling | Number of active agents over time |
+| 16 | MaxSteps Analysis | How often episodes hit the step limit, MaxSteps rate per stage |
+| 17 | Survival Percentiles | Survival step percentiles with trend lines per stage |
+| 18 | 3D Steps vs Food vs Episode | Rotating 3D scatter (PNG + GIF) — episode progression in 3D |
+| 19 | 3D Bubble (Steps vs Reward vs Episode) | Bubble size = food eaten, rotating GIF |
+
+### Sample Charts
+
+![3D Training Progress](charts/chart_18_3d_steps_food_episode.gif)
+
+![Main Dashboard](charts/chart_01_dashboard.png)
+
+![Death Analysis](charts/chart_07_death_analysis.png)
+
+![Action Distribution](charts/chart_14_action_distribution.png)
 
 ## Quick Start
 
@@ -559,7 +615,7 @@ python trainer.py --reset
 | `--view` | Show browser window for first agent |
 | `--view-plus` | Browser + debug overlay |
 | `--resume` | Load from checkpoint |
-| `--stage N` | Force curriculum stage (1-4) |
+| `--stage N` | Force curriculum stage (1-6) |
 | `--style NAME` | Training style name |
 | `--url URL` | Game server URL |
 | `--backend selenium\|websocket` | Browser backend |
@@ -584,7 +640,8 @@ python trainer.py --reset
 | `config.py` | Configuration dataclasses (hyperparameters, buffer settings) |
 | `styles.py` | Reward weight definitions for each curriculum stage and training style |
 | `per.py` | Prioritized Experience Replay with SumTree |
-| `training_progress_analyzer.py` | Post-training analysis — 16 charts + markdown report |
+| `training_progress_analyzer.py` | Post-training analysis — 19 charts + 2 GIFs + markdown report |
+| `charts/` | Generated analysis charts (PNGs + animated GIFs) |
 | `ai_supervisor.py` | LLM-based hyperparameter tuner (Claude/OpenAI/Gemini/Ollama) |
 | `training_stats.csv` | Raw episode-level metrics |
 | `config_ai.json` | AI Supervisor output — latest recommended parameters |
@@ -607,7 +664,7 @@ python trainer.py --reset
 
 - **Server anti-bot**: slither.io servers reject non-browser WebSocket connections at the TCP level. Native WebSocket clients (Python, Node.js) are all blocked. The only working approach is controlling a real browser via Selenium.
 - **Step latency**: Even optimized, 52ms per step is slow compared to simulated environments. This limits how fast the bot can learn.
-- **Stage 4 instability**: The MASS_MANAGEMENT stage has historically been unstable — Q-values can explode when length_bonus creates a runaway reward signal. Needs careful gamma/reward tuning.
+- **Late-stage Q-value instability**: Stages 5-6 with gamma=0.99 and no step limit can produce exploding Q-values if length_bonus or survival escalation create runaway reward signals. The AI Supervisor helps by clamping parameters to safe ranges.
 
 ## Changelog
 

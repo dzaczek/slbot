@@ -1,16 +1,19 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-18 18:27:13  
-**Total Episodes:** 9357  
-**Training Sessions:** 21
+**Generated:** 2026-02-18 18:39:03  
+**Total Episodes:** 9383  
+**Training Sessions:** 22
 
-## Verdict: LEARNING (Confidence: 75%)
+## Verdict: LEARNING (Confidence: 70%)
 
 **Goal Feasibility:** POSSIBLE (25-60%)
 
+### Warnings
+- Loss very high (11.34) - unstable
+
 ### Positive Signals
-- Rewards improving: +1033.0
-- Food collection improving (slope=0.0103/ep)
+- Rewards improving: +1032.7
+- Food collection improving (slope=0.0102/ep)
 - Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
@@ -20,34 +23,34 @@
 | S1 | FOOD_VECTOR | 2414 | 224.2 | 231.7 | 83.3 | 0.5339 | 0.1% | 65.8% | 34.0% |
 | S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.4505 | 0.1% | 70.5% | 28.9% |
 | S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.6197 | 0.1% | 97.6% | 2.3% |
-| S4 | MASS_MANAGEMENT | 4929 | 226.3 | 415.7 | 101.9 | 0.5989 | 0.1% | 94.2% | 5.6% |
+| S4 | MASS_MANAGEMENT | 4955 | 229.0 | 415.0 | 101.9 | 0.5980 | 0.1% | 94.2% | 5.6% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 259.41 | 2442.89 | -35299.32 | 130.98 | 322.26 | 675.44 | 1957.58 | 6245.81 |
-| Steps | 346.88 | 415.64 | 1.00 | 92.00 | 223.00 | 427.00 | 1240.20 | 2000.00 |
-| Food | 94.70 | 82.57 | 0.00 | 43.00 | 72.00 | 116.00 | 249.00 | 569.00 |
-| Loss | 7.39 | 8.97 | 0.00 | 1.83 | 5.05 | 9.86 | 21.36 | 204.95 |
-| Food/Step | 0.57 | 0.86 | 0.00 | 0.30 | 0.35 | 0.49 | 1.45 | 11.25 |
+| Reward | 260.77 | 2440.06 | -35299.32 | 131.24 | 322.73 | 676.15 | 1957.21 | 6245.81 |
+| Steps | 346.70 | 415.36 | 1.00 | 92.00 | 223.00 | 426.00 | 1240.00 | 2000.00 |
+| Food | 94.72 | 82.57 | 0.00 | 43.00 | 72.00 | 116.00 | 249.00 | 569.00 |
+| Loss | 7.41 | 8.99 | 0.00 | 1.84 | 5.08 | 9.88 | 21.37 | 204.95 |
+| Food/Step | 0.57 | 0.86 | 0.00 | 0.30 | 0.35 | 0.49 | 1.44 | 11.25 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 1232.24 | 1111.72 | -6.3610 | 0.0068 |
-| Last 100 | 1161.54 | 997.03 | +0.9875 | 0.0008 |
-| Last 200 | 1070.71 | 1076.52 | +1.2730 | 0.0047 |
-| Last 500 | 999.92 | 1119.35 | +0.1107 | 0.0002 |
-| Last 1000 | 1020.81 | 1213.27 | +0.0543 | 0.0002 |
+| Last 50 | 969.88 | 1061.65 | -16.3524 | 0.0494 |
+| Last 100 | 1097.87 | 1017.90 | -5.6109 | 0.0253 |
+| Last 200 | 1040.36 | 1073.63 | -0.1135 | 0.0000 |
+| Last 500 | 972.94 | 1082.98 | +0.1563 | 0.0004 |
+| Last 1000 | 1013.84 | 1206.20 | +0.0118 | 0.0000 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 11 | 0.1% | 546.8 | 1185.4 |
-| SnakeCollision | 7981 | 85.3% | 277.7 | 549.7 |
+| SnakeCollision | 8007 | 85.3% | 277.7 | 550.4 |
 | MaxSteps | 1357 | 14.5% | 752.4 | -1451.8 |
 | InvalidFrame | 1 | 0.0% | 1197.0 | -5534.5 |
 | BrowserError | 7 | 0.1% | 191.3 | 377.7 |
@@ -68,73 +71,73 @@ Keep training. Monitor for sustained improvement.
 ## Charts
 
 ### Main Dashboard
-![Main Dashboard](chart_01_dashboard.png)
+![Main Dashboard](charts/chart_01_dashboard.png)
 
 ### Stage Progression
-![Stage Progression](chart_02_stage_progression.png)
+![Stage Progression](charts/chart_02_stage_progression.png)
 
 ### Per-Stage Distributions
-![Per-Stage Distributions](chart_03_stage_distributions.png)
+![Per-Stage Distributions](charts/chart_03_stage_distributions.png)
 
 ### Hyperparameter Tracking
-![Hyperparameter Tracking](chart_04_hyperparameters.png)
+![Hyperparameter Tracking](charts/chart_04_hyperparameters.png)
 
 ### Metric Correlations (Scatter)
-![Metric Correlations (Scatter)](chart_05_correlations.png)
+![Metric Correlations (Scatter)](charts/chart_05_correlations.png)
 
 ### Correlation Heatmap & Rankings
-![Correlation Heatmap & Rankings](chart_05b_correlation_heatmap.png)
+![Correlation Heatmap & Rankings](charts/chart_05b_correlation_heatmap.png)
 
 ### Performance Percentile Bands
-![Performance Percentile Bands](chart_06_performance_bands.png)
+![Performance Percentile Bands](charts/chart_06_performance_bands.png)
 
 ### Death Analysis
-![Death Analysis](chart_07_death_analysis.png)
+![Death Analysis](charts/chart_07_death_analysis.png)
 
 ### Food Efficiency
-![Food Efficiency](chart_08_food_efficiency.png)
+![Food Efficiency](charts/chart_08_food_efficiency.png)
 
 ### Reward Distributions
-![Reward Distributions](chart_09_reward_distributions.png)
+![Reward Distributions](charts/chart_09_reward_distributions.png)
 
 ### Learning Detection
-![Learning Detection](chart_10_learning_detection.png)
+![Learning Detection](charts/chart_10_learning_detection.png)
 
 ### Goal Progress
-![Goal Progress](chart_11_goal_gauges.png)
+![Goal Progress](charts/chart_11_goal_gauges.png)
 
 ### Goal Progress Over Time
-![Goal Progress Over Time](chart_11b_goal_over_time.png)
+![Goal Progress Over Time](charts/chart_11b_goal_over_time.png)
 
 ### Hyperparameter Analysis
-![Hyperparameter Analysis](chart_12_hyperparameter_analysis.png)
+![Hyperparameter Analysis](charts/chart_12_hyperparameter_analysis.png)
 
 ### Q-Value & Gradient Analysis
-![Q-Value & Gradient Analysis](chart_13_qvalue_gradients.png)
+![Q-Value & Gradient Analysis](charts/chart_13_qvalue_gradients.png)
 
 ### Action Distribution Analysis
-![Action Distribution Analysis](chart_14_action_distribution.png)
+![Action Distribution Analysis](charts/chart_14_action_distribution.png)
 
 ### Active Agents Over Time
-![Active Agents Over Time](chart_15_auto_scaling.png)
+![Active Agents Over Time](charts/chart_15_auto_scaling.png)
 
 ### MaxSteps Analysis
-![MaxSteps Analysis](chart_16_maxsteps_analysis.png)
+![MaxSteps Analysis](charts/chart_16_maxsteps_analysis.png)
 
 ### Survival Percentiles
-![Survival Percentiles](chart_17_survival_percentiles.png)
+![Survival Percentiles](charts/chart_17_survival_percentiles.png)
 
 ### Steps vs Food vs Episode (3D rotating)
-![Steps vs Food vs Episode (3D rotating)](img/3d_training.gif)
+![Steps vs Food vs Episode (3D rotating)](charts/chart_18_3d_steps_food_episode.gif)
 
 ### Steps vs Food vs Episode (3D static)
-![Steps vs Food vs Episode (3D static)](chart_18_3d_steps_food_episode.png)
+![Steps vs Food vs Episode (3D static)](charts/chart_18_3d_steps_food_episode.png)
 
 ### Steps vs Reward vs Episode — Bubble (3D rotating)
-![Steps vs Reward vs Episode — Bubble (3D rotating)](img/bubble_training.gif)
+![Steps vs Reward vs Episode — Bubble (3D rotating)](charts/chart_19_bubble_training.gif)
 
 ### Steps vs Reward vs Episode — Bubble (3D static)
-![Steps vs Reward vs Episode — Bubble (3D static)](chart_19_bubble_training.png)
+![Steps vs Reward vs Episode — Bubble (3D static)](charts/chart_19_bubble_training.png)
 
 ## AI Supervisor — Recent Changes
 
