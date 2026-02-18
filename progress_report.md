@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-18 06:01:48  
-**Total Episodes:** 7089  
+**Generated:** 2026-02-18 07:02:58  
+**Total Episodes:** 7276  
 **Training Sessions:** 20
 
 ## Verdict: LEARNING (Confidence: 70%)
@@ -9,12 +9,12 @@
 **Goal Feasibility:** POSSIBLE (25-60%)
 
 ### Warnings
-- Loss very high (11.47) - unstable
+- Loss very high (11.42) - unstable
 
 ### Positive Signals
-- Rewards improving: +888.5
-- Food collection improving (slope=0.0109/ep)
-- Epsilon low (0.081) - exploiting policy
+- Rewards improving: +907.0
+- Food collection improving (slope=0.0112/ep)
+- Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
@@ -23,35 +23,35 @@
 | S1 | FOOD_VECTOR | 2414 | 224.2 | 231.7 | 83.3 | 0.5339 | 0.1% | 65.8% | 34.0% |
 | S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.4505 | 0.1% | 70.5% | 28.9% |
 | S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.6197 | 0.1% | 97.6% | 2.3% |
-| S4 | MASS_MANAGEMENT | 2661 | -406.1 | 417.7 | 77.3 | 0.6297 | 0.1% | 90.8% | 9.1% |
+| S4 | MASS_MANAGEMENT | 2848 | -314.8 | 418.9 | 81.3 | 0.6210 | 0.1% | 91.3% | 8.6% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 32.65 | 2693.69 | -35299.32 | 113.40 | 284.58 | 520.63 | 1290.56 | 6098.01 |
-| Steps | 325.60 | 411.56 | 1.00 | 88.00 | 210.00 | 367.00 | 1202.40 | 2000.00 |
-| Food | 83.18 | 66.48 | 0.00 | 40.00 | 68.00 | 107.00 | 198.00 | 560.00 |
-| Loss | 6.09 | 8.49 | 0.00 | 1.35 | 3.58 | 7.65 | 19.18 | 159.03 |
-| Food/Step | 0.58 | 0.87 | 0.00 | 0.30 | 0.36 | 0.50 | 1.49 | 11.25 |
+| Reward | 57.09 | 2668.78 | -35299.32 | 115.68 | 288.25 | 536.84 | 1366.70 | 6098.01 |
+| Steps | 328.43 | 412.52 | 1.00 | 89.00 | 211.00 | 374.00 | 1213.50 | 2000.00 |
+| Food | 84.57 | 68.77 | 0.00 | 40.00 | 68.00 | 107.25 | 200.00 | 566.00 |
+| Loss | 6.22 | 8.51 | 0.00 | 1.38 | 3.71 | 7.90 | 19.35 | 159.03 |
+| Food/Step | 0.57 | 0.86 | 0.00 | 0.30 | 0.36 | 0.50 | 1.46 | 11.25 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 1035.90 | 1223.92 | -29.1980 | 0.1185 |
-| Last 100 | 1097.70 | 1322.30 | +0.1787 | 0.0000 |
-| Last 200 | 861.53 | 1051.74 | +4.2337 | 0.0540 |
-| Last 500 | 918.74 | 1084.30 | +0.1066 | 0.0002 |
-| Last 1000 | 809.29 | 986.25 | +0.2759 | 0.0065 |
+| Last 50 | 939.21 | 824.65 | -1.9207 | 0.0011 |
+| Last 100 | 974.06 | 1013.94 | -5.8426 | 0.0277 |
+| Last 200 | 966.41 | 1100.47 | -0.9611 | 0.0025 |
+| Last 500 | 972.34 | 1119.87 | -0.1715 | 0.0005 |
+| Last 1000 | 865.13 | 1038.64 | +0.2599 | 0.0052 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 8 | 0.1% | 343.6 | 515.3 |
-| SnakeCollision | 5754 | 81.2% | 235.4 | 418.1 |
-| MaxSteps | 1321 | 18.6% | 718.4 | -1646.4 |
+| SnakeCollision | 5938 | 81.6% | 240.8 | 433.4 |
+| MaxSteps | 1324 | 18.2% | 721.3 | -1630.5 |
 | InvalidFrame | 1 | 0.0% | 1197.0 | -5534.5 |
 | BrowserError | 5 | 0.1% | 189.8 | 390.6 |
 
@@ -59,7 +59,7 @@
 
 | Target | Best | Goal | Progress |
 |--------|------|------|----------|
-| Points | 560 | 6,000 | 9.3% |
+| Points | 566 | 6,000 | 9.4% |
 | Survival | 2000 steps | 1,800 steps | 111.1% |
 
 ## Recommendations
@@ -162,7 +162,8 @@ Keep training. Monitor for sustained improvement.
 | 02-18 03:50 | 6600 | `enemy_proximity_penalty`=3.0, `enemy_approach_penalty`=2.0, `death_snake`=-95.0, `epsilon_target`=0.15 | The agent is suffering from severe snake collision deaths (99.6%) with declining reward and step trends, indicating it's becoming more reckless over time. The high sharp turn usage (37.6%) and U-turns (18.7%) suggest erratic behavior. Need to increase enemy penalties and reduce exploration to stabilize the learned policy. |
 | 02-18 04:56 | 6800 | `enemy_proximity_penalty`=3.0, `enemy_approach_penalty`=2.0, `death_snake`=-100 | The agent is dying almost exclusively to snake collisions (99.4%) in stage 4, indicating poor enemy avoidance despite reasonable reward trends. The high sharp turn usage (36.7%) and U-turns (19.3%) suggest erratic movement patterns. Need to increase enemy penalties to encourage safer play. |
 | 02-18 05:54 | 7000 | `enemy_proximity_penalty`=3.0, `enemy_approach_penalty`=2.0, `death_snake`=-100, `gamma`=0.97 | The agent has extremely high snake collision deaths (98.8%) and declining reward trend, indicating poor enemy avoidance despite being in stage 4. The high action entropy and frequent sharp turns suggest the agent is making erratic movements. I'll increase enemy penalties to discourage risky behavior and raise gamma to improve long-term planning for survival. |
+| 02-18 06:59 | 7200 | `death_snake`=-100, `enemy_proximity_penalty`=3.0 | The agent is performing well with high rewards and good progression, but 98% snake collision deaths indicate extreme risk-taking behavior. The high use of sharp turns (39.5%) and U-turns (20.4%) suggests aggressive maneuvering that leads to crashes. Need to increase enemy collision penalty to encourage more cautious play. |
 
-**Total consultations:** 19  
-**Most adjusted:** `death_snake` (16x), `enemy_proximity_penalty` (14x), `enemy_approach_penalty` (9x), `epsilon_target` (4x), `lr` (2x), `gamma` (1x)
+**Total consultations:** 20  
+**Most adjusted:** `death_snake` (17x), `enemy_proximity_penalty` (15x), `enemy_approach_penalty` (9x), `epsilon_target` (4x), `lr` (2x), `gamma` (1x)
 
