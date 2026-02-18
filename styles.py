@@ -106,7 +106,59 @@ STYLES = {
                 "starvation_grace_steps": 50,
                 "starvation_max_penalty": 2.0,
                 "max_steps": 2000,
-                "promote_metric": None,
+                # Promote to S5 when avg_steps >= 1000 over 500 eps
+                "promote_metric": "avg_steps",
+                "promote_threshold": 1000,
+                "promote_window": 500,
+            },
+            5: {
+                "name": "MASTERY_SURVIVAL",
+                "gamma": 0.99,                    # far-sighted: long-term survival matters
+                "food_reward": 8.0,               # strong food drive — grow big
+                "food_shaping": 0.05,             # mild approach shaping (don't chase blindly)
+                "survival": 0.4,                  # high per-step survival reward
+                "survival_escalation": 0.0005,    # gentle escalation — reward living longer
+                "death_wall": -45,                # wall death severely punished
+                "death_snake": -50,               # snake collision = worst outcome
+                "straight_penalty": 0.0,
+                "length_bonus": 0.05,             # strong reward for being big
+                "wall_alert_dist": 2500,
+                "enemy_alert_dist": 2500,         # wide enemy radar — avoid early
+                "wall_proximity_penalty": 0.8,
+                "enemy_proximity_penalty": 2.0,   # very high — stay far from enemies
+                "enemy_approach_penalty": 1.0,    # heavily penalize closing distance
+                "boost_penalty": 0.2,             # discourage risky boost (save mass)
+                "starvation_penalty": 0.008,
+                "starvation_grace_steps": 100,    # more grace — longer episodes
+                "starvation_max_penalty": 1.5,
+                "max_steps": 99999,               # no artificial limit
+                # Promote to S6 when surviving avg 3500 steps over 500 eps
+                "promote_metric": "avg_steps",
+                "promote_threshold": 3500,
+                "promote_window": 500,
+            },
+            6: {
+                "name": "APEX_PREDATOR",
+                "gamma": 0.99,
+                "food_reward": 10.0,              # max food reward — consume kills
+                "food_shaping": 0.03,             # mild shaping
+                "survival": 0.3,                  # moderate survival (aggression > safety)
+                "survival_escalation": 0.0003,
+                "death_wall": -40,
+                "death_snake": -30,               # reduced snake death penalty — accept combat risk
+                "straight_penalty": 0.0,
+                "length_bonus": 0.03,             # still rewarded for mass
+                "wall_alert_dist": 2000,
+                "enemy_alert_dist": 1500,         # narrower radar — approach enemies
+                "wall_proximity_penalty": 0.5,
+                "enemy_proximity_penalty": 0.3,   # low — don't fear enemies
+                "enemy_approach_penalty": 0.0,    # zero — closing in is OK
+                "boost_penalty": 0.0,             # boost is free — use it to cut off enemies
+                "starvation_penalty": 0.012,      # push to hunt, not idle
+                "starvation_grace_steps": 80,
+                "starvation_max_penalty": 2.5,
+                "max_steps": 99999,               # no limit — final stage
+                "promote_metric": None,           # terminal stage
                 "promote_threshold": None,
                 "promote_window": 100,
             },

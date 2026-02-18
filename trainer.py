@@ -1959,7 +1959,7 @@ if __name__ == "__main__":
     parser.add_argument("--view", action="store_true", help="View first agent")
     parser.add_argument("--view-plus", action="store_true", help="View first agent with bot vision overlay grid")
     parser.add_argument("--resume", action="store_true", help="Resume")
-    parser.add_argument("--stage", type=int, default=0, help="Force start at specific stage (1-4)")
+    parser.add_argument("--stage", type=int, default=0, help="Force start at specific stage (1-6)")
     parser.add_argument("--style-name", type=str, help="Learning style name (e.g. 'Aggressive')")
     parser.add_argument("--model-path", type=str, help="Path to model checkpoint to load")
     parser.add_argument("--url", type=str, default="http://slither.io", help="Game URL (e.g. http://eslither.io)")

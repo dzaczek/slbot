@@ -65,7 +65,7 @@ def bar(value, max_val, width=30, fill_char='\u2588', empty_char='\u2591', color
 # ═══════════════════════════════════════════════════════
 
 STAGE_NAMES = {1: 'FOOD_VECTOR', 2: 'WALL_AVOID', 3: 'ENEMY_AVOID', 4: 'MASS_MANAGEMENT'}
-STAGE_COLORS_HEX = {1: '#ff6666', 2: '#ffaa00', 3: '#00ccff', 4: '#00ff88'}
+STAGE_COLORS_HEX = {1: '#ff6666', 2: '#ffaa00', 3: '#00ccff', 4: '#00ff88', 5: '#ff66ff', 6: '#ff3333'}
 CAUSE_NAMES = ['Wall', 'SnakeCollision', 'MaxSteps', 'InvalidFrame', 'BrowserError']
 CAUSE_COLORS = {'Wall': '#ff4444', 'SnakeCollision': '#ffaa00', 'MaxSteps': '#00ccff',
                 'InvalidFrame': '#888888', 'BrowserError': '#ff8888'}
@@ -74,7 +74,9 @@ STAGE_PROMOTE = {
     1: ('compound', {'avg_food': 5, 'avg_steps': 50}, 200),
     2: ('avg_steps', 80, 200),
     3: ('avg_steps', 120, 200),
-    4: (None, None, None),
+    4: ('avg_steps', 1000, 500),
+    5: ('avg_steps', 3500, 500),
+    6: (None, None, None),
 }
 
 @dataclass
