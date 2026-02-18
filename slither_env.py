@@ -802,7 +802,8 @@ class SlitherEnv:
             "cause": None,
             "pos": (new_x, new_y),
             "wall_dist": new_dist_to_wall,
-            "enemy_dist": min_enemy_dist if min_enemy_dist != float('inf') else -1
+            "enemy_dist": min_enemy_dist if min_enemy_dist != float('inf') else -1,
+            "server_id": data.get('server_id', ''),
         }
 
     def _get_state(self):

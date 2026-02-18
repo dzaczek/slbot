@@ -127,37 +127,38 @@ class TrainingDashboard:
             self.live = None
 
     def _start_key_listener(self):
-        """Background thread listening for Ctrl+E (\\x05) to request graceful shutdown."""
-        import tty, termios
+        """Background thread watching for graceful shutdown signal.
+        Two methods: SIGUSR1 signal, or touch file 'STOP' in script dir.
+        Usage: kill -USR1 <pid>  OR  touch STOP
+        """
         global _shutdown_requested
+        _stop_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'STOP')
 
-        def _listen():
+        # Register SIGUSR1 handler
+        def _sigusr1_handler(signum, frame):
             global _shutdown_requested
-            fd = sys.stdin.fileno()
-            try:
-                old_settings = termios.tcgetattr(fd)
-            except termios.error:
-                return
-            try:
-                tty.setcbreak(fd)
-                while self.live and not _shutdown_requested:
-                    import select
-                    rlist, _, _ = select.select([sys.stdin], [], [], 0.2)
-                    if rlist:
-                        ch = sys.stdin.read(1)
-                        if ch == '\x05':  # Ctrl+E
-                            _shutdown_requested = True
-                            self.log_event("Ctrl+E: Graceful shutdown requested — finishing current episodes...")
-                            break
-            except Exception:
-                pass
-            finally:
-                try:
-                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-                except Exception:
-                    pass
+            _shutdown_requested = True
+            self.log_event("SIGUSR1: Graceful shutdown requested — finishing current episodes...")
+        try:
+            signal.signal(signal.SIGUSR1, _sigusr1_handler)
+        except (OSError, AttributeError):
+            pass  # SIGUSR1 not available on Windows
 
-        self._key_thread = threading.Thread(target=_listen, daemon=True)
+        # File watcher thread: check for STOP file every 0.5s
+        def _watch():
+            global _shutdown_requested
+            while self.live and not _shutdown_requested:
+                if os.path.exists(_stop_file):
+                    _shutdown_requested = True
+                    try:
+                        os.remove(_stop_file)
+                    except OSError:
+                        pass
+                    self.log_event("STOP file detected: Graceful shutdown — finishing current episodes...")
+                    break
+                time.sleep(0.5)
+
+        self._key_thread = threading.Thread(target=_watch, daemon=True)
         self._key_thread.start()
 
     def log_event(self, msg):
@@ -514,8 +515,10 @@ class TrainingDashboard:
         footer_text = Text()
         footer_text.append("  Ctrl+C", style="bold red")
         footer_text.append(" Force quit  │  ", style="dim")
-        footer_text.append("Ctrl+E", style="bold yellow")
-        footer_text.append(" Graceful shutdown (finish episodes, save, exit)", style="dim")
+        footer_text.append("touch STOP", style="bold yellow")
+        footer_text.append(" or ", style="dim")
+        footer_text.append("kill -USR1 " + str(os.getpid()), style="bold yellow")
+        footer_text.append(" Graceful shutdown", style="dim")
         layout["footer"].update(Panel(footer_text, style="dim"))
 
         # ── BOTTOM BAR: Agents Board + Events ──
@@ -535,6 +538,7 @@ class TrainingDashboard:
         agent_table.add_column("Time", justify="right", width=7)
         agent_table.add_column("Eps", justify="right", width=5)
         agent_table.add_column("Last Death", width=11)
+        agent_table.add_column("Server", style="dim", width=18)
 
         if self.agents_board:
             for a in self.agents_board:
@@ -549,6 +553,9 @@ class TrainingDashboard:
                 cause_style = "red" if cause == "Wall" else "yellow" if cause == "Snake" else "dim"
                 size_val = a.get('length', 0)
                 size_style = "bold green" if size_val >= 100 else "green" if size_val >= 30 else "dim"
+                server = a.get('server', '')
+                # Show short form: just IP or last segment
+                short_srv = server.split('/')[-1] if '/' in server else server
                 agent_table.add_row(
                     str(a.get('idx', 0)),
                     a.get('name', '?'),
@@ -559,9 +566,10 @@ class TrainingDashboard:
                     time_str,
                     str(a.get('total_eps', 0)),
                     f"[{cause_style}]{cause}[/]",
+                    short_srv,
                 )
         else:
-            agent_table.add_row("—", "Waiting...", "", "", "", "", "", "", "")
+            agent_table.add_row("—", "Waiting...", "", "", "", "", "", "", "", "")
 
         layout["agents_board"].update(Panel(agent_table, title="[bold]Agents Board", border_style="cyan"))
 
@@ -1548,6 +1556,7 @@ def train(args):
     episode_steps = [0] * cfg.env.num_agents
     episode_food = [0] * cfg.env.num_agents
     agent_length = [0] * cfg.env.num_agents
+    agent_server = [''] * cfg.env.num_agents
     # Per-episode action distribution: [straight, gentle, medium, sharp, uturn, boost]
     episode_actions = [[0]*6 for _ in range(cfg.env.num_agents)]
     # Running training metrics from optimize_model
@@ -1867,6 +1876,9 @@ def train(args):
                 episode_steps[i] += 1
                 episode_food[i] += infos[i].get('food_eaten', 0)
                 agent_length[i] = infos[i].get('length', agent_length[i])
+                srv = infos[i].get('server_id', '')
+                if srv:
+                    agent_server[i] = srv
 
                 force_done = episode_steps[i] >= max_steps_per_episode
                 episode_done = dones[i] or force_done
@@ -1902,6 +1914,7 @@ def train(args):
                         'ep_time': now - agent_ep_start[i],
                         'total_eps': agent_total_eps[i],
                         'last_cause': agent_last_cause[i],
+                        'server': agent_server[i],
                     })
                 dashboard.update_agent_board(board)
 
@@ -1919,6 +1932,7 @@ def train(args):
                         episode_steps.append(0)
                         episode_food.append(0)
                         agent_length.append(0)
+                        agent_server.append('')
                         episode_actions.append([0] * 6)
                         agent_ep_start.append(time.time())
                         agent_total_eps.append(0)
@@ -1940,6 +1954,7 @@ def train(args):
                     episode_steps.pop()
                     episode_food.pop()
                     agent_length.pop()
+                    agent_server.pop()
                     episode_actions.pop()
                     agent_ep_start.pop()
                     agent_total_eps.pop()

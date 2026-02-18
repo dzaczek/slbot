@@ -277,6 +277,13 @@ class SlitherBrowser:
                 wang: window.slither.wang, eang: window.slither.ehang
             };
 
+            // Server ID: bso.ip or WebSocket URL
+            var server_id = '';
+            try {
+                if (window.bso && window.bso.ip) server_id = window.bso.ip + ':' + (window.bso.po || '');
+                else if (window.ws && window.ws.url) server_id = window.ws.url;
+            } catch(e) {}
+
             var visible_foods = [];
             if (window.foods && window.foods.length) {
                 var myX = my_snake.x, myY = my_snake.y;
@@ -372,6 +379,7 @@ class SlitherBrowser:
                 dist_from_center: distFromCenter, map_radius: mapRadius,
                 map_center_x: mapCenterX, map_center_y: mapCenterY,
                 boundary_type: boundaryType, boundary_vertices: [],
+                server_id: server_id,
                 debug: {
                     total_slithers: totalSlithers, visible_enemies: visible_enemies.length,
                     total_foods: window.foods ? window.foods.length : 0,
