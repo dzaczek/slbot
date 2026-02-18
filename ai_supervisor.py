@@ -478,6 +478,20 @@ class AISupervisor:
             return None
         return fn(prompt)
 
+    @staticmethod
+    def _classify_api_error(e):
+        """Classify API error for better logging."""
+        msg = str(e).lower()
+        if any(k in msg for k in ('402', 'insufficient', 'funds', 'balance', 'payment', 'billing')):
+            return "BILLING", "No funds / billing issue — check your API account"
+        if any(k in msg for k in ('429', 'rate', 'limit', 'quota', 'too many')):
+            return "RATE_LIMIT", "Rate limited — will retry next interval"
+        if any(k in msg for k in ('401', 'unauthorized', 'invalid.*key', 'authentication')):
+            return "AUTH", "Invalid API key — check .env file"
+        if any(k in msg for k in ('timeout', 'timed out', 'connection')):
+            return "NETWORK", "Network/timeout error — will retry next interval"
+        return "UNKNOWN", str(e)
+
     def _call_claude(self, prompt):
         try:
             import anthropic
@@ -490,7 +504,8 @@ class AISupervisor:
             )
             return response.content[0].text
         except Exception as e:
-            logger.error(f"Claude API error: {e}")
+            cat, detail = self._classify_api_error(e)
+            logger.error(f"Claude API error [{cat}]: {detail} (raw: {e})")
             return None
 
     def _call_openai(self, prompt):
@@ -507,7 +522,8 @@ class AISupervisor:
             )
             return response.choices[0].message.content
         except Exception as e:
-            logger.error(f"OpenAI API error: {e}")
+            cat, detail = self._classify_api_error(e)
+            logger.error(f"OpenAI API error [{cat}]: {detail} (raw: {e})")
             return None
 
     def _call_gemini(self, prompt):
@@ -521,7 +537,8 @@ class AISupervisor:
             response = model.generate_content(prompt["user"])
             return response.text
         except Exception as e:
-            logger.error(f"Gemini API error: {e}")
+            cat, detail = self._classify_api_error(e)
+            logger.error(f"Gemini API error [{cat}]: {detail} (raw: {e})")
             return None
 
     def _call_ollama(self, prompt):

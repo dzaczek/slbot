@@ -1179,7 +1179,14 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
                 env.close()
                 break
     except Exception as e:
-        print(f"Worker {worker_id} crashed: {e}")
+        import traceback
+        crash_msg = f"Worker {worker_id} crashed: {e}\n{traceback.format_exc()}"
+        try:
+            with open("logs/worker_crashes.log", "a") as _wf:
+                _wf.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {crash_msg}\n")
+        except Exception:
+            pass
+        print(crash_msg)
     finally:
         remote.close()
 
@@ -1343,13 +1350,25 @@ class SubprocVecEnv:
         self.num_agents += 1
 
         # Apply current stage config to new worker
-        if self._current_stage_config is not None:
-            remote.send(('set_stage', self._current_stage_config))
-            remote.recv()
+        try:
+            if self._current_stage_config is not None:
+                remote.send(('set_stage', self._current_stage_config))
+                remote.recv()
 
-        # Reset and get initial observation
-        remote.send(('reset', None))
-        return remote.recv()
+            # Reset and get initial observation
+            remote.send(('reset', None))
+            return remote.recv()
+        except (EOFError, BrokenPipeError) as e:
+            # Worker crashed during init — clean up and re-raise with info
+            logger.error(f"Worker {i} died during add_agent: {e} — check logs/worker_crashes.log")
+            try:
+                p.terminate()
+            except Exception:
+                pass
+            self.remotes.pop()
+            self.ps.pop()
+            self.num_agents -= 1
+            raise RuntimeError(f"Failed to add agent #{i}: worker crashed during init") from e
 
     def remove_agent(self):
         """Shut down the last worker process. Returns False if only 1 agent left."""
@@ -1886,21 +1905,26 @@ def train(args):
                 metrics = monitor.get_metrics()
                 rec = monitor.recommend(env.num_agents, metrics, backend=cfg.browser_backend)
                 if rec > 0 and env.num_agents < max_agents:
-                    new_state = env.add_agent()
-                    episode_rewards.append(0)
-                    episode_steps.append(0)
-                    episode_food.append(0)
-                    episode_actions.append([0] * 6)
-                    agent_ep_start.append(time.time())
-                    agent_total_eps.append(0)
-                    agent_last_cause.append("—")
-                    states.append(new_state)
-                    logger.info(f"[AUTO-SCALE] Added agent #{env.num_agents} "
-                                f"(CPU:{metrics['cpu_percent']:.0f}% "
-                                f"RAM:{metrics['ram_free_mb']:.0f}MB "
-                                f"Step:{metrics['avg_step_ms']:.0f}ms)")
-                    if dashboard:
-                        dashboard.log_event(f"Scale UP -> {env.num_agents} agents")
+                    try:
+                        new_state = env.add_agent()
+                        episode_rewards.append(0)
+                        episode_steps.append(0)
+                        episode_food.append(0)
+                        episode_actions.append([0] * 6)
+                        agent_ep_start.append(time.time())
+                        agent_total_eps.append(0)
+                        agent_last_cause.append("—")
+                        states.append(new_state)
+                        logger.info(f"[AUTO-SCALE] Added agent #{env.num_agents} "
+                                    f"(CPU:{metrics['cpu_percent']:.0f}% "
+                                    f"RAM:{metrics['ram_free_mb']:.0f}MB "
+                                    f"Step:{metrics['avg_step_ms']:.0f}ms)")
+                        if dashboard:
+                            dashboard.log_event(f"Scale UP -> {env.num_agents} agents")
+                    except RuntimeError as e:
+                        logger.warning(f"[AUTO-SCALE] Failed to add agent: {e}")
+                        if dashboard:
+                            dashboard.log_event(f"Scale UP FAILED: {e}")
                 elif rec < 0 and env.num_agents > 1:
                     env.remove_agent()
                     episode_rewards.pop()
