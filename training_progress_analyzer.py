@@ -2556,9 +2556,12 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-    fig = plt.figure(figsize=(16, 12))
+    fig = plt.figure(figsize=(16, 20))
     fig.suptitle('STEPS vs FOOD vs EPISODE (3D)', fontsize=16, fontweight='bold', y=0.95)
     ax = fig.add_subplot(111, projection='3d')
+
+    # Stretch Episode axis (Z) to 2× for readability
+    ax.set_box_aspect([1, 1, 2])
 
     # Color by stage
     stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
@@ -2633,9 +2636,12 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     # CHART 19: 3D BUBBLE — STEPS vs REWARD vs EPISODE (size=Food)
     # ──────────────────────────────────────────────────
-    fig = plt.figure(figsize=(16, 12))
+    fig = plt.figure(figsize=(16, 20))
     fig.suptitle('STEPS vs REWARD vs EPISODE — Bubble (size=Food)', fontsize=16, fontweight='bold', y=0.95)
     ax = fig.add_subplot(111, projection='3d')
+
+    # Stretch Episode axis (Z) to 2×
+    ax.set_box_aspect([1, 1, 2])
 
     stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
 
