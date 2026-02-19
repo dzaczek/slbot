@@ -95,13 +95,13 @@ STYLES = {
                 "death_wall": -35,
                 "death_snake": -25,
                 "straight_penalty": 0.0,
-                "length_bonus": 0.05,             # bigger snake = harder to encircle
+                "length_bonus": 0.2,              # strong reward for being big (size 100 = +20/step)
                 "wall_alert_dist": 2000,
                 "enemy_alert_dist": 1000,
                 "wall_proximity_penalty": 0.5,
                 "enemy_proximity_penalty": 0.8,
                 "enemy_approach_penalty": 0.3,
-                "boost_penalty": 0.0,
+                "boost_penalty": 1.0,              # discourage burning mass via boost
                 "starvation_penalty": 0.03,       # was 0.01 — stronger hunger pressure
                 "starvation_grace_steps": 40,     # was 50 — less grace before penalty kicks in
                 "starvation_max_penalty": 3.0,    # was 2.0 — harder cap on starvation
