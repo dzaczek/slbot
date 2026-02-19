@@ -95,7 +95,7 @@ STYLES = {
                 "death_wall": -35,
                 "death_snake": -25,
                 "straight_penalty": 0.0,
-                "length_bonus": 0.2,              # strong reward for being big (size 100 = +20/step)
+                "length_bonus": 0.02,             # reward for being big (size 100 = +2/step)
                 "wall_alert_dist": 2000,
                 "enemy_alert_dist": 1000,
                 "wall_proximity_penalty": 0.5,
