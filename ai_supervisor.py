@@ -54,11 +54,11 @@ TUNABLE_PARAMS = {
     "food_shaping":            (0.0,   1.0,   float, "reward"),
     "survival":                (0.0,   1.0,   float, "reward"),
     "death_wall":              (-100,  -5,    float, "reward"),
-    "death_snake":             (-100,  -5,    float, "reward"),
+    "death_snake":             (-50,   -5,    float, "reward"),  # was -100 — below -50 causes reward saturation
     "wall_proximity_penalty":  (0.0,   3.0,   float, "reward"),
-    "enemy_proximity_penalty": (0.0,   3.0,   float, "reward"),
+    "enemy_proximity_penalty": (0.0,   1.5,   float, "reward"),  # was 3.0 — above 1.5 cripples food collection
     # Min -2.0: negative = reward for chasing (S6 Apex Predator)
-    "enemy_approach_penalty":  (-2.0,  2.0,   float, "reward"),
+    "enemy_approach_penalty":  (-2.0,  1.0,   float, "reward"),  # was 2.0 — above 1.0 causes excessive avoidance
     # Boost: negative = reward for boosting (S6 attack mode)
     "boost_penalty":           (-1.0,  2.0,   float, "reward"),
     "length_bonus":            (0.0,   0.5,   float, "reward"),
@@ -100,17 +100,33 @@ Your job: analyze training statistics and recommend hyperparameter adjustments t
 
 {param_table}
 
+## CRITICAL: Death Distribution in slither.io
+
+In slither.io, the ONLY way to die (besides hitting the map border) is colliding with another snake.
+Therefore 85-98% SnakeCollision death rate is COMPLETELY NORMAL and expected — it is NOT a sign of
+poor enemy avoidance. Do NOT increase enemy_proximity_penalty or death_snake just because snake
+collision deaths are high. Instead, focus on:
+- Is the snake eating enough food? (food/step ratio — healthy range: 0.25-0.40)
+- Is the snake surviving long enough? (avg steps — higher = better)
+- Is the reward trend positive? (improving = healthy)
+- Are there too many ultra-short episodes? (<50 steps = spawning into danger, not fixable by penalties)
+
+Only increase enemy penalties if the snake is actively CHASING enemies (approach ratio going up)
+or if avg_steps is decreasing over time despite other metrics being stable.
+
 ## Guidelines
 
-- Focus on the BIGGEST problem first (e.g., if wall deaths are 60%+, prioritize wall penalties).
+- Focus on FOOD EFFICIENCY first — the snake needs to grow to survive. If food/step < 0.20, boost food_reward.
 - Make conservative changes — the agent is learning online; drastic shifts destabilize training.
-- Only change parameters you have a clear reason for. Do NOT change everything at once.
-- If training looks healthy (improving reward, reasonable death distribution), recommend NO changes.
+- Only change 1-3 parameters per consultation. Do NOT change everything at once.
+- If training looks healthy (improving reward, reasonable food intake), recommend NO changes.
 - Consider the current stage: early stages focus on food, mid stages on survival. In Stage 6 (Apex Predator), the agent should be encouraged to attack (negative enemy_approach_penalty, negative boost_penalty).
 - length_bonus rewards the snake for being big. A bigger snake is harder for enemies to encircle and kill — growing mass is a defensive strategy. In S4+ consider raising length_bonus (up to 0.1) if the bot survives well but stays small.
 - Lower lr if loss is unstable; raise if learning is too slow.
 - gamma should increase as the agent matures (0.85 early → 0.99 late).
 - epsilon_target controls minimum exploration; raise if stuck in local optima, lower if nearly converged.
+- Do NOT set enemy_proximity_penalty above 1.5 — too high makes the snake avoid ALL enemies including harmless ones, crippling food collection near other snakes.
+- Do NOT set death_snake below -50 — extreme death penalties cause reward signal saturation and slow learning.
 
 ## Response Format
 
@@ -379,11 +395,17 @@ class AISupervisor:
         entropy = -sum(p * math.log(p + 1e-10) for p in act_probs)
         max_entropy = math.log(len(act_keys))
 
+        # Food efficiency: food per step
+        total_food = sum(food)
+        total_steps = sum(steps)
+        food_per_step = round(total_food / max(total_steps, 1), 4)
+
         return {
             "num_episodes": n,
             "avg_reward": round(sum(rewards) / n, 2),
             "avg_steps": round(sum(steps) / n, 1),
             "avg_food": round(sum(food) / n, 2),
+            "food_per_step": food_per_step,
             "avg_loss": round(sum(losses) / n, 6),
             "avg_q_mean": round(sum(q_means) / n, 4),
             "current_epsilon": round(epsilons[-1], 4) if epsilons else 0,
@@ -399,16 +421,46 @@ class AISupervisor:
         }
 
     def _get_current_values(self, rows):
-        """Extract current param values from latest stats + any existing config_ai.json."""
+        """Extract current param values from the actual stage config in styles.py."""
         values = {}
 
-        # Start with defaults from the latest CSV row
+        # 1. Load real stage config from styles.py
+        current_stage = None
         if rows:
             last = rows[-1]
             values["lr"] = float(last.get("LR", 1e-4))
-            values["gamma"] = 0.95  # can't read from CSV, use reasonable default
+            current_stage = last.get("Stage", "1")
 
-        # Override with existing config_ai.json if present
+        try:
+            from styles import STYLES
+            curriculum_cfg = STYLES.get("Standard (Curriculum)", {})
+            stages = curriculum_cfg.get("stages", {})
+            stage_key = int(current_stage) if current_stage else 1
+            stage_cfg = stages.get(stage_key, {})
+
+            # Map stage config keys to TUNABLE_PARAMS keys
+            stage_mapping = {
+                "food_reward": "food_reward",
+                "food_shaping": "food_shaping",
+                "survival": "survival",
+                "death_wall": "death_wall",
+                "death_snake": "death_snake",
+                "wall_proximity_penalty": "wall_proximity_penalty",
+                "enemy_proximity_penalty": "enemy_proximity_penalty",
+                "enemy_approach_penalty": "enemy_approach_penalty",
+                "boost_penalty": "boost_penalty",
+                "length_bonus": "length_bonus",
+                "starvation_penalty": "starvation_penalty",
+                "starvation_grace_steps": "starvation_grace_steps",
+                "gamma": "gamma",
+            }
+            for style_key, param_key in stage_mapping.items():
+                if style_key in stage_cfg:
+                    values[param_key] = stage_cfg[style_key]
+        except Exception as e:
+            logger.warning(f"Could not load stage config from styles.py: {e}")
+
+        # 2. Override with existing config_ai.json if present (AI's own previous changes)
         if os.path.exists(self.config_ai_path):
             try:
                 with open(self.config_ai_path, "r") as f:
@@ -418,7 +470,7 @@ class AISupervisor:
             except (json.JSONDecodeError, IOError):
                 pass
 
-        # Fill remaining with midpoint defaults
+        # 3. Fill any remaining with midpoint defaults (should be rare now)
         for name, (lo, hi, typ, _) in TUNABLE_PARAMS.items():
             if name not in values:
                 values[name] = typ((lo + hi) / 2)
@@ -439,6 +491,7 @@ class AISupervisor:
             f"| Avg Reward | {stats['avg_reward']} |\n"
             f"| Avg Steps | {stats['avg_steps']} |\n"
             f"| Avg Food | {stats['avg_food']} |\n"
+            f"| Food per Step | {stats['food_per_step']} (healthy: 0.25-0.40) |\n"
             f"| Avg Loss | {stats['avg_loss']} |\n"
             f"| Avg Q-Mean | {stats['avg_q_mean']} |\n"
             f"| Current Epsilon | {stats['current_epsilon']} |\n"

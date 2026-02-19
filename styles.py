@@ -88,8 +88,8 @@ STYLES = {
             4: {
                 "name": "MASS_MANAGEMENT",
                 "gamma": 0.97,
-                "food_reward": 5.0,
-                "food_shaping": 0.1,
+                "food_reward": 8.0,               # was 5.0 — stronger food drive to grow mass
+                "food_shaping": 0.15,             # was 0.1 — more reward for approaching food
                 "survival": 0.2,
                 "survival_escalation": 0.001,
                 "death_wall": -35,
@@ -102,9 +102,9 @@ STYLES = {
                 "enemy_proximity_penalty": 0.8,
                 "enemy_approach_penalty": 0.3,
                 "boost_penalty": 0.0,
-                "starvation_penalty": 0.01,
-                "starvation_grace_steps": 50,
-                "starvation_max_penalty": 2.0,
+                "starvation_penalty": 0.03,       # was 0.01 — stronger hunger pressure
+                "starvation_grace_steps": 40,     # was 50 — less grace before penalty kicks in
+                "starvation_max_penalty": 3.0,    # was 2.0 — harder cap on starvation
                 "max_steps": 2000,
                 # Promote to S5 when avg_steps >= 1000 over 500 eps
                 "promote_metric": "avg_steps",

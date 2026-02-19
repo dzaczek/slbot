@@ -45,12 +45,12 @@ class OptimizationConfig:
     super_pattern_window: int = 50
     super_pattern_wall_ratio: float = 0.55
     super_pattern_snake_ratio: float = 0.55
-    super_pattern_food_ratio_low: float = 0.07
-    super_pattern_food_ratio_high: float = 0.12
+    super_pattern_food_ratio_low: float = 0.15    # was 0.07 — below this: boost food_reward
+    super_pattern_food_ratio_high: float = 0.35   # was 0.12 — above this: reduce food_reward
     super_pattern_penalty_step: float = 0.02
     super_pattern_reward_step: float = 0.5
     super_pattern_wall_penalty_cap: float = 0.3
-    super_pattern_enemy_penalty_cap: float = 0.3
+    super_pattern_enemy_penalty_cap: float = 0.5   # was 0.3 — don't reduce enemy_pen too aggressively
     super_pattern_straight_penalty_cap: float = 0.1
     super_pattern_food_reward_cap: float = 15.0
 
