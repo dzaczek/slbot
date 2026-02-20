@@ -1837,7 +1837,8 @@ def train(args):
         episode_actions[agent_index] = [0]*6
 
     try:
-        while start_episode < cfg.opt.max_episodes and not _shutdown_requested:
+        _agents_draining = set()  # agents finishing their last episode during shutdown
+        while start_episode < cfg.opt.max_episodes:
             batch_count += 1
 
             # LR Warmup (based on batch_count, independent of num_agents)
@@ -1872,6 +1873,10 @@ def train(args):
             total_steps += 1
 
             for i in range(env.num_agents):
+                # Skip agents that already finished during graceful shutdown
+                if i in _agents_draining:
+                    continue
+
                 episode_rewards[i] += rewards[i]
                 episode_steps[i] += 1
                 episode_food[i] += infos[i].get('food_eaten', 0)
@@ -1896,8 +1901,16 @@ def train(args):
                         cause=infos[i].get('cause', 'SnakeCollision'),
                         force_done_flag=force_done and not dones[i]
                     )
+
+                    # Graceful shutdown: don't start new episodes, mark agent as drained
+                    if _shutdown_requested:
+                        _agents_draining.add(i)
                 else:
                     agent.remember_nstep(states[i], actions[i], rewards[i], next_states[i], False, agent_id=i)
+
+            # Graceful shutdown: all agents finished their episodes — exit loop
+            if _shutdown_requested and len(_agents_draining) >= env.num_agents:
+                break
 
             # Update agent board (live per-step)
             if dashboard:
