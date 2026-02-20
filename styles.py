@@ -94,7 +94,7 @@ STYLES = {
                 "survival_escalation": 0.001,
                 "death_wall": -35,
                 "death_snake": -50,               # was -25 — snake collision must hurt
-                "straight_penalty": 0.0,
+                "straight_penalty": 0.15,         # going straight = easy target for enemies
                 "length_bonus": 0.02,             # reward for being big (size 100 = +2/step)
                 "wall_alert_dist": 2000,
                 "enemy_alert_dist": 2000,         # was 1000 — detect enemies earlier
