@@ -777,9 +777,10 @@ class SlitherEnv:
                 if approach_delta > 0 and min_enemy_dist < self.enemy_alert_dist:
                     reward -= self.enemy_approach_penalty * (approach_delta / max(self.enemy_alert_dist, 1))
 
-        # 8. Boost penalty (discourage boost usage in early stages)
+        # 8. Boost penalty — scales with snake size (small snake = boost free, big = costly)
         if self.boost_penalty > 0 and action == 9:
-            reward -= self.boost_penalty
+            size_factor = max(0.0, (new_len - 30) / 70.0)  # 0 at len≤30, 1.0 at len=100
+            reward -= self.boost_penalty * min(size_factor, 1.0)
 
         # 9. Starvation penalty: escalating penalty for not eating
         # Kicks in after grace period, grows linearly with steps without food
