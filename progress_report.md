@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-20 07:36:52  
-**Total Episodes:** 14832  
+**Generated:** 2026-02-20 08:38:23  
+**Total Episodes:** 15030  
 **Training Sessions:** 31
 
 ## Verdict: LEARNING (Confidence: 75%)
@@ -9,11 +9,11 @@
 **Goal Feasibility:** POSSIBLE (25-60%)
 
 ### Warnings
-- Loss very high (26.82) - unstable
+- Loss very high (24.91) - unstable
 
 ### Positive Signals
-- Rewards improving: +1941.9
-- Positive reward trend (slope=0.2490, R²=0.117)
+- Rewards improving: +1932.9
+- Positive reward trend (slope=0.2404, R²=0.113)
 - Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
@@ -23,35 +23,35 @@
 | S1 | FOOD_VECTOR | 2414 | 224.2 | 231.7 | 83.3 | 0.5339 | 0.1% | 65.8% | 34.0% |
 | S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.4505 | 0.1% | 70.5% | 28.9% |
 | S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.6197 | 0.1% | 97.6% | 2.3% |
-| S4 | MASS_MANAGEMENT | 10404 | 1370.2 | 435.2 | 119.6 | 0.5387 | 0.1% | 96.2% | 3.6% |
+| S4 | MASS_MANAGEMENT | 10602 | 1368.2 | 434.4 | 119.7 | 0.5370 | 0.1% | 96.3% | 3.5% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 1049.56 | 3122.07 | -35299.32 | 205.62 | 488.71 | 1258.58 | 4830.71 | 39502.17 |
-| Steps | 385.93 | 432.14 | 1.00 | 105.00 | 250.00 | 500.00 | 1372.90 | 2000.00 |
-| Food | 109.81 | 98.26 | 0.00 | 48.00 | 80.00 | 137.00 | 317.00 | 630.00 |
-| Loss | 21.00 | 36.31 | 0.00 | 3.33 | 8.53 | 20.22 | 90.43 | 784.93 |
-| Food/Step | 0.54 | 0.79 | 0.00 | 0.29 | 0.34 | 0.46 | 1.31 | 11.25 |
+| Reward | 1052.44 | 3103.85 | -35299.32 | 208.08 | 495.71 | 1266.41 | 4788.48 | 39502.17 |
+| Steps | 386.01 | 430.92 | 1.00 | 105.00 | 251.00 | 500.00 | 1365.00 | 2000.00 |
+| Food | 109.97 | 98.08 | 0.00 | 48.00 | 80.00 | 138.00 | 315.00 | 630.00 |
+| Loss | 21.04 | 36.11 | 0.00 | 3.41 | 8.69 | 20.63 | 89.84 | 784.93 |
+| Food/Step | 0.54 | 0.79 | 0.00 | 0.29 | 0.34 | 0.46 | 1.29 | 11.25 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 1542.88 | 1231.00 | +19.5378 | 0.0525 |
-| Last 100 | 1340.92 | 1274.65 | +5.6844 | 0.0166 |
-| Last 200 | 1397.38 | 1385.44 | +0.8603 | 0.0013 |
-| Last 500 | 2566.80 | 3237.18 | -4.6103 | 0.0423 |
-| Last 1000 | 2255.93 | 2710.40 | +0.6228 | 0.0044 |
+| Last 50 | 1135.62 | 789.15 | -3.2164 | 0.0035 |
+| Last 100 | 1294.15 | 919.28 | -6.7320 | 0.0447 |
+| Last 200 | 1265.14 | 1040.08 | -0.2797 | 0.0002 |
+| Last 500 | 1828.57 | 2501.71 | -4.8964 | 0.0798 |
+| Last 1000 | 2137.36 | 2682.41 | -0.9055 | 0.0095 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 18 | 0.1% | 514.3 | 1825.9 |
-| SnakeCollision | 13345 | 90.0% | 336.5 | 1222.9 |
-| MaxSteps | 1456 | 9.8% | 837.2 | -544.6 |
+| SnakeCollision | 13543 | 90.1% | 337.3 | 1223.5 |
+| MaxSteps | 1456 | 9.7% | 837.2 | -544.6 |
 | InvalidFrame | 1 | 0.0% | 1197.0 | -5534.5 |
 | BrowserError | 12 | 0.1% | 367.5 | 1133.1 |
 
@@ -197,7 +197,8 @@ Keep training. Monitor for sustained improvement.
 | 02-20 04:43 | 14200 | `length_bonus`=0.12 | Training shows strong performance with excellent food efficiency (0.304 food/step) and good reward trend (+454). However, steps are declining (-19.8) and the agent is overusing sharp turns (62.6%) which may indicate defensive play. Since we're in Stage 4 (Mass Management), we should encourage growth through higher length bonus. |
 | 02-20 05:46 | 14400 | `lr`=2e-05 | Training is progressing very well with strong positive trends in reward (+1202), steps (+89), and Q-values. Food efficiency is healthy at 0.30. The high loss (83) and rising loss trend (+13.5) suggests learning rate may be too aggressive for current progress. Conservative LR reduction will stabilize training while maintaining momentum. |
 | 02-20 07:05 | 14600 | `enemy_proximity_penalty`=1.5 | The agent shows concerning signs: reward trend is strongly negative (-419) despite stable steps, and loss remains high (79.6). The sharp turn bias (48.9%) suggests the snake is making erratic movements, possibly due to conflicting reward signals. Reducing enemy_proximity_penalty should help the snake navigate more smoothly around other snakes while maintaining food collection efficiency. |
+| 02-20 08:11 | 14800 | `lr`=7.5e-05, `gamma`=0.975 | The agent shows declining performance with reward trend -1699 and steps trend -37, indicating instability. High loss (55.8) and declining Q-values suggest learning rate may be too high. Food efficiency remains healthy at 0.31, so focus on stabilizing training rather than reward structure changes. |
 
-**Total consultations:** 54  
-**Most adjusted:** `enemy_proximity_penalty` (39x), `death_snake` (33x), `enemy_approach_penalty` (30x), `lr` (12x), `epsilon_target` (5x), `gamma` (4x), `length_bonus` (3x), `food_reward` (2x), `wall_proximity_penalty` (1x), `survival` (1x)
+**Total consultations:** 55  
+**Most adjusted:** `enemy_proximity_penalty` (39x), `death_snake` (33x), `enemy_approach_penalty` (30x), `lr` (13x), `epsilon_target` (5x), `gamma` (5x), `length_bonus` (3x), `food_reward` (2x), `wall_proximity_penalty` (1x), `survival` (1x)
 
