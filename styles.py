@@ -88,23 +88,23 @@ STYLES = {
             4: {
                 "name": "MASS_MANAGEMENT",
                 "gamma": 0.97,
-                "food_reward": 8.0,               # was 5.0 — stronger food drive to grow mass
-                "food_shaping": 0.15,             # was 0.1 — more reward for approaching food
+                "food_reward": 8.0,               # strong food drive to grow mass
+                "food_shaping": 0.3,              # was 0.15 — aggressively chase food
                 "survival": 0.2,
                 "survival_escalation": 0.001,
                 "death_wall": -35,
-                "death_snake": -25,
+                "death_snake": -50,               # was -25 — snake collision must hurt
                 "straight_penalty": 0.0,
                 "length_bonus": 0.02,             # reward for being big (size 100 = +2/step)
                 "wall_alert_dist": 2000,
-                "enemy_alert_dist": 1000,
+                "enemy_alert_dist": 2000,         # was 1000 — detect enemies earlier
                 "wall_proximity_penalty": 0.5,
-                "enemy_proximity_penalty": 0.8,
-                "enemy_approach_penalty": 0.3,
-                "boost_penalty": 1.0,              # discourage burning mass via boost
-                "starvation_penalty": 0.03,       # was 0.01 — stronger hunger pressure
-                "starvation_grace_steps": 40,     # was 50 — less grace before penalty kicks in
-                "starvation_max_penalty": 3.0,    # was 2.0 — harder cap on starvation
+                "enemy_proximity_penalty": 2.0,   # was 0.8 — strongly avoid enemies
+                "enemy_approach_penalty": 0.8,    # was 0.3 — don't approach enemies
+                "boost_penalty": 0.5,             # was 1.0 — moderate boost cost
+                "starvation_penalty": 0.03,       # stronger hunger pressure
+                "starvation_grace_steps": 40,
+                "starvation_max_penalty": 3.0,
                 "max_steps": 2000,
                 # Promote to S5 when avg_steps >= 1000 over 500 eps
                 "promote_metric": "avg_steps",
