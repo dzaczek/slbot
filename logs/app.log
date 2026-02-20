@@ -19459,3 +19459,59 @@
 2026-02-20 06:17:29,728 - INFO - [AI] Applying config_ai.json: {'lr': 2e-05}
 2026-02-20 06:17:29,728 - INFO - [AI] Reasoning: Training is progressing very well with strong positive trends in reward (+1202), steps (+89), and Q-values. Food efficiency is healthy at 0.30. The high loss (83) and rising loss trend (+13.5) suggests learning rate may be too aggressive for current progress. Conservative LR reduction will stabilize training while maintaining momentum.
 2026-02-20 06:17:29,728 - INFO - [AI] lr -> 2e-05
+2026-02-20 06:17:54,984 - INFO - [AUTO-SCALE] Added agent #3 (CPU:16% RAM:53283MB Step:98ms)
+2026-02-20 06:18:25,518 - INFO - [AUTO-SCALE] Added agent #4 (CPU:0% RAM:52565MB Step:101ms)
+2026-02-20 06:18:27,846 - INFO - Ep 14467 | S4:MASS_MANAGEMENT | Rw: 694.91 | St: 243 | Fd: 97 (0.399/st) | Eps: 0.080 | L: 74.5363 | Q: 241.15/305.86 | SnakeCollision | Pos:(33862,26884) Wall:8181 Enemy:704
+2026-02-20 06:18:48,594 - INFO - Ep 14468 | S4:MASS_MANAGEMENT | Rw: 183.14 | St: 80 | Fd: 34 (0.425/st) | Eps: 0.080 | L: 519.8272 | Q: 235.60/294.45 | SnakeCollision | Pos:(30103,33201) Wall:11464 Enemy:55
+2026-02-20 06:19:13,635 - INFO - [AUTO-SCALE] Added agent #5 (CPU:0% RAM:51362MB Step:100ms)
+2026-02-20 06:19:34,299 - INFO - Ep 14469 | S4:MASS_MANAGEMENT | Rw: 1046.86 | St: 406 | Fd: 141 (0.347/st) | Eps: 0.080 | L: 135.7386 | Q: 237.16/315.06 | SnakeCollision | Pos:(27284,32379) Wall:8728 Enemy:36
+2026-02-20 06:20:21,194 - INFO - Ep 14470 | S4:MASS_MANAGEMENT | Rw: 736.52 | St: 383 | Fd: 124 (0.324/st) | Eps: 0.080 | L: 65.1488 | Q: 241.22/302.52 | SnakeCollision | Pos:(33683,30900) Wall:11995 Enemy:129
+2026-02-20 06:20:21,195 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 5, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-20 06:20:54,860 - INFO - >> Target Network Updated
+2026-02-20 06:21:17,969 - INFO - Ep 14471 | S4:MASS_MANAGEMENT | Rw: 679.46 | St: 295 | Fd: 91 (0.308/st) | Eps: 0.080 | L: 104.3285 | Q: 234.26/310.41 | SnakeCollision | Pos:(31313,31266) Wall:12214 Enemy:59
+2026-02-20 06:21:38,331 - INFO - Ep 14472 | S4:MASS_MANAGEMENT | Rw: 1558.81 | St: 679 | Fd: 215 (0.317/st) | Eps: 0.080 | L: 34.6817 | Q: 235.47/320.97 | SnakeCollision | Pos:(27878,31276) Wall:9154 Enemy:46
+2026-02-20 06:21:42,582 - INFO - Ep 14473 | S4:MASS_MANAGEMENT | Rw: 410.83 | St: 97 | Fd: 60 (0.619/st) | Eps: 0.080 | L: 137.7036 | Q: 233.87/306.91 | SnakeCollision | Pos:(33524,35172) Wall:11199 Enemy:403
+2026-02-20 06:21:45,923 - INFO - Ep 14474 | S4:MASS_MANAGEMENT | Rw: 2192.69 | St: 855 | Fd: 272 (0.318/st) | Eps: 0.080 | L: 173.1440 | Q: 236.31/294.01 | SnakeCollision | Pos:(25245,34017) Wall:6546 Enemy:208
+2026-02-20 06:21:50,441 - INFO - Ep 14475 | S4:MASS_MANAGEMENT | Rw: -49.45 | St: 2 | Fd: 0 (0.000/st) | Eps: 0.080 | L: 142.0766 | Q: 241.46/314.81 | SnakeCollision | Pos:(30602,28676) Wall:9661 Enemy:229
+2026-02-20 06:21:53,622 - INFO - Ep 14476 | S4:MASS_MANAGEMENT | Rw: 1452.61 | St: 584 | Fd: 199 (0.341/st) | Eps: 0.080 | L: 77.4139 | Q: 239.09/311.36 | SnakeCollision | Pos:(36567,29428) Wall:8909 Enemy:518
+2026-02-20 06:21:53,636 - INFO - Ep 14477 | S4:MASS_MANAGEMENT | Rw: 268.89 | St: 4 | Fd: 40 (10.000/st) | Eps: 0.080 | L: 77.4139 | Q: 239.09/311.36 | SnakeCollision | Pos:(35135,32625) Wall:11410 Enemy:240
+2026-02-20 06:23:02,482 - INFO - Ep 14478 | S4:MASS_MANAGEMENT | Rw: 711.80 | St: 342 | Fd: 110 (0.322/st) | Eps: 0.080 | L: 75.3543 | Q: 237.10/290.61 | SnakeCollision | Pos:(39292,34578) Wall:6956 Enemy:31
+2026-02-20 06:23:51,871 - INFO - Ep 14479 | S4:MASS_MANAGEMENT | Rw: 4198.85 | St: 1652 | Fd: 508 (0.308/st) | Eps: 0.080 | L: 82.6189 | Q: 236.59/302.12 | SnakeCollision | Pos:(35321,30822) Wall:10731 Enemy:69
+2026-02-20 06:24:32,356 - INFO - >> Target Network Updated
+2026-02-20 06:24:49,999 - INFO - Ep 14480 | S4:MASS_MANAGEMENT | Rw: 688.28 | St: 320 | Fd: 96 (0.300/st) | Eps: 0.080 | L: 32.2115 | Q: 223.48/266.78 | SnakeCollision | Pos:(25946,28838) Wall:6421 Enemy:797
+2026-02-20 06:24:49,999 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 15, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-20 06:24:53,346 - INFO - Ep 14481 | S4:MASS_MANAGEMENT | Rw: 2249.82 | St: 880 | Fd: 283 (0.322/st) | Eps: 0.080 | L: 33.2344 | Q: 220.04/277.35 | SnakeCollision | Pos:(39365,30649) Wall:6922 Enemy:381
+2026-02-20 06:24:58,249 - INFO - Ep 14482 | S4:MASS_MANAGEMENT | Rw: 2213.62 | St: 883 | Fd: 278 (0.315/st) | Eps: 0.080 | L: 143.5128 | Q: 216.61/271.93 | SnakeCollision | Pos:(33967,35568) Wall:10663 Enemy:47
+2026-02-20 06:26:36,121 - INFO - Ep 14483 | S4:MASS_MANAGEMENT | Rw: 1205.06 | St: 537 | Fd: 181 (0.337/st) | Eps: 0.080 | L: 40.3823 | Q: 206.30/278.19 | SnakeCollision | Pos:(27808,33749) Wall:9105 Enemy:30
+2026-02-20 06:26:38,481 - INFO - Ep 14484 | S4:MASS_MANAGEMENT | Rw: 1257.31 | St: 537 | Fd: 176 (0.328/st) | Eps: 0.080 | L: 107.4402 | Q: 219.92/433.86 | SnakeCollision | Pos:(36338,35252) Wall:9344 Enemy:154
+2026-02-20 06:26:38,496 - INFO - Ep 14485 | S4:MASS_MANAGEMENT | Rw: 1133.69 | St: 533 | Fd: 162 (0.304/st) | Eps: 0.080 | L: 107.4402 | Q: 219.92/433.86 | SnakeCollision | Pos:(33700,27568) Wall:8884 Enemy:199
+2026-02-20 06:26:38,578 - INFO -   >> New Best Fitness: 2012.2 (steps=468.8, food=154.3). Saved: best_model_20260220-8727b625_ep14485_s468_f154.pth
+2026-02-20 06:27:08,625 - INFO - Ep 14486 | S4:MASS_MANAGEMENT | Rw: 372.37 | St: 148 | Fd: 60 (0.405/st) | Eps: 0.080 | L: 71.2423 | Q: 218.31/278.75 | SnakeCollision | Pos:(34784,36705) Wall:9278 Enemy:29
+2026-02-20 06:27:42,693 - INFO - Ep 14487 | S4:MASS_MANAGEMENT | Rw: 3707.49 | St: 1389 | Fd: 418 (0.301/st) | Eps: 0.080 | L: 17.7569 | Q: 219.43/282.51 | SnakeCollision | Pos:(32256,36431) Wall:10104 Enemy:36
+2026-02-20 06:27:42,793 - INFO -   >> New Best Fitness: 2116.5 (steps=496.0, food=162.0). Saved: best_model_20260220-8727b625_ep14487_s496_f162.pth
+2026-02-20 06:27:47,176 - INFO - Ep 14488 | S4:MASS_MANAGEMENT | Rw: 795.80 | St: 317 | Fd: 118 (0.372/st) | Eps: 0.080 | L: 69.3280 | Q: 216.80/288.30 | SnakeCollision | Pos:(26314,31927) Wall:7730 Enemy:452
+2026-02-20 06:27:47,192 - INFO - Ep 14489 | S4:MASS_MANAGEMENT | Rw: 519.31 | St: 168 | Fd: 67 (0.399/st) | Eps: 0.080 | L: 69.3280 | Q: 216.80/288.30 | SnakeCollision | Pos:(31310,25321) Wall:6662 Enemy:1052
+2026-02-20 06:27:51,104 - INFO - Ep 14490 | S4:MASS_MANAGEMENT | Rw: 4280.53 | St: 1735 | Fd: 514 (0.296/st) | Eps: 0.080 | L: 23.4881 | Q: 220.59/308.52 | SnakeCollision | Pos:(27248,35086) Wall:8119 Enemy:568
+2026-02-20 06:27:51,104 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 25, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-20 06:27:51,199 - INFO -   >> New Best Fitness: 2230.9 (steps=525.3, food=170.6). Saved: best_model_20260220-8727b625_ep14490_s525_f170.pth
+2026-02-20 06:27:51,211 - INFO - Ep 14491 | S4:MASS_MANAGEMENT | Rw: 623.78 | St: 317 | Fd: 99 (0.312/st) | Eps: 0.080 | L: 23.4881 | Q: 220.59/308.52 | SnakeCollision | Pos:(32837,33056) Wall:13414 Enemy:203
+2026-02-20 06:28:02,540 - INFO - >> Target Network Updated
+2026-02-20 06:28:07,025 - INFO - Ep 14492 | S4:MASS_MANAGEMENT | Rw: 370.19 | St: 67 | Fd: 57 (0.851/st) | Eps: 0.080 | L: 107.1995 | Q: 219.63/289.77 | SnakeCollision | Pos:(30776,34107) Wall:11636 Enemy:68
+2026-02-20 06:28:31,406 - INFO - Ep 14493 | S4:MASS_MANAGEMENT | Rw: 324.70 | St: 182 | Fd: 62 (0.341/st) | Eps: 0.080 | L: 39.3194 | Q: 209.55/268.46 | SnakeCollision | Pos:(32980,32852) Wall:13472 Enemy:60
+2026-02-20 06:28:41,683 - INFO - Ep 14494 | S4:MASS_MANAGEMENT | Rw: 539.84 | St: 216 | Fd: 81 (0.375/st) | Eps: 0.080 | L: 61.4407 | Q: 213.55/272.40 | SnakeCollision | Pos:(38228,32965) Wall:8303 Enemy:47
+2026-02-20 06:29:10,326 - INFO - Ep 14495 | S4:MASS_MANAGEMENT | Rw: 226.94 | St: 136 | Fd: 49 (0.360/st) | Eps: 0.080 | L: 26.4000 | Q: 210.04/350.27 | SnakeCollision | Pos:(31650,39164) Wall:7321 Enemy:47
+2026-02-20 06:29:22,551 - INFO - Ep 14496 | S4:MASS_MANAGEMENT | Rw: 879.21 | St: 400 | Fd: 136 (0.340/st) | Eps: 0.080 | L: 108.2951 | Q: 196.64/251.47 | SnakeCollision | Pos:(34640,36260) Wall:9739 Enemy:47
+2026-02-20 06:29:25,015 - INFO - Ep 14497 | S4:MASS_MANAGEMENT | Rw: 541.77 | St: 217 | Fd: 87 (0.401/st) | Eps: 0.080 | L: 172.4572 | Q: 202.97/285.70 | SnakeCollision | Pos:(33981,36519) Wall:9778 Enemy:296
+2026-02-20 06:29:49,126 - INFO - Ep 14498 | S4:MASS_MANAGEMENT | Rw: 744.65 | St: 433 | Fd: 118 (0.273/st) | Eps: 0.080 | L: 29.9617 | Q: 213.61/340.09 | SnakeCollision | Pos:(29192,34055) Wall:10316 Enemy:57
+2026-02-20 06:30:46,481 - INFO - Ep 14499 | S4:MASS_MANAGEMENT | Rw: 1807.97 | St: 800 | Fd: 243 (0.304/st) | Eps: 0.080 | L: 12.7328 | Q: 213.23/258.58 | SnakeCollision | Pos:(34191,35954) Wall:10217 Enemy:89
+2026-02-20 06:30:55,900 - INFO - Ep 14500 | S4:MASS_MANAGEMENT | Rw: 919.84 | St: 431 | Fd: 135 (0.313/st) | Eps: 0.080 | L: 5.6255 | Q: 208.93/264.15 | SnakeCollision | Pos:(34416,34949) Wall:10957 Enemy:63
+2026-02-20 06:30:55,900 - INFO - Death Stats: {'Wall': 0, 'SnakeCollision': 35, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 0}
+2026-02-20 06:31:11,543 - INFO - Ep 14501 | S4:MASS_MANAGEMENT | Rw: 1065.45 | St: 383 | Fd: 128 (0.334/st) | Eps: 0.080 | L: 28.8468 | Q: 206.30/261.11 | SnakeCollision | Pos:(38053,30138) Wall:7988 Enemy:331
+2026-02-20 06:31:33,216 - INFO - Ep 14502 | S4:MASS_MANAGEMENT | Rw: 1306.94 | St: 587 | Fd: 188 (0.320/st) | Eps: 0.080 | L: 50.0670 | Q: 212.64/266.02 | SnakeCollision | Pos:(30083,34619) Wall:10777 Enemy:53
+2026-02-20 06:31:47,508 - INFO - >> Target Network Updated
+2026-02-20 06:32:17,718 - INFO - Ep 14503 | S4:MASS_MANAGEMENT | Rw: 563.94 | St: 235 | Fd: 81 (0.345/st) | Eps: 0.080 | L: 16.6360 | Q: 200.30/277.18 | SnakeCollision | Pos:(30657,37211) Wall:8966 Enemy:31
+2026-02-20 06:32:23,425 - INFO - Ep 14504 | S4:MASS_MANAGEMENT | Rw: 730.51 | St: 347 | Fd: 116 (0.334/st) | Eps: 0.080 | L: 31.1634 | Q: 194.94/273.14 | SnakeCollision | Pos:(37040,30251) Wall:8952 Enemy:11
+2026-02-20 06:33:35,002 - INFO - Ep 14505 | S4:MASS_MANAGEMENT | Rw: 893.24 | St: 385 | Fd: 132 (0.343/st) | Eps: 0.080 | L: 28.3148 | Q: 190.25/242.94 | SnakeCollision | Pos:(35695,29794) Wall:9815 Enemy:57
+2026-02-20 06:33:48,549 - INFO - Ep 14506 | S4:MASS_MANAGEMENT | Rw: 931.76 | St: 415 | Fd: 140 (0.337/st) | Eps: 0.080 | L: 27.1613 | Q: 201.91/278.56 | SnakeCollision | Pos:(32204,32753) Wall:13595 Enemy:31
+2026-02-20 06:34:57,726 - INFO - >> Target Network Updated
+2026-02-20 06:35:20,380 - INFO - Ep 14507 | S4:MASS_MANAGEMENT | Rw: 1382.75 | St: 573 | Fd: 187 (0.326/st) | Eps: 0.080 | L: 75.7473 | Q: 182.83/245.98 | SnakeCollision | Pos:(30646,32259) Wall:12070 Enemy:29
