@@ -879,18 +879,21 @@ class SlitherEnv:
         def score_distance(d):
             return max(0.0, 1.0 - d / SCOPE)
 
-        # --- Food scores ---
+        # --- Food scores (weighted by size — death remains are worth more) ---
         foods = data.get('foods', [])
         for f in foods:
             if len(f) < 2:
                 continue
             fx, fy = f[0], f[1]
+            f_sz = f[2] if len(f) > 2 else 1.0  # food size (death remains: 10-20, normal: 1)
             dx, dy = fx - mx, fy - my_
             angle, dist = to_ego_angle_dist(dx, dy)
             if dist > SCOPE:
                 continue
             si = sector_index(angle)
-            sc = score_distance(dist)
+            # Weight by food size: big food (death remains) scores higher
+            size_weight = min(f_sz / 5.0, 3.0)  # normal=0.2, remains≈2-4 → capped at 3.0
+            sc = score_distance(dist) * size_weight
             if sc > sectors[si]:
                 sectors[si] = sc
 
