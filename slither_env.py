@@ -892,7 +892,7 @@ class SlitherEnv:
                 continue
             si = sector_index(angle)
             # Weight by food size: big food (death remains) scores higher
-            size_weight = min(f_sz / 5.0, 3.0)  # normal=0.2, remains≈2-4 → capped at 3.0
+            size_weight = min(f_sz / 2.0, 3.0)  # normal=0.5, remains≈3.0 → capped at 3.0
             sc = score_distance(dist) * size_weight
             if sc > sectors[si]:
                 sectors[si] = sc
