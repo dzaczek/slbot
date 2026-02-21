@@ -268,11 +268,19 @@ class SlitherBrowser:
                 }
             }
 
+            // Score: use sct (segment count used for score) with fpsls lookup, fallback to pts.length
+            var myScore = 0;
+            if (window.fpsls && window.slither.sct !== undefined) {
+                myScore = Math.floor(15 * (window.fpsls[window.slither.sct] - 1) - 5);
+            } else {
+                myScore = window.slither.pts ? window.slither.pts.length : 0;
+            }
+
             var my_snake = {
                 x: window.slither.xx, y: window.slither.yy,
                 ang: window.slither.ang, sp: window.slither.sp,
                 sc: window.slither.sc,
-                len: window.slither.pts ? window.slither.pts.length : 0,
+                len: myScore,
                 pts: my_pts,
                 wang: window.slither.wang, eang: window.slither.ehang
             };
@@ -575,7 +583,9 @@ class SlitherBrowser:
                 eang: window.slither.eang,
                 sp: window.slither.sp,
                 sc: window.slither.sc,
-                len: window.slither.pts ? window.slither.pts.length : 0,
+                len: (window.fpsls && window.slither.sct !== undefined)
+                    ? Math.floor(15 * (window.fpsls[window.slither.sct] - 1) - 5)
+                    : (window.slither.pts ? window.slither.pts.length : 0),
                 pts: my_pts
             }};
 
