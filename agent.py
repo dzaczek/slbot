@@ -213,6 +213,20 @@ class DDQNAgent:
                 right_danger = sum(obstacle[1:5]) / 4.0
                 return 5 if left_danger <= right_danger else 6
 
+        # --- REFLEX 4: Converging trajectories (enemy approaching at angle) ---
+        # Detects enemies in front-side sectors (±15°..60°) heading toward us.
+        # enemy_approach > 0.5 = heading our way, obstacle > 0.3 = within ~1400 units
+        # This catches the "slight angle collision" that REFLEX 1/3 miss.
+        enemy_approach = sectors[ns*3:ns*4]  # [72..95]
+        # Right side: sectors 2,3 (30°-60°), Left side: sectors 21,22 (300°-330°)
+        for s_i in [2, 3, 21, 22]:
+            if enemy_approach[s_i] > 0.5 and obstacle[s_i] > 0.3:
+                # Enemy converging from this side — turn away
+                if s_i <= 12:  # threat from right → turn left
+                    return 3   # medium left
+                else:          # threat from left → turn right
+                    return 4   # medium right
+
         return None  # No reflex triggered — let the network decide
 
     def remember(self, state, action, reward, next_state, done, gamma=None):
