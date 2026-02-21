@@ -1149,11 +1149,11 @@ def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_s
         sys.stdout = devnull
         sys.stderr = devnull
 
-    picard_names = [
+    agent_names = [
         "Picard", "Riker", "Data", "Worf", "Troi", "LaForge",
         "Crusher", "Q", "Seven", "Raffi", "Rios", "Jurati"
     ]
-    chosen_name = f"{random.choice(picard_names)}_{worker_id}"
+    chosen_name = agent_names[worker_id % len(agent_names)]
 
     try:
         env = SlitherEnv(
