@@ -227,45 +227,9 @@ class DDQNAgent:
                 else:          # threat from left → turn right
                     return 4   # medium right
 
-        # --- REFLEX 5: Body encirclement / body wall ahead ---
-        # Detects enemy body (type=0) in wide front arc (±90°, sectors 0-6 + 18-23)
-        # If multiple front sectors have close body, steer toward the gap
-        front_arc = list(range(0, 7)) + list(range(18, 24))  # ±90° (13 sectors)
-        body_close_count = 0
-        for s_i in front_arc:
-            if obstacle[s_i] > 0.5 and obs_type[s_i] >= 0:  # body or head within ~1000 units
-                body_close_count += 1
-
-        if body_close_count >= 4:  # 4+ sectors blocked = encirclement risk
-            # Find the safest sector in front arc (lowest obstacle score)
-            best_sector = min(front_arc, key=lambda s: obstacle[s])
-            best_obs = obstacle[best_sector]
-
-            if best_obs < 0.3:  # There's a gap — steer toward it
-                # Convert sector to turn action
-                # Sectors 0-6: right side (0=ahead, 6=90° right)
-                # Sectors 18-23: left side (23=15°left, 18=90° left)
-                if best_sector <= 6:
-                    # Gap is on the right
-                    if best_sector <= 1:
-                        return 0  # straight or gentle — gap is ahead
-                    elif best_sector <= 3:
-                        return 4  # medium right
-                    else:
-                        return 6  # sharp right
-                else:
-                    # Gap is on the left
-                    if best_sector >= 22:
-                        return 0  # gap is nearly ahead
-                    elif best_sector >= 20:
-                        return 3  # medium left
-                    else:
-                        return 5  # sharp left
-            else:
-                # No clear gap — U-turn toward least danger
-                left_total = sum(obstacle[18:24])
-                right_total = sum(obstacle[0:7])
-                return 7 if left_total <= right_total else 8
+        # --- REFLEX 5: DISABLED (was too aggressive, UTurn jumped to 30-46%) ---
+        # Body avoidance should be learned by the network via death_snake penalty.
+        # Reflexes 1-4 handle the most critical head-on scenarios.
 
         return None  # No reflex triggered — let the network decide
 
