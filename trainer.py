@@ -1471,6 +1471,9 @@ def train(args):
 
     # Initialize Agent
     agent = DDQNAgent(cfg)
+    if args.reflex5:
+        agent.reflex5_enabled = True
+        logger.info("[Config] REFLEX 5 (body encirclement) ENABLED")
 
     # Resume / Load Model
     start_episode = 0
@@ -2030,6 +2033,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-agents", type=int, default=5, help="Max agents for auto-scaling (default: 5)")
     parser.add_argument("--backend", choices=["selenium", "websocket"], default="selenium", help="Browser backend: selenium (default) or websocket")
     parser.add_argument("--ws-server-url", type=str, default="", help="WebSocket server URL override (e.g. ws://1.2.3.4:444/slither)")
+    parser.add_argument("--reflex5", action="store_true", help="Enable body encirclement reflex (aggressive, off by default)")
     parser.add_argument("--reset", action="store_true", help="Total reset: delete logs, CSV, checkpoints, events")
     parser.add_argument("--ai-supervisor", choices=["claude", "openai", "gemini", "ollama"], default=None, help="Enable AI Supervisor with chosen LLM provider")
     parser.add_argument("--ai-interval", type=int, default=200, help="AI Supervisor: consult every N episodes (default: 200)")

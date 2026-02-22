@@ -18,6 +18,7 @@ logger = logging.getLogger("slitherbot")
 class DDQNAgent:
     def __init__(self, config: Config):
         self.config = config
+        self.reflex5_enabled = False  # Body encirclement reflex (off by default)
 
         # Device selection: CUDA -> MPS -> CPU
         if torch.cuda.is_available():
@@ -227,9 +228,31 @@ class DDQNAgent:
                 else:          # threat from left → turn right
                     return 4   # medium right
 
-        # --- REFLEX 5: DISABLED (was too aggressive, UTurn jumped to 30-46%) ---
-        # Body avoidance should be learned by the network via death_snake penalty.
-        # Reflexes 1-4 handle the most critical head-on scenarios.
+        # --- REFLEX 5: Body encirclement (off by default, enable via reflex5_enabled) ---
+        if self.reflex5_enabled:
+            front_arc = list(range(0, 7)) + list(range(18, 24))  # ±90° (13 sectors)
+            body_close_count = 0
+            for s_i in front_arc:
+                if obstacle[s_i] > 0.5 and obs_type[s_i] >= 0:
+                    body_close_count += 1
+
+            if body_close_count >= 4:
+                best_sector = min(front_arc, key=lambda s: obstacle[s])
+                best_obs = obstacle[best_sector]
+
+                if best_obs < 0.3:  # Gap found — steer toward it
+                    if best_sector <= 6:
+                        if best_sector <= 1: return 0
+                        elif best_sector <= 3: return 4
+                        else: return 6
+                    else:
+                        if best_sector >= 22: return 0
+                        elif best_sector >= 20: return 3
+                        else: return 5
+                else:  # No gap — U-turn
+                    left_total = sum(obstacle[18:24])
+                    right_total = sum(obstacle[0:7])
+                    return 7 if left_total <= right_total else 8
 
         return None  # No reflex triggered — let the network decide
 
