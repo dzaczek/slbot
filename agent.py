@@ -353,9 +353,9 @@ class DDQNAgent:
         weights_batch = torch.tensor(is_weights, dtype=torch.float32).to(self.device)
         gamma_batch = torch.tensor(batch_gamma, dtype=torch.float32).to(self.device)
 
-        # Reward scaling (scale=1.0 preserves signal, clamp [-30,30] to preserve n-step returns)
+        # Reward scaling (scale=1.0 preserves signal, clamp asymmetric: deaths must hurt)
         reward_scale = max(self.config.opt.reward_scale, 1.0)
-        norm_rewards = torch.clamp(reward_batch / reward_scale, -30.0, 30.0)
+        norm_rewards = torch.clamp(reward_batch / reward_scale, -50.0, 30.0)
 
         if self.use_hybrid:
             # Unpack tuples: (matrix_u8, sectors_f32)
