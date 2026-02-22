@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-22 05:42:42  
-**Total Episodes:** 18654  
+**Generated:** 2026-02-22 06:44:04  
+**Total Episodes:** 18756  
 **Training Sessions:** 41
 
 ## Verdict: LEARNING (Confidence: 75%)
@@ -9,11 +9,11 @@
 **Goal Feasibility:** POSSIBLE (25-60%)
 
 ### Warnings
-- Loss very high (68.11) - unstable
+- Loss very high (105.95) - unstable
 
 ### Positive Signals
-- Rewards improving: +2736.0
-- Positive reward trend (slope=0.2867, R²=0.114)
+- Rewards improving: +2795.9
+- Positive reward trend (slope=0.2927, R²=0.113)
 - Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
@@ -23,35 +23,35 @@
 | S1 | FOOD_VECTOR | 2414 | 224.2 | 231.7 | 83.3 | 0.5339 | 0.1% | 65.8% | 34.0% |
 | S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.4505 | 0.1% | 70.5% | 28.9% |
 | S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.6197 | 0.1% | 97.6% | 2.3% |
-| S4 | MASS_MANAGEMENT | 14226 | 2038.0 | 439.4 | 138.0 | 0.5339 | 0.2% | 96.5% | 3.2% |
+| S4 | MASS_MANAGEMENT | 14328 | 2079.0 | 440.3 | 138.7 | 0.5331 | 0.2% | 96.6% | 3.2% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 1624.59 | 4563.77 | -35299.32 | 244.69 | 631.52 | 1674.75 | 6758.15 | 110327.55 |
-| Steps | 399.23 | 437.73 | 1.00 | 110.00 | 260.00 | 513.00 | 1408.35 | 2000.00 |
-| Food | 125.84 | 131.55 | 0.00 | 49.00 | 85.00 | 154.00 | 392.00 | 1669.00 |
-| Loss | 28.34 | 41.92 | 0.00 | 4.49 | 12.03 | 34.92 | 109.22 | 1097.61 |
-| Food/Step | 0.54 | 0.76 | 0.00 | 0.29 | 0.35 | 0.50 | 1.23 | 17.38 |
+| Reward | 1658.12 | 4721.65 | -35299.32 | 245.15 | 636.37 | 1689.19 | 6868.54 | 119096.58 |
+| Steps | 400.12 | 437.82 | 1.00 | 111.00 | 261.00 | 515.00 | 1408.25 | 2000.00 |
+| Food | 126.40 | 132.62 | 0.00 | 49.00 | 86.00 | 154.00 | 395.00 | 1669.00 |
+| Loss | 28.68 | 42.62 | 0.00 | 4.52 | 12.15 | 35.55 | 109.91 | 1097.61 |
+| Food/Step | 0.54 | 0.75 | 0.00 | 0.29 | 0.35 | 0.50 | 1.23 | 17.38 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 6048.17 | 10030.09 | -135.7274 | 0.0381 |
-| Last 100 | 7569.05 | 12341.50 | -66.1383 | 0.0239 |
-| Last 200 | 9957.97 | 16083.86 | -50.2395 | 0.0325 |
-| Last 500 | 8115.38 | 14792.63 | +5.9411 | 0.0034 |
-| Last 1000 | 6253.87 | 11848.50 | +5.9014 | 0.0207 |
+| Last 50 | 6492.57 | 10099.44 | +29.8700 | 0.0018 |
+| Last 100 | 7894.93 | 16030.38 | -66.4441 | 0.0143 |
+| Last 200 | 7714.61 | 14307.61 | -15.1037 | 0.0037 |
+| Last 500 | 8052.49 | 14684.78 | +3.3031 | 0.0011 |
+| Last 1000 | 6544.98 | 12588.00 | +5.8374 | 0.0179 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 29 | 0.2% | 433.4 | 2137.5 |
-| SnakeCollision | 17071 | 91.5% | 353.8 | 1688.3 |
-| MaxSteps | 1541 | 8.3% | 901.4 | 917.5 |
+| SnakeCollision | 17172 | 91.6% | 355.0 | 1717.7 |
+| MaxSteps | 1542 | 8.2% | 902.1 | 994.1 |
 | InvalidFrame | 1 | 0.0% | 1197.0 | -5534.5 |
 | BrowserError | 12 | 0.1% | 367.5 | 1133.1 |
 
@@ -214,7 +214,8 @@ Keep training. Monitor for sustained improvement.
 | 02-21 23:52 | 17800 | `food_reward`=3.0, `food_shaping`=0.08, `length_bonus`=0.08 | The agent has excellent food efficiency (0.57 vs healthy 0.25-0.40) but reward is declining (-1437) despite stable survival time. The high food intake suggests over-aggressive food seeking that may compromise survival positioning. Need to reduce food incentives and encourage more conservative play in Stage 4. |
 | 02-22 01:20 | 18000 | `food_reward`=2.5, `length_bonus`=0.12 | The agent is performing exceptionally well with food/step at 0.54 (well above healthy range), positive reward trend, and good survival time. The high food efficiency suggests food_reward may be too high, causing over-focus on food collection. In Stage 4 (Mass Management), we should encourage more strategic play by slightly reducing food incentive and increasing length bonus to reward sustained growth. |
 | 02-22 02:52 | 18200 | `food_reward`=2.0 | The agent is performing exceptionally well with very high food efficiency (0.51 vs healthy 0.25-0.40) and strong reward trend (+1481). However, the declining steps trend (-139) and rising loss suggest the agent may be becoming overaggressive in food collection, leading to riskier behavior. Reducing food_reward slightly will encourage more balanced risk-taking. |
+| 02-22 06:35 | 18600 | `lr`=7.5e-05 | The agent is performing exceptionally well with very high food efficiency (0.45 vs healthy 0.25-0.40) and strong positive trends in reward (+485), steps (+72), and Q-values. The 97.8% snake collision death rate is completely normal for slither.io. Loss is trending upward slightly, suggesting learning rate may be too high for this mature stage. |
 
-**Total consultations:** 71  
-**Most adjusted:** `enemy_proximity_penalty` (39x), `death_snake` (33x), `enemy_approach_penalty` (31x), `lr` (21x), `gamma` (8x), `food_reward` (8x), `length_bonus` (7x), `epsilon_target` (6x), `survival` (2x), `boost_penalty` (2x), `food_shaping` (2x), `wall_proximity_penalty` (1x)
+**Total consultations:** 72  
+**Most adjusted:** `enemy_proximity_penalty` (39x), `death_snake` (33x), `enemy_approach_penalty` (31x), `lr` (22x), `gamma` (8x), `food_reward` (8x), `length_bonus` (7x), `epsilon_target` (6x), `survival` (2x), `boost_penalty` (2x), `food_shaping` (2x), `wall_proximity_penalty` (1x)
 
