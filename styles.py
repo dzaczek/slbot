@@ -102,6 +102,7 @@ STYLES = {
                 "enemy_proximity_penalty": 2.0,   # was 0.8 — strongly avoid enemies
                 "enemy_approach_penalty": 0.8,    # was 0.3 — don't approach enemies
                 "boost_penalty": 0.5,             # was 1.0 — moderate boost cost
+                "mass_loss_penalty": 2.0,         # penalty per unit of mass lost (boost burns mass)
                 "starvation_penalty": 0.03,       # stronger hunger pressure
                 "starvation_grace_steps": 40,
                 "starvation_max_penalty": 3.0,
@@ -128,6 +129,7 @@ STYLES = {
                 "enemy_proximity_penalty": 2.0,   # very high — stay far from enemies
                 "enemy_approach_penalty": 1.0,    # heavily penalize closing distance
                 "boost_penalty": 0.2,             # discourage risky boost (save mass)
+                "mass_loss_penalty": 3.0,         # S5: strong mass protection
                 "starvation_penalty": 0.008,
                 "starvation_grace_steps": 100,    # more grace — longer episodes
                 "starvation_max_penalty": 1.5,

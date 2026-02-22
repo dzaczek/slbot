@@ -92,6 +92,7 @@ class SlitherEnv:
         # New reward components
         self.enemy_approach_penalty = 0.0
         self.boost_penalty = 0.0
+        self.mass_loss_penalty = 0.0
         self.prev_enemy_dist = None
 
         # Starvation penalty: escalating penalty when bot hasn't eaten for too long
@@ -151,6 +152,7 @@ class SlitherEnv:
         # New reward components
         self.enemy_approach_penalty = stage_config.get('enemy_approach_penalty', 0.0)
         self.boost_penalty = stage_config.get('boost_penalty', 0.0)
+        self.mass_loss_penalty = stage_config.get('mass_loss_penalty', 0.0)
 
         # Starvation penalty
         self.starvation_penalty = stage_config.get('starvation_penalty', 0.0)
@@ -738,6 +740,10 @@ class SlitherEnv:
             self.steps_since_food = 0  # reset starvation counter
         else:
             self.steps_since_food += 1
+            # Mass loss penalty: feel the pain of losing length (e.g. from boosting)
+            mass_lost = self.prev_length - new_len
+            if mass_lost > 0 and self.mass_loss_penalty > 0:
+                reward -= mass_lost * self.mass_loss_penalty
         
         # 3. Length bonus (Stage 3: reward for being a big snake)
         if self.length_bonus > 0 and new_len > 0:
