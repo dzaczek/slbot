@@ -99,12 +99,12 @@ STYLES = {
                 "wall_alert_dist": 2000,
                 "enemy_alert_dist": 2000,         # was 1000 — detect enemies earlier
                 "wall_proximity_penalty": 0.5,
-                "enemy_proximity_penalty": 2.0,   # was 0.8 — strongly avoid enemies
+                "enemy_proximity_penalty": 1.2,   # reduced from 2.0 to prevent panic loops
                 "enemy_approach_penalty": 0.8,    # was 0.3 — don't approach enemies
                 "boost_penalty": 0.5,             # was 1.0 — moderate boost cost
                 "mass_loss_penalty": 2.0,         # penalty per unit of mass lost (boost burns mass)
-                "starvation_penalty": 0.03,       # stronger hunger pressure
-                "starvation_grace_steps": 40,
+                "starvation_penalty": 0.10,       # increased from 0.03 to force movement
+                "starvation_grace_steps": 20,     # reduced from 40 to increase pressure
                 "starvation_max_penalty": 3.0,
                 "max_steps": 2000,
                 # Promote to S5 when avg_steps >= 1000 over 500 eps

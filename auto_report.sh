@@ -40,6 +40,10 @@ while true; do
     iteration=$((iteration + 1))
     log "--- Iteration #${iteration} ---"
 
+    # Step 0: Cleanup old checkpoints and events
+    log "Cleaning up old data..."
+    python3 "$SCRIPT_DIR/cleanup_data.py"
+
     # Step 1: Run analyzer
     log "Running analyzer..."
     python3 "$SCRIPT_DIR/training_progress_analyzer.py" --latest 2>&1 | tail -3
