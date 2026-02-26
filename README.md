@@ -580,7 +580,7 @@ All charts are saved to the `charts/` folder.
 
 ### Installation
 ```bash
-pip install torch selenium numpy pandas matplotlib
+pip install torch selenium numpy pandas matplotlib opencv-python-headless
 ```
 
 ### Run training
