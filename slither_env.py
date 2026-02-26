@@ -5,6 +5,7 @@ import os
 import time
 import json
 import matplotlib.pyplot as plt
+import cv2
 # Ensure matplotlib uses a non-interactive backend for headless environments
 plt.switch_backend('Agg')
 
@@ -255,22 +256,19 @@ class SlitherEnv:
 
     def _draw_thick_line(self, matrix, channel, x0, y0, x1, y1, width, value):
         """Draws a thick line by interpolating circles along the segment."""
-        radius = width / 2.0
-        dist = math.hypot(x1 - x0, y1 - y0)
+        pt1 = (int(round(x0)), int(round(y0)))
+        pt2 = (int(round(x1)), int(round(y1)))
+        thickness = int(round(width))
+        if thickness < 1: thickness = 1
 
-        if dist == 0:
-            self._draw_circle(matrix, channel, x0, y0, radius, value)
-            return
+        # Draw main line segment
+        cv2.line(matrix[channel], pt1, pt2, float(value), thickness, cv2.LINE_AA)
 
-        # Interpolate circles
-        # Step size should be radius to ensure coverage
-        steps = int(dist / max(0.5, radius * 0.5)) + 1
-
-        for i in range(steps + 1):
-            t = i / max(1, steps)
-            x = x0 + t * (x1 - x0)
-            y = y0 + t * (y1 - y0)
-            self._draw_circle(matrix, channel, x, y, radius, value)
+        # Draw rounded ends (capsule shape)
+        radius = int(round(width / 2.0))
+        if radius > 0:
+            cv2.circle(matrix[channel], pt1, radius, float(value), -1, cv2.LINE_AA)
+            cv2.circle(matrix[channel], pt2, radius, float(value), -1, cv2.LINE_AA)
 
     # =====================================================
     # DEATH CLASSIFICATION (Forensic approach)
