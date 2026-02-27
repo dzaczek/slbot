@@ -347,11 +347,11 @@ class DDQNAgent:
         # Unzip (6-element tuples: state, action, reward, next_state, done, gamma)
         batch_state, batch_action, batch_reward, batch_next, batch_done, batch_gamma = zip(*transitions)
 
-        action_batch = torch.tensor(batch_action, dtype=torch.long).unsqueeze(1).to(self.device)
-        reward_batch = torch.tensor(batch_reward, dtype=torch.float32).to(self.device)
-        done_batch = torch.tensor(batch_done, dtype=torch.float32).to(self.device)
-        weights_batch = torch.tensor(is_weights, dtype=torch.float32).to(self.device)
-        gamma_batch = torch.tensor(batch_gamma, dtype=torch.float32).to(self.device)
+        action_batch = torch.as_tensor(batch_action, dtype=torch.long, device=self.device).unsqueeze(1)
+        reward_batch = torch.as_tensor(batch_reward, dtype=torch.float32, device=self.device)
+        done_batch = torch.as_tensor(batch_done, dtype=torch.float32, device=self.device)
+        weights_batch = torch.as_tensor(is_weights, dtype=torch.float32, device=self.device)
+        gamma_batch = torch.as_tensor(batch_gamma, dtype=torch.float32, device=self.device)
 
         # Reward scaling (scale=1.0 preserves signal, clamp asymmetric: deaths must hurt)
         reward_scale = max(self.config.opt.reward_scale, 1.0)
@@ -359,10 +359,11 @@ class DDQNAgent:
 
         if self.use_hybrid:
             # Unpack tuples: (matrix_u8, sectors_f32)
-            s_matrices = torch.tensor(np.array([s[0] for s in batch_state]), dtype=torch.float32).to(self.device) / 255.0
-            s_sectors = torch.tensor(np.array([s[1] for s in batch_state]), dtype=torch.float32).to(self.device)
-            n_matrices = torch.tensor(np.array([s[0] for s in batch_next]), dtype=torch.float32).to(self.device) / 255.0
-            n_sectors = torch.tensor(np.array([s[1] for s in batch_next]), dtype=torch.float32).to(self.device)
+            # Optimize: create tensors directly on device
+            s_matrices = torch.as_tensor(np.array([s[0] for s in batch_state]), dtype=torch.float32, device=self.device) / 255.0
+            s_sectors = torch.as_tensor(np.array([s[1] for s in batch_state]), dtype=torch.float32, device=self.device)
+            n_matrices = torch.as_tensor(np.array([s[0] for s in batch_next]), dtype=torch.float32, device=self.device) / 255.0
+            n_sectors = torch.as_tensor(np.array([s[1] for s in batch_next]), dtype=torch.float32, device=self.device)
 
             q_values = self.policy_net(s_matrices, s_sectors).gather(1, action_batch)
 
@@ -374,8 +375,8 @@ class DDQNAgent:
                 expected_q_values = (next_q_values * gamma_n * (1 - done_batch)) + norm_rewards
         else:
             # Legacy: plain uint8 arrays
-            state_batch = torch.tensor(np.array(batch_state), dtype=torch.float32).to(self.device) / 255.0
-            next_batch = torch.tensor(np.array(batch_next), dtype=torch.float32).to(self.device) / 255.0
+            state_batch = torch.as_tensor(np.array(batch_state), dtype=torch.float32, device=self.device) / 255.0
+            next_batch = torch.as_tensor(np.array(batch_next), dtype=torch.float32, device=self.device) / 255.0
 
             q_values = self.policy_net(state_batch).gather(1, action_batch)
 

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from gen2.model import DuelingDQN
+from model import DuelingDQN
 
 def test_dueling_dqn_initialization():
     """Test that DuelingDQN initializes with different parameters."""
