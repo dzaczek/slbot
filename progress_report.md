@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-02-27 17:43:08  
-**Total Episodes:** 34951  
+**Generated:** 2026-02-27 18:44:53  
+**Total Episodes:** 35163  
 **Training Sessions:** 61
 
 ## Verdict: LEARNING (Confidence: 65%)
@@ -9,10 +9,10 @@
 **Goal Feasibility:** POSSIBLE (25-60%)
 
 ### Warnings
-- Loss very high (231.39) - unstable
+- Loss very high (246.24) - unstable
 
 ### Positive Signals
-- Rewards improving: +1745.7
+- Rewards improving: +1705.9
 - Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
@@ -23,34 +23,34 @@
 | S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.4505 | 0.1% | 70.5% | 28.9% |
 | S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.6197 | 0.1% | 97.6% | 2.3% |
 | S4 | MASS_MANAGEMENT | 25198 | 2469.3 | 424.1 | 144.5 | 0.5797 | 0.2% | 95.8% | 4.0% |
-| S5 | MASTERY_SURVIVAL | 5325 | 2467.3 | 511.4 | 140.1 | 0.4882 | 0.2% | 99.8% | 0.0% |
+| S5 | MASTERY_SURVIVAL | 5537 | 2432.8 | 507.5 | 139.1 | 0.4948 | 0.2% | 99.8% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 2193.69 | 5972.38 | -41038.86 | 277.74 | 818.33 | 2320.69 | 9121.09 | 166636.02 |
-| Steps | 417.90 | 480.97 | 1.00 | 106.00 | 247.00 | 538.00 | 1569.00 | 5342.00 |
-| Food | 136.48 | 146.89 | 0.00 | 49.00 | 91.00 | 171.00 | 432.00 | 4532.00 |
-| Loss | 2009179.66 | 31679301.18 | 0.00 | 10.22 | 46.74 | 130.24 | 544.44 | 1444364672.00 |
+| Reward | 2189.90 | 5956.81 | -41038.86 | 278.61 | 818.33 | 2316.11 | 9112.87 | 166636.02 |
+| Steps | 417.86 | 481.23 | 1.00 | 105.00 | 247.00 | 538.00 | 1569.00 | 5342.00 |
+| Food | 136.35 | 146.72 | 0.00 | 49.00 | 91.00 | 171.00 | 432.00 | 4532.00 |
+| Loss | 1997067.60 | 31584041.41 | 0.00 | 10.32 | 47.31 | 131.54 | 545.73 | 1444364672.00 |
 | Food/Step | 0.56 | 0.79 | 0.00 | 0.29 | 0.36 | 0.56 | 1.29 | 30.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 1464.78 | 1894.40 | -46.7687 | 0.1269 |
-| Last 100 | 1806.33 | 2090.95 | -19.2181 | 0.0704 |
-| Last 200 | 1729.14 | 2026.35 | +0.2456 | 0.0000 |
-| Last 500 | 1963.20 | 2473.94 | -1.4774 | 0.0074 |
-| Last 1000 | 2080.97 | 2543.64 | -0.5842 | 0.0044 |
+| Last 50 | 1585.24 | 2176.16 | +20.7950 | 0.0190 |
+| Last 100 | 1274.89 | 1789.44 | +15.7813 | 0.0648 |
+| Last 200 | 1541.64 | 2126.14 | -3.1598 | 0.0074 |
+| Last 500 | 1696.02 | 2163.66 | -1.0467 | 0.0049 |
+| Last 1000 | 1959.75 | 2498.10 | -1.0515 | 0.0148 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 60 | 0.2% | 482.4 | 3153.6 |
-| SnakeCollision | 32795 | 93.8% | 369.1 | 2280.0 |
+| SnakeCollision | 33007 | 93.9% | 369.4 | 2275.4 |
 | MaxSteps | 2079 | 5.9% | 1185.7 | 822.9 |
 | InvalidFrame | 3 | 0.0% | 1039.0 | -5119.0 |
 | BrowserError | 14 | 0.0% | 341.8 | 1110.4 |
@@ -143,7 +143,6 @@ Keep training. Monitor for sustained improvement.
 
 | Time | Episode | Changes | Reasoning |
 |------|---------|---------|----------|
-| 02-17 17:14 | 4400 | `death_snake`=-60.0, `epsilon_target`=0.3 | The agent is showing good learning progress with improving rewards and steps, but has concerning death patterns - 45.8% snake deaths in stage 1 suggests the agent is being too aggressive with sharp turns (39.6%) and needs better survival incentives. The high action entropy (0.899) indicates good exploration but may need slightly more focus. |
 | 02-17 18:54 | 4600 | `death_snake`=-75.0, `enemy_proximity_penalty`=2.0 | The agent is performing well in Stage 1 with strong reward trend (+152) and good food collection (89.75 avg). However, 55.6% snake collision deaths suggest the agent is being too aggressive or not learning proper avoidance. The high sharp turn usage (38.8%) indicates erratic movement patterns that may contribute to self-collisions. |
 | 02-17 19:42 | 4800 | `death_snake`=-85.0, `enemy_proximity_penalty`=1.5 | The agent is dying to snake collisions 67.8% of the time in Stage 1, which should focus on food collection. The high snake death rate and preference for sharp turns (39.3%) suggests the agent is being too aggressive. Need to increase snake death penalty and reduce enemy penalties to encourage safer food-seeking behavior. |
 | 02-17 20:25 | 5000 | `death_snake`=-95.0 | The agent is dying 80.8% from snake collisions in stage 1, which should focus on food collection. The high sharp turn usage (40.6%) and declining reward trend suggest the agent is struggling with basic navigation. The death penalty for snake collision needs to be more severe to discourage this behavior. |
@@ -243,7 +242,8 @@ Keep training. Monitor for sustained improvement.
 | 02-27 07:28 | 33000 | `lr`=4.5e-05, `survival`=0.5 | Training shows concerning regression with reward dropping -935 and steps decreasing -84. The agent has good food efficiency (0.27) but is dying earlier and performing worse. High loss trend (+255) and decreasing Q-values suggest learning instability. Reducing learning rate should stabilize training, and slightly increasing survival reward will encourage longer episodes. |
 | 02-27 11:04 | 33600 |  | Training is progressing excellently with strong positive reward and steps trends, healthy food efficiency, and decreasing loss. The agent is in Stage 5 and showing mature behavior with good action diversity. No changes needed as all metrics indicate stable, improving performance. |
 | 02-27 14:48 | 34200 |  | Training shows excellent progress with strong reward trend (+237), good survival time (563 steps), and healthy food intake (0.264 food/step). The snake is learning well in Stage 5. Loss is decreasing and Q-values are stable. High sharp turn usage (41.6%) suggests good maneuverability. No changes needed as all metrics indicate healthy learning. |
+| 02-27 18:18 | 34800 | `lr`=3.5e-05, `food_shaping`=0.075, `gamma`=0.995 | Training shows declining performance with reward and steps trending downward while loss increases. The agent is overusing sharp turns (38.6%) and U-turns, suggesting poor pathfinding. High action entropy indicates the policy is becoming less confident. Need to stabilize learning and improve decision quality. |
 
-**Total consultations:** 105  
-**Most adjusted:** `enemy_proximity_penalty` (42x), `lr` (39x), `death_snake` (33x), `enemy_approach_penalty` (33x), `food_reward` (19x), `gamma` (15x), `length_bonus` (15x), `epsilon_target` (7x), `boost_penalty` (7x), `food_shaping` (6x), `survival` (4x), `wall_proximity_penalty` (1x), `target_update_freq` (1x)
+**Total consultations:** 106  
+**Most adjusted:** `enemy_proximity_penalty` (42x), `lr` (40x), `death_snake` (33x), `enemy_approach_penalty` (33x), `food_reward` (19x), `gamma` (16x), `length_bonus` (15x), `epsilon_target` (7x), `boost_penalty` (7x), `food_shaping` (7x), `survival` (4x), `wall_proximity_penalty` (1x), `target_update_freq` (1x)
 
