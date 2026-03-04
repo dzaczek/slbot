@@ -1,18 +1,20 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-04 12:35:36  
-**Total Episodes:** 40113  
+**Generated:** 2026-03-04 13:37:46  
+**Total Episodes:** 40444  
 **Training Sessions:** 68
 
-## Verdict: LEARNING (Confidence: 65%)
+## Verdict: NOT LEARNING (Confidence: 35%)
 
-**Goal Feasibility:** POSSIBLE (25-60%)
+**Goal Feasibility:** VERY UNLIKELY (<5%)
+
+### Critical Issues
+- Rewards DECLINING: -1300.4
 
 ### Warnings
-- Loss very high (66327614.61) - unstable
+- Loss very high (73156359.31) - unstable
 
 ### Positive Signals
-- Rewards improving: +452.5
 - Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
@@ -23,35 +25,35 @@
 | S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.4505 | 0.1% | 70.5% | 28.9% |
 | S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.6197 | 0.1% | 97.6% | 2.3% |
 | S4 | MASS_MANAGEMENT | 25198 | 2469.3 | 424.1 | 144.5 | 0.5797 | 0.2% | 95.8% | 4.0% |
-| S5 | MASTERY_SURVIVAL | 10487 | 1953.3 | 444.9 | 126.7 | 0.5046 | 0.3% | 99.7% | 0.0% |
+| S5 | MASTERY_SURVIVAL | 10818 | -1298.1 | 464.0 | 124.9 | 0.5060 | 0.2% | 99.7% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 2094.52 | 5612.86 | -41038.86 | 296.58 | 822.21 | 2225.87 | 8528.22 | 166636.02 |
-| Steps | 412.54 | 473.03 | 1.00 | 105.00 | 244.00 | 534.00 | 1507.00 | 5342.00 |
-| Food | 133.46 | 142.09 | 0.00 | 48.00 | 89.00 | 168.00 | 417.00 | 4532.00 |
-| Loss | 4538115.51 | 48058854.47 | 0.00 | 12.88 | 64.03 | 199.76 | 9194.08 | 3293601792.00 |
+| Reward | 1223.66 | 99890.13 | -11627203.64 | 296.13 | 816.65 | 2207.12 | 8482.47 | 166636.02 |
+| Steps | 417.92 | 978.90 | 1.00 | 104.00 | 243.00 | 531.00 | 1499.00 | 99999.00 |
+| Food | 132.92 | 141.70 | 0.00 | 48.00 | 89.00 | 167.00 | 416.00 | 4532.00 |
+| Loss | 4776187.59 | 48314407.80 | 0.00 | 13.05 | 65.16 | 207.92 | 490989.87 | 3293601792.00 |
 | Food/Step | 0.56 | 0.78 | 0.00 | 0.29 | 0.36 | 0.55 | 1.28 | 30.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 454.37 | 313.39 | -2.7749 | 0.0163 |
-| Last 100 | 458.59 | 310.89 | -0.5710 | 0.0028 |
-| Last 200 | 593.10 | 633.76 | -2.5228 | 0.0528 |
-| Last 500 | 591.08 | 574.27 | -0.1348 | 0.0011 |
-| Last 1000 | 606.16 | 576.64 | -0.1522 | 0.0058 |
+| Last 50 | 655.53 | 727.96 | +1.5763 | 0.0010 |
+| Last 100 | -346841.63 | 1975202.57 | +10923.4678 | 0.0255 |
+| Last 200 | -173060.27 | 1407449.01 | -1240.7491 | 0.0026 |
+| Last 500 | -68872.11 | 894204.68 | -579.4949 | 0.0087 |
+| Last 1000 | -34144.00 | 633251.30 | -176.5758 | 0.0065 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 78 | 0.2% | 549.9 | 3035.1 |
-| SnakeCollision | 37934 | 94.6% | 369.8 | 2162.9 |
-| MaxSteps | 2079 | 5.2% | 1185.7 | 822.9 |
+| SnakeCollision | 38262 | 94.6% | 368.0 | 2149.8 |
+| MaxSteps | 2082 | 5.1% | 1328.0 | -15861.6 |
 | InvalidFrame | 3 | 0.0% | 1039.0 | -5119.0 |
 | BrowserError | 19 | 0.0% | 485.6 | 1930.3 |
 
@@ -60,11 +62,11 @@
 | Target | Best | Goal | Progress |
 |--------|------|------|----------|
 | Points | 4532 | 6,000 | 75.5% |
-| Survival | 5342 steps | 1,800 steps | 296.8% |
+| Survival | 99999 steps | 1,800 steps | 5555.5% |
 
 ## Recommendations
 
-Keep training. Monitor for sustained improvement.
+Major changes needed: LR, reward structure, curriculum.
 
 1. No critical issues. Continue training.
 
