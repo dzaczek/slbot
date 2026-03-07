@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-07 10:39:12  
-**Total Episodes:** 47995  
+**Generated:** 2026-03-07 11:40:54  
+**Total Episodes:** 48197  
 **Training Sessions:** 76
 
 ## Verdict: NOT LEARNING (Confidence: 40%)
@@ -9,10 +9,10 @@
 **Goal Feasibility:** VERY UNLIKELY (<5%)
 
 ### Critical Issues
-- Rewards DECLINING: -4355.7
+- Rewards DECLINING: -4335.8
 
 ### Positive Signals
-- Epsilon low (0.085) - exploiting policy
+- Epsilon low (0.081) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
@@ -22,35 +22,35 @@
 | S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.4505 | 0.1% | 70.5% | 28.9% |
 | S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.6197 | 0.1% | 97.6% | 2.3% |
 | S4 | MASS_MANAGEMENT | 25198 | 2469.3 | 424.1 | 144.5 | 0.5797 | 0.2% | 95.8% | 4.0% |
-| S5 | MASTERY_SURVIVAL | 18369 | -3466.5 | 432.3 | 117.4 | 0.5170 | 0.3% | 99.6% | 0.1% |
+| S5 | MASTERY_SURVIVAL | 18571 | -3414.8 | 431.6 | 117.6 | 0.5183 | 0.3% | 99.5% | 0.1% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | -2.97 | 169861.38 | -18203767.65 | 335.90 | 878.70 | 2196.00 | 7860.04 | 166636.02 |
-| Steps | 413.06 | 1286.59 | 1.00 | 103.00 | 239.00 | 513.00 | 1411.00 | 99999.00 |
-| Food | 128.79 | 136.30 | 0.00 | 47.00 | 86.00 | 161.00 | 398.00 | 4532.00 |
-| Loss | 9031757.75 | 108438282.35 | 0.00 | 17.41 | 95.42 | 684.14 | 15831945.90 | 12494751744.00 |
+| Reward | 2.41 | 169505.09 | -18203767.65 | 335.92 | 878.57 | 2193.84 | 7840.80 | 166636.02 |
+| Steps | 412.86 | 1284.20 | 1.00 | 103.00 | 239.00 | 513.00 | 1410.20 | 99999.00 |
+| Food | 128.80 | 136.28 | 0.00 | 47.00 | 86.00 | 161.00 | 398.00 | 4532.00 |
+| Loss | 8993904.46 | 108212377.23 | 0.00 | 16.97 | 94.36 | 671.20 | 15609168.00 | 12494751744.00 |
 | Food/Step | 0.55 | 0.78 | 0.00 | 0.29 | 0.36 | 0.53 | 1.25 | 30.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 2041.40 | 1828.70 | -9.1774 | 0.0052 |
-| Last 100 | 2120.82 | 1939.28 | -1.9462 | 0.0008 |
-| Last 200 | 1907.21 | 1751.66 | +2.4546 | 0.0065 |
-| Last 500 | 1878.92 | 2041.39 | -1.0968 | 0.0060 |
-| Last 1000 | 2005.01 | 2063.03 | -0.3198 | 0.0020 |
+| Last 50 | 1401.13 | 1624.33 | -62.6867 | 0.3102 |
+| Last 100 | 1428.79 | 1597.76 | -5.7780 | 0.0109 |
+| Last 200 | 1286.09 | 1399.24 | +1.4813 | 0.0037 |
+| Last 500 | 1521.90 | 1534.29 | -0.2405 | 0.0005 |
+| Last 1000 | 1865.33 | 2039.46 | -1.0753 | 0.0232 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 106 | 0.2% | 665.7 | 3437.1 |
-| SnakeCollision | 45768 | 95.4% | 361.7 | 2070.7 |
-| MaxSteps | 2097 | 4.4% | 1519.8 | -45447.5 |
+| SnakeCollision | 45965 | 95.4% | 361.5 | 2066.7 |
+| MaxSteps | 2102 | 4.4% | 1520.9 | -45324.3 |
 | InvalidFrame | 3 | 0.0% | 1039.0 | -5119.0 |
 | BrowserError | 21 | 0.0% | 480.6 | 1945.4 |
 
@@ -65,7 +65,7 @@
 
 Major changes needed: LR, reward structure, curriculum.
 
-1. Average reward negative. Reduce penalties or boost food_reward.
+1. No critical issues. Continue training.
 
 ## Charts
 
