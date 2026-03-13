@@ -111,6 +111,7 @@ class Episode:
     act_uturn: float = 0.0
     act_boost: float = 0.0
     num_agents: int = 0
+    peak_length: int = 0
     global_idx: int = 0
 
 @dataclass
@@ -266,6 +267,7 @@ def parse_csv(csv_path: str) -> List[Episode]:
                         act_uturn=_safe_float(parts, 20),
                         act_boost=_safe_float(parts, 21),
                         num_agents=_safe_int(parts, 22),
+                        peak_length=_safe_int(parts, 23),
                     )
                 else:
                     if len(parts) < 10:
@@ -1067,6 +1069,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     stages_arr = np.array([e.stage for e in episodes])
     causes_arr = np.array([e.cause for e in episodes])
     food_per_step = np.array([e.food_per_step for e in episodes])
+    peak_lengths = np.array([e.peak_length for e in episodes], dtype=float)
 
     # CSV-only fields
     lr_arr = np.array([e.lr for e in episodes]) if episodes[0].lr > 0 or any(e.lr > 0 for e in episodes) else None
@@ -2559,12 +2562,12 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-    fig = plt.figure(figsize=(16, 20))
-    fig.suptitle('STEPS vs FOOD vs EPISODE (3D)', fontsize=16, fontweight='bold', y=0.95)
+    fig = plt.figure(figsize=(14, 28))
+    fig.suptitle('STEPS vs FOOD vs EPISODE (3D)', fontsize=16, fontweight='bold', y=0.97)
     ax = fig.add_subplot(111, projection='3d')
 
-    # Stretch Episode axis (Z) to 2× for readability
-    ax.set_box_aspect([1, 1, 2])
+    # Stretch Episode axis (Z) to 2.5× for tall readable proportions
+    ax.set_box_aspect([1, 1, 2.5])
 
     # Color by stage
     stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
@@ -2589,7 +2592,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     ax.set_xlabel('Steps', fontsize=11, labelpad=10)
     ax.set_ylabel('Food', fontsize=11, labelpad=10)
     ax.set_zlabel('Episode', fontsize=11, labelpad=10)
-    ax.view_init(elev=25, azim=135)
+    ax.view_init(elev=20, azim=135)
 
     # Stage legend
     from matplotlib.lines import Line2D
@@ -2633,12 +2636,12 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     # CHART 19: 3D BUBBLE — STEPS vs REWARD vs EPISODE (size=Food)
     # ──────────────────────────────────────────────────
-    fig = plt.figure(figsize=(16, 20))
-    fig.suptitle('STEPS vs REWARD vs EPISODE — Bubble (size=Food)', fontsize=16, fontweight='bold', y=0.95)
+    fig = plt.figure(figsize=(14, 28))
+    fig.suptitle('STEPS vs REWARD vs EPISODE — Bubble (size=Food)', fontsize=16, fontweight='bold', y=0.97)
     ax = fig.add_subplot(111, projection='3d')
 
-    # Stretch Episode axis (Z) to 2×
-    ax.set_box_aspect([1, 1, 2])
+    # Stretch Episode axis (Z) to 2.5×
+    ax.set_box_aspect([1, 1, 2.5])
 
     stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
 
@@ -2668,7 +2671,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     ax.set_xlabel('Steps', fontsize=11, labelpad=10)
     ax.set_ylabel('Reward', fontsize=11, labelpad=10)
     ax.set_zlabel('Episode', fontsize=11, labelpad=10)
-    ax.view_init(elev=25, azim=135)
+    ax.view_init(elev=20, azim=135)
 
     from matplotlib.lines import Line2D
     legend_elems = [Line2D([0], [0], marker='o', color='w', markerfacecolor=STAGE_COLORS_HEX.get(s, '#888'),
@@ -2686,7 +2689,259 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     _save_rotating_gif(fig, ax, 'chart_19_bubble_training.gif')
     plt.close(fig)
 
-    print(c(f'\n  Total: up to 19 chart files + 2 GIFs generated.', C.GRN, C.B))
+    # ──────────────────────────────────────────────────
+    # CHART 20: PEAK LENGTH (SNAKE SIZE) ANALYSIS
+    # ──────────────────────────────────────────────────
+    if peak_lengths.max() > 0:
+        fig, axes = plt.subplots(2, 2, figsize=(18, 12))
+        fig.suptitle('SNAKE SIZE (PEAK LENGTH) ANALYSIS', fontsize=16, fontweight='bold', y=0.98)
+        fig.patch.set_facecolor('#0d1117')
+        for ax_row in axes:
+            for ax in ax_row:
+                ax.set_facecolor('#161b22')
+                ax.tick_params(colors='#c9d1d9')
+                for spine in ax.spines.values():
+                    spine.set_color('#30363d')
+
+        # 20a. Peak Length over time with SMA
+        ax = axes[0, 0]
+        _add_stage_bands(ax, ep_nums, stages_arr, branch_points)
+        ax.plot(ep_nums, peak_lengths, alpha=0.15, color='#484f58', linewidth=0.5)
+        if N > sma_w:
+            sma_len = moving_average(peak_lengths, sma_w)
+            x_sma = ep_nums[sma_w - 1:]
+            ax.plot(x_sma, sma_len, color='#da70d6', linewidth=2, label=f'SMA-{sma_w}')
+        ax.set_title('Peak Length Over Time', color='#c9d1d9', fontsize=12)
+        ax.set_xlabel('Episode', color='#8b949e')
+        ax.set_ylabel('Peak Length', color='#8b949e')
+        ax.legend(facecolor='#161b22', edgecolor='#30363d', labelcolor='#c9d1d9')
+
+        # 20b. Peak Length per stage (violin/box)
+        ax = axes[0, 1]
+        unique_stages = sorted(set(stages_arr))
+        stage_data = [peak_lengths[stages_arr == s] for s in unique_stages]
+        stage_data = [d for d in stage_data if len(d) > 0]
+        stage_labels = [f'S{s}' for s in unique_stages if len(peak_lengths[stages_arr == s]) > 0]
+        if stage_data:
+            bp = ax.boxplot(stage_data, labels=stage_labels, patch_artist=True,
+                           boxprops=dict(facecolor='#238636', alpha=0.6),
+                           medianprops=dict(color='#f0883e', linewidth=2),
+                           whiskerprops=dict(color='#8b949e'),
+                           capprops=dict(color='#8b949e'),
+                           flierprops=dict(markerfacecolor='#8b949e', markersize=2))
+        ax.set_title('Peak Length by Stage', color='#c9d1d9', fontsize=12)
+        ax.set_xlabel('Stage', color='#8b949e')
+        ax.set_ylabel('Peak Length', color='#8b949e')
+
+        # 20c. Peak Length vs Steps scatter (correlation)
+        ax = axes[1, 0]
+        scatter_colors = [STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr]
+        ax.scatter(steps, peak_lengths, c=scatter_colors, alpha=0.3, s=8)
+        if N > sma_w:
+            sma_s = moving_average(steps, sma_w)
+            sma_l = moving_average(peak_lengths, sma_w)
+            ax.plot(sma_s, sma_l, color='#f0883e', linewidth=2, label=f'SMA-{sma_w}')
+        ax.set_title('Peak Length vs Steps (composite signal)', color='#c9d1d9', fontsize=12)
+        ax.set_xlabel('Steps', color='#8b949e')
+        ax.set_ylabel('Peak Length', color='#8b949e')
+        # Correlation coefficient
+        if N > 5:
+            corr = np.corrcoef(steps, peak_lengths)[0, 1]
+            ax.text(0.02, 0.95, f'r={corr:.3f}', transform=ax.transAxes,
+                    color='#f0883e', fontsize=11, fontweight='bold', va='top')
+        ax.legend(facecolor='#161b22', edgecolor='#30363d', labelcolor='#c9d1d9')
+
+        # 20d. Peak Length vs Food scatter
+        ax = axes[1, 1]
+        ax.scatter(food, peak_lengths, c=scatter_colors, alpha=0.3, s=8)
+        if N > sma_w:
+            sma_f = moving_average(food, sma_w)
+            ax.plot(sma_f, sma_l, color='#58a6ff', linewidth=2, label=f'SMA-{sma_w}')
+        ax.set_title('Peak Length vs Food (eating drives growth)', color='#c9d1d9', fontsize=12)
+        ax.set_xlabel('Food Eaten', color='#8b949e')
+        ax.set_ylabel('Peak Length', color='#8b949e')
+        if N > 5:
+            corr = np.corrcoef(food, peak_lengths)[0, 1]
+            ax.text(0.02, 0.95, f'r={corr:.3f}', transform=ax.transAxes,
+                    color='#58a6ff', fontsize=11, fontweight='bold', va='top')
+        ax.legend(facecolor='#161b22', edgecolor='#30363d', labelcolor='#c9d1d9')
+
+        fig.tight_layout(rect=[0, 0, 1, 0.96])
+        _save(fig, 'chart_20_peak_length.png')
+    else:
+        print(c("  chart_20 skipped: no peak_length data", C.YEL))
+
+    # ──────────────────────────────────────────────────
+    # INTERACTIVE HTML 3D CHARTS (Plotly.js — standalone, works on GitHub Pages)
+    # ──────────────────────────────────────────────────
+    def _generate_interactive_3d_html():
+        """Generate standalone HTML files with interactive 3D scatter plots using Plotly.js CDN."""
+
+        # Subsample for performance (max 8000 points)
+        max_pts = 8000
+        if N > max_pts:
+            idx = np.linspace(0, N - 1, max_pts, dtype=int)
+        else:
+            idx = np.arange(N)
+
+        s_steps = steps[idx]
+        s_food = food[idx]
+        s_rewards = rewards[idx]
+        s_eps = ep_nums[idx]
+        s_stages = stages_arr[idx]
+
+        stage_color_map = {1: '#ff6666', 2: '#ffaa00', 3: '#00ccff', 4: '#00ff88', 5: '#ff66ff', 6: '#ff3333'}
+        s_colors = [stage_color_map.get(s, '#888888') for s in s_stages]
+
+        # SMA line data
+        sma_data_18 = ''
+        sma_data_19 = ''
+        if N > sma_w:
+            sma_steps_arr = moving_average(steps, sma_w)
+            sma_food_arr = moving_average(food, sma_w)
+            sma_rewards_arr = moving_average(rewards, sma_w)
+            sma_ep_arr = ep_nums[sma_w - 1:]
+            # Subsample SMA too
+            sma_n = len(sma_ep_arr)
+            sma_max = 2000
+            if sma_n > sma_max:
+                si = np.linspace(0, sma_n - 1, sma_max, dtype=int)
+            else:
+                si = np.arange(sma_n)
+            sma_data_18 = f"""{{
+                x: {sma_steps_arr[si].tolist()},
+                y: {sma_food_arr[si].tolist()},
+                z: {sma_ep_arr[si].tolist()},
+                mode: 'lines',
+                type: 'scatter3d',
+                name: 'SMA-{sma_w}',
+                line: {{color: '#f0883e', width: 4}},
+                hoverinfo: 'text',
+                text: {[f'Ep {int(e)}<br>Steps={s:.0f}<br>Food={f:.0f}' for e, s, f in zip(sma_ep_arr[si], sma_steps_arr[si], sma_food_arr[si])]},
+            }}"""
+            sma_data_19 = f"""{{
+                x: {sma_steps_arr[si].tolist()},
+                y: {sma_rewards_arr[si].tolist()},
+                z: {sma_ep_arr[si].tolist()},
+                mode: 'lines',
+                type: 'scatter3d',
+                name: 'SMA-{sma_w}',
+                line: {{color: '#f0883e', width: 4}},
+                hoverinfo: 'text',
+                text: {[f'Ep {int(e)}<br>Steps={s:.0f}<br>Reward={r:.1f}' for e, s, r in zip(sma_ep_arr[si], sma_steps_arr[si], sma_rewards_arr[si])]},
+            }}"""
+
+        # Hover text
+        hover_18 = [f'Ep {int(e)}<br>Steps={int(s)}<br>Food={int(f)}<br>Stage {int(st)}'
+                     for e, s, f, st in zip(s_eps, s_steps, s_food, s_stages)]
+        hover_19 = [f'Ep {int(e)}<br>Steps={int(s)}<br>Reward={r:.1f}<br>Food={int(f)}<br>Stage {int(st)}'
+                     for e, s, r, f, st in zip(s_eps, s_steps, s_rewards, s_food, s_stages)]
+
+        # Bubble sizes for chart 19
+        f_min, f_max = float(s_food.min()), float(s_food.max())
+        if f_max > f_min:
+            bsizes = (3 + ((s_food - f_min) / (f_max - f_min)) * 10).tolist()
+        else:
+            bsizes = [5] * len(s_food)
+
+        # Stage legend — build unique stages traces for proper legend
+        unique_stages = sorted(set(s_stages))
+
+        def _build_stage_traces(x_data, y_data, z_data, hover_texts, colors, sizes=None):
+            traces = []
+            for stg in unique_stages:
+                mask = [i for i, s in enumerate(s_stages) if s == stg]
+                if not mask:
+                    continue
+                trace = f"""{{
+                    x: {[float(x_data[i]) for i in mask]},
+                    y: {[float(y_data[i]) for i in mask]},
+                    z: {[float(z_data[i]) for i in mask]},
+                    mode: 'markers',
+                    type: 'scatter3d',
+                    name: 'Stage {stg}',
+                    marker: {{
+                        color: '{stage_color_map.get(stg, "#888")}',
+                        size: {[sizes[i] for i in mask] if sizes else 3},
+                        opacity: 0.4,
+                    }},
+                    hoverinfo: 'text',
+                    text: {[hover_texts[i] for i in mask]},
+                }}"""
+                traces.append(trace)
+            return ',\n'.join(traces)
+
+        html_template = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  body {{ margin: 0; padding: 0; background: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }}
+  #chart {{ width: 100vw; height: 100vh; }}
+  h1 {{ text-align: center; padding: 12px 0 0; margin: 0; font-size: 18px; color: #58a6ff; }}
+  .hint {{ text-align: center; font-size: 12px; color: #8b949e; margin: 4px 0 0; }}
+</style>
+</head>
+<body>
+<h1>{title}</h1>
+<p class="hint">Scroll to zoom &bull; Drag to rotate &bull; Double-click to reset</p>
+<div id="chart"></div>
+<script>
+var data = [{traces}];
+var layout = {{
+    scene: {{
+        xaxis: {{ title: '{xlabel}', color: '#8b949e', gridcolor: '#21262d' }},
+        yaxis: {{ title: '{ylabel}', color: '#8b949e', gridcolor: '#21262d' }},
+        zaxis: {{ title: 'Episode', color: '#8b949e', gridcolor: '#21262d' }},
+        aspectratio: {{ x: 1, y: 1, z: 3 }},
+        bgcolor: '#0d1117',
+        camera: {{ eye: {{ x: 1.8, y: 1.8, z: 0.6 }} }},
+    }},
+    paper_bgcolor: '#0d1117',
+    font: {{ color: '#c9d1d9' }},
+    legend: {{ bgcolor: 'rgba(13,17,23,0.8)', bordercolor: '#30363d', borderwidth: 1 }},
+    margin: {{ l: 0, r: 0, t: 10, b: 0 }},
+}};
+Plotly.newPlot('chart', data, layout, {{responsive: true}});
+</script>
+</body>
+</html>"""
+
+        # Chart 18 interactive: Steps vs Food vs Episode
+        traces_18 = _build_stage_traces(s_steps, s_food, s_eps, hover_18, s_colors)
+        if sma_data_18:
+            traces_18 += ',\n' + sma_data_18
+        html_18 = html_template.format(
+            title='Steps vs Food vs Episode (Interactive 3D)',
+            traces=traces_18,
+            xlabel='Steps',
+            ylabel='Food',
+        )
+        path_18 = os.path.join(charts_dir, 'chart_18_interactive.html')
+        with open(path_18, 'w') as f:
+            f.write(html_18)
+        print(c(f'  Chart saved: charts/chart_18_interactive.html', C.GRN))
+
+        # Chart 19 interactive: Steps vs Reward vs Episode (bubble=food)
+        traces_19 = _build_stage_traces(s_steps, s_rewards, s_eps, hover_19, s_colors, sizes=bsizes)
+        if sma_data_19:
+            traces_19 += ',\n' + sma_data_19
+        html_19 = html_template.format(
+            title='Steps vs Reward vs Episode — Bubble (Interactive 3D)',
+            traces=traces_19,
+            xlabel='Steps',
+            ylabel='Reward',
+        )
+        path_19 = os.path.join(charts_dir, 'chart_19_interactive.html')
+        with open(path_19, 'w') as f:
+            f.write(html_19)
+        print(c(f'  Chart saved: charts/chart_19_interactive.html', C.GRN))
+
+    _generate_interactive_3d_html()
+
+    print(c(f'\n  Total: up to 19 chart files + 2 GIFs + 2 interactive HTML generated.', C.GRN, C.B))
 
 
 # ═══════════════════════════════════════════════════════
@@ -2777,8 +3032,8 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
         # Stage breakdown
         unique_stages = sorted(set(stages_arr))
         f.write("## Curriculum Stage Breakdown\n\n")
-        f.write("| Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Food/Step | Wall% | Snake% | MaxSteps% |\n")
-        f.write("|-------|------|----------|------------|-----------|----------|-----------|-------|--------|----------|\n")
+        f.write("| Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Avg PkLen | Food/Step | Wall% | Snake% | MaxSteps% |\n")
+        f.write("|-------|------|----------|------------|-----------|----------|-----------|-----------|-------|--------|----------|\n")
         for s in unique_stages:
             mask = stages_arr == s
             s_eps = [e for e in episodes if e.stage == s]
@@ -2788,9 +3043,10 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             sp = np.sum(sc == 'SnakeCollision') / n * 100
             mp = np.sum(sc == 'MaxSteps') / n * 100
             avg_fps = np.mean([e.food_per_step for e in s_eps])
+            avg_pkl = np.mean(peak_lengths[mask])
             f.write(f"| S{s} | {STAGE_NAMES.get(s, '?')} | {n} | "
                     f"{np.mean(rewards[mask]):.1f} | {np.mean(steps[mask]):.1f} | "
-                    f"{np.mean(food[mask]):.1f} | {avg_fps:.4f} | "
+                    f"{np.mean(food[mask]):.1f} | {avg_pkl:.1f} | {avg_fps:.4f} | "
                     f"{wp:.1f}% | {sp:.1f}% | {mp:.1f}% |\n")
         f.write("\n")
 
@@ -2799,7 +3055,8 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
         f.write("| Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |\n")
         f.write("|--------|------|-----|-----|-----|--------|-----|-----|-----|\n")
         for name, data in [('Reward', rewards), ('Steps', steps.astype(float)),
-                           ('Food', food.astype(float)), ('Loss', losses),
+                           ('Food', food.astype(float)), ('PeakLength', peak_lengths),
+                           ('Loss', losses),
                            ('Food/Step', np.array([e.food_per_step for e in episodes]))]:
             p = compute_percentiles(data)
             f.write(f"| {name} | {p['mean']:.2f} | {p['std']:.2f} | {p['min']:.2f} | "
@@ -2930,7 +3187,24 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('charts/chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D static)'),
             ('charts/chart_19_bubble_training.gif', 'Steps vs Reward vs Episode — Bubble (3D rotating)'),
             ('charts/chart_19_bubble_training.png', 'Steps vs Reward vs Episode — Bubble (3D static)'),
+            ('charts/chart_20_peak_length.png', 'Snake Size (Peak Length) Analysis'),
         ]
+        # Add links to interactive HTML versions
+        interactive_files = [
+            ('charts/chart_18_interactive.html', 'Steps vs Food vs Episode (Interactive 3D)'),
+            ('charts/chart_19_interactive.html', 'Steps vs Reward vs Episode (Interactive 3D)'),
+        ]
+        has_interactive = False
+        for fname, title in interactive_files:
+            ipath = os.path.join(chart_dir, fname)
+            if os.path.exists(ipath):
+                if not has_interactive:
+                    f.write("### Interactive 3D Charts\n")
+                    f.write("Open in browser for zoom, rotate, and hover details:\n\n")
+                    has_interactive = True
+                f.write(f"- [{title}]({fname})\n")
+        if has_interactive:
+            f.write("\n")
         for fname, title in chart_files:
             chart_path = os.path.join(chart_dir, fname)
             if os.path.exists(chart_path):

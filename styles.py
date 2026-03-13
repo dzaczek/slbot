@@ -107,17 +107,20 @@ STYLES = {
                 "starvation_grace_steps": 20,     # reduced from 40 to increase pressure
                 "starvation_max_penalty": 3.0,
                 "max_steps": 2000,
-                # Promote to S5 when avg_steps >= 1000 over 500 eps
-                "promote_metric": "avg_steps",
-                "promote_threshold": 1000,
+                # Promote: avg_steps >= 1000 AND avg_peak_length >= 30 (must actually grow)
+                "promote_metric": "compound",
+                "promote_conditions": {
+                    "avg_steps": 1000,
+                    "avg_peak_length": 30,
+                },
                 "promote_window": 500,
             },
             5: {
                 "name": "MASTERY_SURVIVAL",
-                "gamma": 0.99,                    # far-sighted: long-term survival matters
+                "gamma": 0.95,                    # was 0.99 — reduced to prevent Q-value explosion
                 "food_reward": 8.0,               # strong food drive — grow big
                 "food_shaping": 0.05,             # mild approach shaping (don't chase blindly)
-                "survival": 0.4,                  # high per-step survival reward
+                "survival": 0.2,                  # was 0.4 — reduced: too much survival reward inflates Q-values
                 "survival_escalation": 0.0005,    # gentle escalation — reward living longer
                 "death_wall": -45,                # wall death severely punished
                 "death_snake": -50,               # snake collision = worst outcome
@@ -126,17 +129,20 @@ STYLES = {
                 "wall_alert_dist": 2500,
                 "enemy_alert_dist": 2500,         # wide enemy radar — avoid early
                 "wall_proximity_penalty": 0.8,
-                "enemy_proximity_penalty": 2.0,   # very high — stay far from enemies
-                "enemy_approach_penalty": 1.0,    # heavily penalize closing distance
+                "enemy_proximity_penalty": 1.5,   # was 2.0 — slightly reduced to prevent panic turns
+                "enemy_approach_penalty": 0.8,    # was 1.0 — reduced
                 "boost_penalty": 0.2,             # discourage risky boost (save mass)
                 "mass_loss_penalty": 3.0,         # S5: strong mass protection
                 "starvation_penalty": 0.008,
                 "starvation_grace_steps": 100,    # more grace — longer episodes
                 "starvation_max_penalty": 1.5,
-                "max_steps": 99999,               # no artificial limit
-                # Promote to S6 when surviving avg 3500 steps over 500 eps
-                "promote_metric": "avg_steps",
-                "promote_threshold": 3500,
+                "max_steps": 2000,                # was 99999 — cap to prevent unbounded Q-values
+                # Promote: avg_steps >= 1500 AND avg_peak_length >= 80 (serious growth)
+                "promote_metric": "compound",
+                "promote_conditions": {
+                    "avg_steps": 1500,
+                    "avg_peak_length": 80,
+                },
                 "promote_window": 500,
             },
             6: {

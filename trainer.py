@@ -83,10 +83,13 @@ class TrainingDashboard:
         self.q_mean_history = deque(maxlen=100)
         self.td_error_history = deque(maxlen=100)
         self.food_ratio_history = deque(maxlen=100)
+        self.length_history = deque(maxlen=100)
         # Long-term history for learning progress (500 episodes)
         self.long_steps = deque(maxlen=500)
         self.long_reward = deque(maxlen=500)
         self.long_food = deque(maxlen=500)
+        self.long_length = deque(maxlen=500)
+        self.long_length_sma = deque(maxlen=500)
         self.long_survival_sma = deque(maxlen=500)  # SMA20 of steps
         self.long_reward_sma = deque(maxlen=500)    # SMA20 of reward
         self.events = deque(maxlen=12)
@@ -167,7 +170,8 @@ class TrainingDashboard:
         self._refresh()
 
     def update(self, episode, stage, stage_name, epsilon, lr, loss, q_mean, q_max,
-               td_error, grad_norm, reward, steps, food, cause, action_pcts, num_agents):
+               td_error, grad_norm, reward, steps, food, cause, action_pcts, num_agents,
+               peak_length=0):
         self.episode = episode
         self.stage = stage
         self.stage_name = stage_name
@@ -190,16 +194,20 @@ class TrainingDashboard:
         self.td_error_history.append(td_error)
         fr = food / max(steps, 1)
         self.food_ratio_history.append(fr)
+        self.length_history.append(peak_length)
         # Long-term tracking
         self.long_steps.append(steps)
         self.long_reward.append(reward)
         self.long_food.append(food)
+        self.long_length.append(peak_length)
         # Compute SMA20
         sma_window = min(20, len(self.long_steps))
         sma_steps = sum(list(self.long_steps)[-sma_window:]) / sma_window
         sma_reward = sum(list(self.long_reward)[-sma_window:]) / sma_window
+        sma_length = sum(list(self.long_length)[-sma_window:]) / sma_window
         self.long_survival_sma.append(sma_steps)
         self.long_reward_sma.append(sma_reward)
+        self.long_length_sma.append(sma_length)
         # Track best
         if len(self.reward_history) >= 20:
             avg = sum(self.reward_history) / len(self.reward_history)
@@ -342,9 +350,11 @@ class TrainingDashboard:
             avg_r = sum(self.reward_history) / len(self.reward_history)
             avg_s = sum(self.steps_history) / len(self.steps_history)
             avg_f = sum(self.food_history) / len(self.food_history)
+            avg_pk = sum(self.length_history) / len(self.length_history) if self.length_history else 0
             avg_table.add_row("Avg Reward", f"{avg_r:.2f}")
             avg_table.add_row("Avg Steps", f"{avg_s:.1f}")
             avg_table.add_row("Avg Food", f"{avg_f:.2f}")
+            avg_table.add_row("Avg PkLen", f"[bold cyan]{avg_pk:.1f}[/]")
             avg_table.add_row("Window", f"{len(self.reward_history)}/100")
         else:
             avg_table.add_row("", "Waiting for data...")
@@ -442,6 +452,11 @@ class TrainingDashboard:
         surv_text.append(self._sparkline(self.long_survival_sma, 60), style="green")
         if self.long_survival_sma:
             surv_text.append(f"  {list(self.long_survival_sma)[-1]:.0f}", style="dim green")
+        surv_text.append("\n\n")
+        surv_text.append("PeakLen SMA20:   ", style="bold")
+        surv_text.append(self._sparkline(self.long_length_sma, 60), style="magenta")
+        if self.long_length_sma:
+            surv_text.append(f"  {list(self.long_length_sma)[-1]:.0f}", style="dim magenta")
         surv_text.append("\n\n")
         surv_text.append("Reward SMA20:    ", style="bold")
         surv_text.append(self._sparkline(self.long_reward_sma, 60), style="cyan")
@@ -733,6 +748,7 @@ class CurriculumManager:
         self.episode_steps_history = deque(maxlen=max_window)
         self.episode_food_ratio_history = deque(maxlen=max_window)
         self.episode_cause_history = deque(maxlen=max_window)
+        self.episode_length_history = deque(maxlen=max_window)
 
     def get_config(self):
         """Return current stage config dict."""
@@ -747,13 +763,14 @@ class CurriculumManager:
         else:
             return self.style_config["stages"][self.current_stage]["max_steps"]
 
-    def record_episode(self, food_eaten, steps, cause="SnakeCollision"):
+    def record_episode(self, food_eaten, steps, cause="SnakeCollision", peak_length=0):
         """Record episode metrics for promotion check."""
         self.episode_food_history.append(food_eaten)
         self.episode_steps_history.append(steps)
         ratio = food_eaten / max(steps, 1)
         self.episode_food_ratio_history.append(ratio)
         self.episode_cause_history.append(cause)
+        self.episode_length_history.append(peak_length)
 
     def check_promotion(self):
         """Check if we should advance to the next stage. Returns True if promoted."""
@@ -778,14 +795,18 @@ class CurriculumManager:
 
             recent_food = list(self.episode_food_history)[-window:]
             recent_steps = list(self.episode_steps_history)[-window:]
+            recent_length = list(self.episode_length_history)[-window:]
             avg_food = sum(recent_food) / len(recent_food)
             avg_steps = sum(recent_steps) / len(recent_steps)
+            avg_peak_length = sum(recent_length) / len(recent_length) if recent_length else 0
 
             blocked = []
             if "avg_food" in conditions and avg_food < conditions["avg_food"]:
                 blocked.append(f"avg_food={avg_food:.1f}<{conditions['avg_food']}")
             if "avg_steps" in conditions and avg_steps < conditions["avg_steps"]:
                 blocked.append(f"avg_steps={avg_steps:.0f}<{conditions['avg_steps']}")
+            if "avg_peak_length" in conditions and avg_peak_length < conditions["avg_peak_length"]:
+                blocked.append(f"avg_peak_length={avg_peak_length:.0f}<{conditions['avg_peak_length']}")
 
             if blocked:
                 if len(self.episode_steps_history) % 50 == 0:
@@ -851,6 +872,7 @@ class CurriculumManager:
         self.episode_steps_history.clear()
         self.episode_food_ratio_history.clear()
         self.episode_cause_history.clear()
+        self.episode_length_history.clear()
 
     def get_state(self):
         """Serialize for checkpoint."""
@@ -860,6 +882,7 @@ class CurriculumManager:
             "steps_history": list(self.episode_steps_history),
             "food_ratio_history": list(self.episode_food_ratio_history),
             "cause_history": list(self.episode_cause_history),
+            "length_history": list(self.episode_length_history),
         }
 
     def load_state(self, state):
@@ -872,6 +895,7 @@ class CurriculumManager:
             self.episode_steps_history = deque(state.get("steps_history", []), maxlen=max_window)
             self.episode_food_ratio_history = deque(state.get("food_ratio_history", []), maxlen=max_window)
             self.episode_cause_history = deque(state.get("cause_history", []), maxlen=max_window)
+            self.episode_length_history = deque(state.get("length_history", []), maxlen=max_window)
 
 
 class SuperPatternOptimizer:
@@ -1487,12 +1511,12 @@ def train(args):
             parent_uid = checkpoint_uid
             logger.info(f"  Parent UID: {parent_uid}")
 
-        # Fix stale LR from old checkpoints: reset if below 10% of target
+        # Always force LR to config value on resume (AI supervisor / old checkpoints may have crushed it)
         current_lr = agent.optimizer.param_groups[0]['lr']
-        if current_lr < cfg.opt.lr * 0.1:
-            for pg in agent.optimizer.param_groups:
-                pg['lr'] = cfg.opt.lr
-            logger.info(f"  LR was {current_lr:.8f} (stale). Reset to {cfg.opt.lr}")
+        for pg in agent.optimizer.param_groups:
+            pg['lr'] = cfg.opt.lr
+        if abs(current_lr - cfg.opt.lr) > 1e-8:
+            logger.info(f"  LR was {current_lr:.8f}. Force-reset to {cfg.opt.lr}")
 
         # Restore curriculum state only if we are in curriculum mode
         if curriculum.mode == 'curriculum' and supervisor_state:
@@ -1523,7 +1547,7 @@ def train(args):
     super_pattern = SuperPatternOptimizer(stage_cfg, cfg, logger)
 
     # Initialize stats file — update header if columns were added
-    CSV_HEADER = "UID,ParentUID,Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food,QMean,QMax,TDError,GradNorm,ActStraight,ActGentle,ActMedium,ActSharp,ActUturn,ActBoost,NumAgents\n"
+    CSV_HEADER = "UID,ParentUID,Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food,QMean,QMax,TDError,GradNorm,ActStraight,ActGentle,ActMedium,ActSharp,ActUturn,ActBoost,NumAgents,PeakLength\n"
     if not os.path.exists(stats_file):
         with open(stats_file, 'w') as f:
             f.write(CSV_HEADER)
@@ -1549,6 +1573,7 @@ def train(args):
     reward_window = deque(maxlen=100)
     food_window = deque(maxlen=100)
     steps_window = deque(maxlen=100)
+    length_window = deque(maxlen=100)
     best_avg_reward = -float('inf')
     best_fitness = -float('inf')
     episodes_since_improvement = 0
@@ -1559,6 +1584,7 @@ def train(args):
     episode_steps = [0] * cfg.env.num_agents
     episode_food = [0] * cfg.env.num_agents
     agent_length = [0] * cfg.env.num_agents
+    episode_peak_length = [0] * cfg.env.num_agents
     agent_server = [''] * cfg.env.num_agents
     # Per-episode action distribution: [straight, gentle, medium, sharp, uturn, boost]
     episode_actions = [[0]*6 for _ in range(cfg.env.num_agents)]
@@ -1650,12 +1676,11 @@ def train(args):
             if group == "reward":
                 reward_params[key] = value
             elif key == "gamma":
-                agent.set_gamma(value)
-                logger.info(f"[AI] gamma -> {value}")
+                # LOCKED: gamma is set by curriculum stage, not AI supervisor
+                logger.info(f"[AI] gamma -> {value} (BLOCKED — controlled by curriculum)")
             elif key == "lr":
-                for pg in agent.optimizer.param_groups:
-                    pg['lr'] = value
-                logger.info(f"[AI] lr -> {value}")
+                # LOCKED: LR must stay at config value to prevent AI supervisor from crushing it
+                logger.info(f"[AI] lr -> {value} (BLOCKED — fixed at {cfg.opt.lr})")
             elif key == "epsilon_target":
                 agent.boost_exploration(target_eps=value)
                 logger.info(f"[AI] epsilon_target -> {value}")
@@ -1680,6 +1705,7 @@ def train(args):
         total_steps_local = episode_steps[agent_index]
         total_reward = episode_rewards[agent_index]
         food_eaten = episode_food[agent_index]
+        peak_length = episode_peak_length[agent_index]
 
         # Store transition (n-step)
         agent.remember_nstep(states[agent_index], actions[agent_index], rewards[agent_index], terminal_state, True, agent_id=agent_index)
@@ -1721,7 +1747,7 @@ def train(args):
 
         log_msg = (f"Ep {start_episode} | S{curriculum.current_stage}:{stage_name} | "
                    f"Rw: {total_reward:.2f} | St: {total_steps_local} | "
-                   f"Fd: {food_eaten} ({food_ratio:.3f}/st) | "
+                   f"Fd: {food_eaten} ({food_ratio:.3f}/st) | Pk: {peak_length} | "
                    f"Eps: {eps:.3f} | L: {loss_val:.4f} | Q: {q_mean:.2f}/{q_max:.2f} | "
                    f"{cause_label} | {pos_str}{wall_str}{enemy_str}")
 
@@ -1741,7 +1767,7 @@ def train(args):
                     f"{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause_label},"
                     f"{curriculum.current_stage},{food_eaten},"
                     f"{q_mean:.4f},{q_max:.4f},{td_err:.4f},{g_norm:.4f},"
-                    f"{act_pcts[0]:.3f},{act_pcts[1]:.3f},{act_pcts[2]:.3f},{act_pcts[3]:.3f},{act_pcts[4]:.3f},{act_pcts[5]:.3f},{env.num_agents}\n")
+                    f"{act_pcts[0]:.3f},{act_pcts[1]:.3f},{act_pcts[2]:.3f},{act_pcts[3]:.3f},{act_pcts[4]:.3f},{act_pcts[5]:.3f},{env.num_agents},{peak_length}\n")
 
         # Update dashboard
         if dashboard:
@@ -1751,20 +1777,24 @@ def train(args):
                 q_mean=q_mean, q_max=q_max, td_error=td_err, grad_norm=g_norm,
                 reward=total_reward, steps=total_steps_local, food=food_eaten,
                 cause=cause_label, action_pcts=act_pcts, num_agents=env.num_agents,
+                peak_length=peak_length,
             )
 
         # Autonomy Logic (Scheduler & Watchdog)
         reward_window.append(total_reward)
         food_window.append(food_eaten)
         steps_window.append(total_steps_local)
+        length_window.append(peak_length)
         if len(reward_window) >= 20:
             avg_reward = sum(reward_window) / len(reward_window)
             avg_food = sum(food_window) / len(food_window)
             avg_steps = sum(steps_window) / len(steps_window)
+            avg_peak_length = sum(length_window) / len(length_window)
 
-            # Fitness = survival time + food eaten (weighted)
-            # Steps dominate (survival skill), food multiplied to reward eating
-            fitness = avg_steps + avg_food * 10
+            # Fitness: peak_length is the primary composite metric
+            # It naturally combines eating + survival + play duration
+            # Steps and food kept as secondary signals
+            fitness = avg_peak_length * 3 + avg_steps + avg_food * 5
 
             # Scheduler step
             agent.step_scheduler(avg_reward)
@@ -1779,16 +1809,16 @@ def train(args):
             # Save BEST model based on fitness (steps + food), not raw reward
             if fitness > best_fitness:
                 best_fitness = fitness
-                backup_name = f"best_model_{run_uid}_ep{start_episode}_s{int(avg_steps)}_f{int(avg_food)}.pth"
+                backup_name = f"best_model_{run_uid}_ep{start_episode}_s{int(avg_steps)}_f{int(avg_food)}_pk{int(avg_peak_length)}.pth"
                 backup_path = os.path.join(backup_dir, backup_name)
                 agent.save_checkpoint(backup_path, start_episode, max_steps_per_episode, curriculum.get_state(), run_uid=run_uid, parent_uid=parent_uid)
-                logger.info(f"  >> New Best Fitness: {fitness:.1f} (steps={avg_steps:.1f}, food={avg_food:.1f}). Saved: {backup_name}")
+                logger.info(f"  >> New Best Fitness: {fitness:.1f} (steps={avg_steps:.1f}, food={avg_food:.1f}, peak_len={avg_peak_length:.1f}). Saved: {backup_name}")
                 if dashboard:
-                    dashboard.log_event(f"New best fitness: {fitness:.1f} (s={avg_steps:.0f} f={avg_food:.0f}) — saved {backup_name}")
+                    dashboard.log_event(f"New best fitness: {fitness:.1f} (s={avg_steps:.0f} f={avg_food:.0f} pk={avg_peak_length:.0f}) — saved {backup_name}")
 
             if episodes_since_improvement > cfg.opt.adaptive_eps_patience * env.num_agents:
                 current_eps = agent.get_epsilon()
-                new_eps = max(current_eps + 0.1, 0.3)
+                new_eps = min(current_eps + 0.05, 0.15)  # was max(+0.1, 0.3) — gentler, cap at 0.15
                 logger.info(f"[Autonomy] Stagnation detected ({episodes_since_improvement} eps). Gentle eps boost: {current_eps:.3f} -> {new_eps:.3f}. LR unchanged.")
                 if dashboard:
                     dashboard.log_event(f"Stagnation ({episodes_since_improvement} eps) — eps boost {current_eps:.3f} -> {new_eps:.3f}")
@@ -1806,7 +1836,7 @@ def train(args):
                     dashboard.log_event("SuperPattern adjusted rewards")
 
         # Track metrics for curriculum promotion
-        curriculum.record_episode(food_eaten, total_steps_local, cause_label)
+        curriculum.record_episode(food_eaten, total_steps_local, cause_label, peak_length)
 
         # Check for stage promotion
         if curriculum.check_promotion():
@@ -1837,6 +1867,7 @@ def train(args):
         episode_steps[agent_index] = 0
         episode_food[agent_index] = 0
         agent_length[agent_index] = 0
+        episode_peak_length[agent_index] = 0
         episode_actions[agent_index] = [0]*6
 
     try:
@@ -1884,6 +1915,8 @@ def train(args):
                 episode_steps[i] += 1
                 episode_food[i] += infos[i].get('food_eaten', 0)
                 agent_length[i] = infos[i].get('length', agent_length[i])
+                if agent_length[i] > episode_peak_length[i]:
+                    episode_peak_length[i] = agent_length[i]
                 srv = infos[i].get('server_id', '')
                 if srv:
                     agent_server[i] = srv
