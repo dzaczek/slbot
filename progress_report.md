@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-13 11:25:05  
-**Total Episodes:** 59325  
+**Generated:** 2026-03-13 12:27:02  
+**Total Episodes:** 59431  
 **Training Sessions:** 77
 
 ## Verdict: NOT LEARNING (Confidence: 40%)
@@ -9,10 +9,10 @@
 **Goal Feasibility:** VERY UNLIKELY (<5%)
 
 ### Critical Issues
-- Rewards DECLINING: -3307.9
+- Rewards DECLINING: -3307.5
 
 ### Positive Signals
-- Epsilon low (0.080) - exploiting policy
+- Epsilon low (0.086) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
@@ -22,35 +22,35 @@
 | S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.4505 | 0.1% | 70.5% | 28.9% |
 | S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.6197 | 0.1% | 97.6% | 2.3% |
 | S4 | MASS_MANAGEMENT | 25198 | 2469.3 | 424.1 | 144.5 | 0.5797 | 0.2% | 95.8% | 4.0% |
-| S5 | MASTERY_SURVIVAL | 29699 | -1269.3 | 511.4 | 154.9 | 0.5197 | 0.2% | 96.0% | 3.7% |
+| S5 | MASTERY_SURVIVAL | 29805 | -1254.1 | 512.5 | 155.3 | 0.5195 | 0.2% | 95.9% | 3.8% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 435.52 | 152788.40 | -18203767.65 | 374.20 | 963.00 | 2407.79 | 7389.87 | 166636.02 |
-| Steps | 456.32 | 1193.39 | 1.00 | 110.00 | 259.00 | 577.00 | 1744.00 | 99999.00 |
-| Food | 145.38 | 152.98 | 0.00 | 50.00 | 92.00 | 182.00 | 492.00 | 4532.00 |
-| Loss | 7306855.81 | 97599873.45 | 0.00 | 2.70 | 49.74 | 305.85 | 6191155.20 | 12494751744.00 |
+| Reward | 440.07 | 152652.15 | -18203767.65 | 374.69 | 964.03 | 2411.63 | 7389.76 | 166636.02 |
+| Steps | 456.97 | 1192.77 | 1.00 | 110.00 | 259.00 | 579.00 | 1747.00 | 99999.00 |
+| Food | 145.60 | 153.18 | 0.00 | 50.00 | 92.00 | 183.00 | 493.00 | 4532.00 |
+| Loss | 7293823.44 | 97513283.37 | 0.00 | 2.60 | 49.32 | 304.40 | 6166573.00 | 12494751744.00 |
 | Food/Step | 0.55 | 0.77 | 0.00 | 0.30 | 0.36 | 0.51 | 1.20 | 30.67 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 2818.01 | 2470.40 | -43.8457 | 0.0656 |
-| Last 100 | 2415.43 | 2226.61 | +9.1985 | 0.0142 |
-| Last 200 | 2446.76 | 2873.70 | -0.8329 | 0.0003 |
-| Last 500 | 2193.09 | 2352.86 | +1.9709 | 0.0146 |
-| Last 1000 | 2045.03 | 2177.36 | +1.0184 | 0.0182 |
+| Last 50 | 3126.61 | 2510.12 | +34.0605 | 0.0383 |
+| Last 100 | 2974.89 | 2460.50 | +16.7757 | 0.0387 |
+| Last 200 | 2731.07 | 2369.50 | +7.0121 | 0.0292 |
+| Last 500 | 2493.15 | 2518.61 | +1.7754 | 0.0104 |
+| Last 1000 | 2229.79 | 2290.51 | +1.0072 | 0.0161 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 124 | 0.2% | 728.7 | 3495.2 |
-| SnakeCollision | 55983 | 94.4% | 385.9 | 2023.8 |
-| MaxSteps | 3181 | 5.4% | 1683.4 | -27651.6 |
+| SnakeCollision | 56073 | 94.3% | 386.2 | 2024.1 |
+| MaxSteps | 3197 | 5.4% | 1685.0 | -27477.0 |
 | InvalidFrame | 3 | 0.0% | 1039.0 | -5119.0 |
 | BrowserError | 34 | 0.1% | 600.3 | 2418.2 |
 
@@ -148,7 +148,6 @@ Open in browser for zoom, rotate, and hover details:
 
 | Time | Episode | Changes | Reasoning |
 |------|---------|---------|----------|
-| 02-18 22:01 | 9800 | `death_snake`=-85.0, `enemy_proximity_penalty`=2.5, `lr`=7.5e-05 | The agent has a severe snake collision problem (98% deaths) and is making too many sharp turns (53.7%). The increasing loss trend and declining Q-values suggest instability. Need to strongly penalize enemy collisions and reduce learning rate for stability. |
 | 02-18 23:25 | 10000 | `enemy_proximity_penalty`=3.0, `enemy_approach_penalty`=1.5, `death_snake`=-95.0 | Agent is in Stage 4 but dying 98% from snake collisions, indicating severe enemy avoidance issues. The high sharp turn usage (51%) and low boost usage (5.6%) suggest the agent is panicking rather than strategically avoiding enemies. Need to increase enemy proximity penalty and add enemy approach penalty to teach better enemy avoidance. |
 | 02-19 00:43 | 10200 | `death_snake`=-75.0, `enemy_proximity_penalty`=3.0, `enemy_approach_penalty`=2.0 | Agent is in Stage 4 with 97.4% snake collision deaths, indicating severe struggle with enemy avoidance. The high sharp turn usage (50.4%) and U-turns (17.4%) suggest panic behavior. Need to increase enemy penalties and reduce death penalty to allow more exploration of survival strategies. |
 | 02-19 06:47 | 10400 | `enemy_proximity_penalty`=2.5, `enemy_approach_penalty`=2.0, `death_snake`=-60.0 | Agent is dying 96% from snake collisions in Stage 4 (Mass Management), indicating poor enemy avoidance. The declining reward trend and high sharp turn usage suggest panic responses. Need to strengthen enemy avoidance penalties and reduce death penalties to encourage learning rather than punishing exploration. |
@@ -248,7 +247,8 @@ Open in browser for zoom, rotate, and hover details:
 | 03-10 14:47 | 48000 | `boost_penalty`=0.35 | Training is progressing very well with strong positive trends in reward (+649) and steps (+293), excellent food efficiency (0.338), and decreasing loss. However, the extremely high boost usage (44.7%) suggests the agent may be over-relying on boosting. Since this is Stage 5 (Mastery Survival), I'll slightly increase boost penalty to encourage more strategic movement while maintaining the positive learning trajectory. |
 | 03-11 12:05 | 51000 | `boost_penalty`=0.6, `survival`=0.25 | The agent shows concerning declining performance with negative reward and steps trends despite healthy food collection. High boost usage (41.6%) and declining survival suggest over-aggressive behavior. Reducing boost penalty to discourage excessive boosting while slightly increasing survival reward should help stabilize performance. |
 | 03-12 10:48 | 54000 | `boost_penalty`=1.2, `survival`=0.35, `gamma`=0.97 | The agent shows concerning trends: reward and steps are declining (-477 reward, -138 steps) despite healthy food efficiency (0.34 food/step). High boost usage (40%) and declining survival suggest the snake is being too aggressive. Need to discourage boosting and encourage more cautious behavior. |
+| 03-13 11:26 | 57000 | `boost_penalty`=1.5, `lr`=8e-05 | The agent shows declining performance with negative reward and steps trends despite healthy food efficiency (0.33). High boost usage (39.8%) and declining Q-values suggest the agent is becoming overly aggressive. Reducing boost penalty to discourage excessive boosting and slightly lowering learning rate to stabilize the declining loss trend. |
 
-**Total consultations:** 129  
-**Most adjusted:** `lr` (56x), `enemy_proximity_penalty` (42x), `death_snake` (33x), `enemy_approach_penalty` (33x), `food_reward` (22x), `gamma` (20x), `length_bonus` (17x), `boost_penalty` (11x), `epsilon_target` (10x), `survival` (9x), `food_shaping` (9x), `target_update_freq` (2x), `wall_proximity_penalty` (1x)
+**Total consultations:** 130  
+**Most adjusted:** `lr` (57x), `enemy_proximity_penalty` (42x), `death_snake` (33x), `enemy_approach_penalty` (33x), `food_reward` (22x), `gamma` (20x), `length_bonus` (17x), `boost_penalty` (12x), `epsilon_target` (10x), `survival` (9x), `food_shaping` (9x), `target_update_freq` (2x), `wall_proximity_penalty` (1x)
 
