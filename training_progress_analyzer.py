@@ -1087,6 +1087,15 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         plt.close(fig)
         print(c(f'  Chart saved: charts/{name}', C.GRN))
 
+    def _setup_full_height_3d_figure(title):
+        """Use an explicit axes rectangle so tall 3D charts fill the canvas vertically."""
+        fig = plt.figure(figsize=(14, 22))
+        fig.patch.set_facecolor('#0d1117')
+        fig.suptitle(title, fontsize=16, fontweight='bold', y=0.985)
+        ax = fig.add_axes([0.04, 0.045, 0.92, 0.91], projection='3d')
+        ax.set_facecolor('#0d1117')
+        return fig, ax
+
     # ──────────────────────────────────────────────────
     # CHART 1: MAIN DASHBOARD (6 panels)
     # ──────────────────────────────────────────────────
@@ -2562,9 +2571,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-    fig = plt.figure(figsize=(14, 28))
-    fig.suptitle('STEPS vs FOOD vs EPISODE (3D)', fontsize=16, fontweight='bold', y=0.97)
-    ax = fig.add_subplot(111, projection='3d')
+    fig, ax = _setup_full_height_3d_figure('STEPS vs FOOD vs EPISODE (3D)')
 
     # Stretch Episode axis (Z) to 2.5× for tall readable proportions
     ax.set_box_aspect([1, 1, 2.5])
@@ -2619,7 +2626,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             for angle in range(0, 360, 3):  # 120 frames, 3° per frame
                 ax.view_init(elev=elev, azim=angle)
                 buf = io.BytesIO()
-                fig.savefig(buf, format='png', dpi=100, facecolor=fig.get_facecolor(), bbox_inches='tight')
+                fig.savefig(buf, format='png', dpi=100, facecolor=fig.get_facecolor())
                 buf.seek(0)
                 frames.append(PILImage.open(buf).copy())
                 buf.close()
@@ -2636,9 +2643,7 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     # CHART 19: 3D BUBBLE — STEPS vs REWARD vs EPISODE (size=Food)
     # ──────────────────────────────────────────────────
-    fig = plt.figure(figsize=(14, 28))
-    fig.suptitle('STEPS vs REWARD vs EPISODE — Bubble (size=Food)', fontsize=16, fontweight='bold', y=0.97)
-    ax = fig.add_subplot(111, projection='3d')
+    fig, ax = _setup_full_height_3d_figure('STEPS vs REWARD vs EPISODE — Bubble (size=Food)')
 
     # Stretch Episode axis (Z) to 2.5×
     ax.set_box_aspect([1, 1, 2.5])
@@ -3006,6 +3011,7 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
     steps = np.array([e.steps for e in episodes])
     food = np.array([e.food for e in episodes])
     losses = np.array([e.loss for e in episodes])
+    peak_lengths = np.array([e.peak_length for e in episodes], dtype=float)
     stages_arr = np.array([e.stage for e in episodes])
     causes_arr = np.array([e.cause for e in episodes])
     N = len(episodes)
