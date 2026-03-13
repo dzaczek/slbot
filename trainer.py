@@ -1547,7 +1547,7 @@ def train(args):
     super_pattern = SuperPatternOptimizer(stage_cfg, cfg, logger)
 
     # Initialize stats file — update header if columns were added
-    CSV_HEADER = "UID,ParentUID,Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food,QMean,QMax,TDError,GradNorm,ActStraight,ActGentle,ActMedium,ActSharp,ActUturn,ActBoost,NumAgents,PeakLength\n"
+    CSV_HEADER = "UID,ParentUID,Episode,Steps,Reward,Epsilon,Loss,Beta,LR,Cause,Stage,Food,QMean,QMax,TDError,GradNorm,ActStraight,ActGentle,ActMedium,ActSharp,ActUturn,ActBoost,NumAgents,PeakLength,ReflexRate,ReflexActions,ReflexFront,ReflexWall,ReflexHead,ReflexConverge,ReflexEncircle,CloseEnemyDeath\n"
     if not os.path.exists(stats_file):
         with open(stats_file, 'w') as f:
             f.write(CSV_HEADER)
@@ -1706,6 +1706,7 @@ def train(args):
         total_reward = episode_rewards[agent_index]
         food_eaten = episode_food[agent_index]
         peak_length = episode_peak_length[agent_index]
+        reflex_stats = agent.consume_episode_stats(agent_index)
 
         # Store transition (n-step)
         agent.remember_nstep(states[agent_index], actions[agent_index], rewards[agent_index], terminal_state, True, agent_id=agent_index)
@@ -1737,6 +1738,10 @@ def train(args):
         wall_dist = infos[agent_index].get('wall_dist', -1)
         # MODIFIED: Use enemy_dist from HEAD logic
         enemy_dist = infos[agent_index].get('enemy_dist', -1)
+        close_enemy_death = int(cause_label == "SnakeCollision" and enemy_dist >= 0 and enemy_dist < 120)
+        reflex_total = reflex_stats.get('total_actions', 0)
+        reflex_used = reflex_stats.get('reflex_actions', 0)
+        reflex_rate = (reflex_used / reflex_total) if reflex_total else 0.0
 
         pos_str = f"Pos:({pos[0]:.0f},{pos[1]:.0f})"
         wall_str = f" Wall:{wall_dist:.0f}" if wall_dist >= 0 else ""
@@ -1749,7 +1754,7 @@ def train(args):
                    f"Rw: {total_reward:.2f} | St: {total_steps_local} | "
                    f"Fd: {food_eaten} ({food_ratio:.3f}/st) | Pk: {peak_length} | "
                    f"Eps: {eps:.3f} | L: {loss_val:.4f} | Q: {q_mean:.2f}/{q_max:.2f} | "
-                   f"{cause_label} | {pos_str}{wall_str}{enemy_str}")
+                   f"Rx:{reflex_rate:.2%} | {cause_label} | {pos_str}{wall_str}{enemy_str}")
 
         logger.info(log_msg)
 
@@ -1767,7 +1772,10 @@ def train(args):
                     f"{eps:.4f},{loss_val:.4f},{current_beta:.2f},{lr:.6f},{cause_label},"
                     f"{curriculum.current_stage},{food_eaten},"
                     f"{q_mean:.4f},{q_max:.4f},{td_err:.4f},{g_norm:.4f},"
-                    f"{act_pcts[0]:.3f},{act_pcts[1]:.3f},{act_pcts[2]:.3f},{act_pcts[3]:.3f},{act_pcts[4]:.3f},{act_pcts[5]:.3f},{env.num_agents},{peak_length}\n")
+                    f"{act_pcts[0]:.3f},{act_pcts[1]:.3f},{act_pcts[2]:.3f},{act_pcts[3]:.3f},{act_pcts[4]:.3f},{act_pcts[5]:.3f},"
+                    f"{env.num_agents},{peak_length},{reflex_rate:.4f},{reflex_used},{reflex_stats.get('front', 0)},"
+                    f"{reflex_stats.get('wall', 0)},{reflex_stats.get('head', 0)},{reflex_stats.get('converge', 0)},"
+                    f"{reflex_stats.get('encircle', 0)},{close_enemy_death}\n")
 
         # Update dashboard
         if dashboard:
@@ -1882,17 +1890,17 @@ def train(args):
                     param_group['lr'] = target_lr * lr_scale
 
             # Select actions — steps_done increments once per batch (decoupled from num_agents)
-            actions = [agent.select_action(s) for s in states]
+            actions = [agent.select_action(s, agent_id=i) for i, s in enumerate(states)]
             agent.steps_done += 1
 
             # Track action distribution per agent
             for i, a in enumerate(actions):
                 if a == 0: episode_actions[i][0] += 1        # straight
-                elif a in (1, 2): episode_actions[i][1] += 1  # gentle
-                elif a in (3, 4): episode_actions[i][2] += 1  # medium
-                elif a in (5, 6): episode_actions[i][3] += 1  # sharp
-                elif a in (7, 8): episode_actions[i][4] += 1  # uturn
-                elif a == 9: episode_actions[i][5] += 1        # boost
+                elif a in (1, 2, 3, 4): episode_actions[i][1] += 1  # micro + gentle
+                elif a in (5, 6): episode_actions[i][2] += 1  # medium
+                elif a in (7, 8): episode_actions[i][3] += 1  # sharp
+                elif a in (9, 10): episode_actions[i][4] += 1  # uturn
+                elif a in (11, 12, 13): episode_actions[i][5] += 1  # boost variants
 
             # Step (with latency tracking for auto-scale)
             step_start = time.time()
@@ -1981,6 +1989,7 @@ def train(args):
                         episode_steps.append(0)
                         episode_food.append(0)
                         agent_length.append(0)
+                        episode_peak_length.append(0)
                         agent_server.append('')
                         episode_actions.append([0] * 6)
                         agent_ep_start.append(time.time())
@@ -2003,6 +2012,7 @@ def train(args):
                     episode_steps.pop()
                     episode_food.pop()
                     agent_length.pop()
+                    episode_peak_length.pop()
                     agent_server.pop()
                     episode_actions.pop()
                     agent_ep_start.pop()

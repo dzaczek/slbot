@@ -12,6 +12,8 @@ plt.switch_backend('Agg')
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from coord_transform import world_to_grid
 
+ACTION_DIM = 14
+
 
 def _create_browser(backend, headless, nickname, base_url, ws_server_url=""):
     """Factory: create SlitherBrowser using selected backend."""
@@ -93,7 +95,11 @@ class SlitherEnv:
         self.enemy_approach_penalty = 0.0
         self.boost_penalty = 0.0
         self.mass_loss_penalty = 0.0
+        self.contest_food_reward = 0.0
+        self.enemy_zone_control_reward = 0.0
+        self.kill_opportunity_reward = 0.0
         self.prev_enemy_dist = None
+        self.prev_nearby_food_mass = 0.0
 
         # Starvation penalty: escalating penalty when bot hasn't eaten for too long
         self.starvation_penalty = 0.0        # per-step penalty rate (set by curriculum)
@@ -158,11 +164,15 @@ class SlitherEnv:
         self.starvation_penalty = stage_config.get('starvation_penalty', 0.0)
         self.starvation_grace_steps = stage_config.get('starvation_grace_steps', 50)
         self.starvation_max_penalty = stage_config.get('starvation_max_penalty', 0.5)
+        self.contest_food_reward = stage_config.get('contest_food_reward', 0.0)
+        self.enemy_zone_control_reward = stage_config.get('enemy_zone_control_reward', 0.0)
+        self.kill_opportunity_reward = stage_config.get('kill_opportunity_reward', 0.0)
 
         print(f"  ENV: food={self.food_reward} shaping={self.food_shaping} surv={self.survival_reward} "
               f"wall={self.death_wall_penalty} snake={self.death_snake_penalty} "
               f"enemy_approach={self.enemy_approach_penalty} boost_pen={self.boost_penalty} "
-              f"starv_pen={self.starvation_penalty}")
+              f"starv_pen={self.starvation_penalty} contest={self.contest_food_reward} "
+              f"zone={self.enemy_zone_control_reward} kill={self.kill_opportunity_reward}")
 
     def _update_from_game_data(self, data):
         """Update wall distance and map info from game data."""
@@ -430,6 +440,7 @@ class SlitherEnv:
         with open("logs/nav_debug.log", "a") as _f:
             _f.write(f"\n{'='*140}\n  NEW EPISODE\n{'='*140}\n")
         self.prev_enemy_dist = None
+        self.prev_nearby_food_mass = 0.0
         self._cached_data = None  # Clear cache on reset
         
         # One-time game variable scan
@@ -506,31 +517,43 @@ class SlitherEnv:
     def step(self, action):
         """
         Executes action and returns (next_state, reward, done, info).
-        Actions (10):
+        Actions (14):
         0: Keep current direction
-        1: Turn Left gentle  (~20 deg)  - fine correction
-        2: Turn Right gentle (~20 deg)  - fine correction
-        3: Turn Left medium  (~40 deg)  - standard evasion
-        4: Turn Right medium (~40 deg)  - standard evasion
-        5: Turn Left sharp   (~69 deg)  - aggressive evasion
-        6: Turn Right sharp  (~69 deg)  - aggressive evasion
-        7: Turn Left u-turn  (~103 deg) - emergency escape
-        8: Turn Right u-turn (~103 deg) - emergency escape
-        9: Boost (speed up, loses mass)
+        1: Turn Left micro   (~10 deg)  - tiny correction
+        2: Turn Right micro  (~10 deg)  - tiny correction
+        3: Turn Left gentle  (~20 deg)  - fine correction
+        4: Turn Right gentle (~20 deg)  - fine correction
+        5: Turn Left medium  (~35 deg)  - standard evasion
+        6: Turn Right medium (~35 deg)  - standard evasion
+        7: Turn Left sharp   (~55 deg)  - aggressive evasion
+        8: Turn Right sharp  (~55 deg)  - aggressive evasion
+        9: Turn Left u-turn  (~90 deg)  - emergency escape
+        10: Turn Right u-turn (~90 deg) - emergency escape
+        11: Boost straight
+        12: Boost + Left micro
+        13: Boost + Right micro
         """
         angle_change = 0
         boost = 0
 
         if action == 0:   pass
-        elif action == 1:  angle_change = -0.35  # ~20 deg
-        elif action == 2:  angle_change =  0.35  # ~20 deg
-        elif action == 3:  angle_change = -0.7   # ~40 deg
-        elif action == 4:  angle_change =  0.7   # ~40 deg
-        elif action == 5:  angle_change = -1.2   # ~69 deg
-        elif action == 6:  angle_change =  1.2   # ~69 deg
-        elif action == 7:  angle_change = -1.8   # ~103 deg
-        elif action == 8:  angle_change =  1.8   # ~103 deg
-        elif action == 9:  boost = 1
+        elif action == 1:  angle_change = -0.18  # ~10 deg
+        elif action == 2:  angle_change =  0.18  # ~10 deg
+        elif action == 3:  angle_change = -0.35  # ~20 deg
+        elif action == 4:  angle_change =  0.35  # ~20 deg
+        elif action == 5:  angle_change = -0.61  # ~35 deg
+        elif action == 6:  angle_change =  0.61  # ~35 deg
+        elif action == 7:  angle_change = -0.96  # ~55 deg
+        elif action == 8:  angle_change =  0.96  # ~55 deg
+        elif action == 9:  angle_change = -1.57  # ~90 deg
+        elif action == 10: angle_change =  1.57  # ~90 deg
+        elif action == 11: boost = 1
+        elif action == 12:
+            angle_change = -0.18
+            boost = 1
+        elif action == 13:
+            angle_change = 0.18
+            boost = 1
 
         # Get current state before action (use cache from previous step if available)
         if self._cached_data is not None:
@@ -679,6 +702,7 @@ class SlitherEnv:
         new_snake = data.get('self', {})
         new_len = new_snake.get('len', 0)
         new_x, new_y = new_snake.get('x', 0), new_snake.get('y', 0)
+        enemy_pressure_dist = max(self.enemy_alert_dist, 1)
 
         # === MOVEMENT VECTOR ANALYSIS ===
         # Log every step for first 20 steps, then every 10
@@ -706,7 +730,7 @@ class SlitherEnv:
                 while d < -math.pi: d += 2*math.pi
                 return f"{math.degrees(d):+7.1f}°"
 
-            act_names = ['FWD','L1','R1','L2','R2','L3','R3','LU','RU','BST']
+            act_names = ['FWD','ML','MR','L1','R1','L2','R2','L3','R3','LU','RU','BST','BL','BR']
             act_name = act_names[action] if action < len(act_names) else f'?{action}'
             target_ang_val = pre_ang + angle_change
 
@@ -756,12 +780,24 @@ class SlitherEnv:
             new_food_dist = min(new_food_dists) if new_food_dists else None
         else:
             new_food_dist = None
+        nearby_food_mass = 0.0
+        for f in new_foods:
+            if len(f) < 2:
+                continue
+            fdist = math.hypot(f[0] - new_x, f[1] - new_y)
+            if fdist <= 1200:
+                nearby_food_mass += f[2] if len(f) > 2 else 1.0
             
         if current_food_dist is not None and new_food_dist is not None:
             dist_delta = current_food_dist - new_food_dist
             shaping_reward = dist_delta * self.food_shaping
             shaping_reward = max(-2.0, min(2.0, shaping_reward))
             reward += shaping_reward
+
+        # 4b. Contest reward: food collected while under enemy pressure is strategically valuable
+        if self.contest_food_reward > 0 and food_eaten > 0 and min_enemy_dist != float('inf') and min_enemy_dist < enemy_pressure_dist:
+            pressure = max(0.0, 1.0 - (min_enemy_dist / enemy_pressure_dist))
+            reward += self.contest_food_reward * food_eaten * pressure
         
         # 5. Straight penalty (encourage turning/exploration)
         if self.straight_penalty > 0 and action == 0:
@@ -783,8 +819,16 @@ class SlitherEnv:
                 if approach_delta > 0 and min_enemy_dist < self.enemy_alert_dist:
                     reward -= self.enemy_approach_penalty * (approach_delta / max(self.enemy_alert_dist, 1))
 
+        # 7b. Zone control reward: reward surviving while holding a contested, but not suicidal, distance
+        if self.enemy_zone_control_reward > 0 and min_enemy_dist != float('inf'):
+            if 250 < min_enemy_dist < enemy_pressure_dist:
+                if self.prev_enemy_dist is not None and self.prev_enemy_dist != float('inf'):
+                    if min_enemy_dist >= self.prev_enemy_dist - 40:
+                        pressure = max(0.0, 1.0 - (min_enemy_dist / enemy_pressure_dist))
+                        reward += self.enemy_zone_control_reward * pressure
+
         # 8. Boost penalty — scales with snake size (small snake = boost free, big = costly)
-        if self.boost_penalty > 0 and action == 9:
+        if self.boost_penalty > 0 and boost == 1:
             size_factor = max(0.0, (new_len - 30) / 70.0)  # 0 at len≤30, 1.0 at len=100
             reward -= self.boost_penalty * min(size_factor, 1.0)
 
@@ -795,10 +839,17 @@ class SlitherEnv:
             penalty = min(self.starvation_penalty * hunger, self.starvation_max_penalty)
             reward -= penalty
 
+        # 10. Kill opportunity reward: sudden high-value food appearing after nearby enemy pressure
+        if self.kill_opportunity_reward > 0:
+            food_mass_delta = nearby_food_mass - self.prev_nearby_food_mass
+            if food_mass_delta > 12 and self.prev_enemy_dist is not None and self.prev_enemy_dist < enemy_pressure_dist:
+                reward += self.kill_opportunity_reward * min(food_mass_delta / 40.0, 1.0)
+
         # Update tracked values
         self.prev_length = new_len
         self.prev_food_dist = new_food_dist
         self.prev_enemy_dist = min_enemy_dist
+        self.prev_nearby_food_mass = nearby_food_mass
 
         # Cache post-action data for next step's pre-action read
         self._cached_data = data
@@ -810,6 +861,7 @@ class SlitherEnv:
             "pos": (new_x, new_y),
             "wall_dist": new_dist_to_wall,
             "enemy_dist": min_enemy_dist if min_enemy_dist != float('inf') else -1,
+            "nearby_food_mass": nearby_food_mass,
             "server_id": data.get('server_id', ''),
         }
 

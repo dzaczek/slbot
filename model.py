@@ -71,7 +71,7 @@ class HybridDuelingDQN(nn.Module):
     CNN branch processes spatial matrix (food/enemies/self).
     Sector branch processes 99-float vector with precise distances + enemy approach.
     """
-    def __init__(self, input_channels, action_dim=10, input_size=(64, 64), sector_dim=99):
+    def __init__(self, input_channels, action_dim=14, input_size=(64, 64), sector_dim=99):
         super(HybridDuelingDQN, self).__init__()
 
         # --- CNN Branch (spatial matrix) ---

@@ -118,24 +118,27 @@ STYLES = {
             5: {
                 "name": "MASTERY_SURVIVAL",
                 "gamma": 0.95,                    # was 0.99 — reduced to prevent Q-value explosion
-                "food_reward": 8.0,               # strong food drive — grow big
-                "food_shaping": 0.05,             # mild approach shaping (don't chase blindly)
-                "survival": 0.2,                  # was 0.4 — reduced: too much survival reward inflates Q-values
-                "survival_escalation": 0.0005,    # gentle escalation — reward living longer
+                "food_reward": 6.0,               # less passive farming, more room for contested-play rewards
+                "food_shaping": 0.03,             # weaker shaping — don't tunnel on the nearest dot
+                "survival": 0.12,                 # reduce passive survival pressure
+                "survival_escalation": 0.0002,    # keep long episodes valuable without overpaying safety
                 "death_wall": -45,                # wall death severely punished
                 "death_snake": -50,               # snake collision = worst outcome
                 "straight_penalty": 0.0,
-                "length_bonus": 0.05,             # strong reward for being big
+                "length_bonus": 0.015,            # still value growth, but don't over-reward hoarding mass
                 "wall_alert_dist": 2500,
                 "enemy_alert_dist": 2500,         # wide enemy radar — avoid early
                 "wall_proximity_penalty": 0.8,
-                "enemy_proximity_penalty": 1.5,   # was 2.0 — slightly reduced to prevent panic turns
-                "enemy_approach_penalty": 0.8,    # was 1.0 — reduced
-                "boost_penalty": 0.2,             # discourage risky boost (save mass)
-                "mass_loss_penalty": 3.0,         # S5: strong mass protection
+                "enemy_proximity_penalty": 0.7,   # stop over-penalizing contested space
+                "enemy_approach_penalty": 0.2,    # allow purposeful engagement
+                "boost_penalty": 0.05,            # boost should be available, not taboo
+                "mass_loss_penalty": 1.2,         # preserve mass, but don't make all aggression wrong
                 "starvation_penalty": 0.008,
                 "starvation_grace_steps": 100,    # more grace — longer episodes
                 "starvation_max_penalty": 1.5,
+                "contest_food_reward": 0.75,      # food under pressure is strategically valuable
+                "enemy_zone_control_reward": 0.04,# reward holding nearby contested space
+                "kill_opportunity_reward": 12.0,  # reward likely conversions after enemy pressure
                 "max_steps": 2000,                # was 99999 — cap to prevent unbounded Q-values
                 # Promote: avg_steps >= 1500 AND avg_peak_length >= 80 (serious growth)
                 "promote_metric": "compound",
@@ -148,23 +151,27 @@ STYLES = {
             6: {
                 "name": "APEX_PREDATOR",
                 "gamma": 0.99,
-                "food_reward": 10.0,              # max food reward — consume kills
+                "food_reward": 8.0,               # leave room for explicit contested/kill rewards
                 "food_shaping": 0.03,             # mild shaping
-                "survival": 0.3,                  # moderate survival (aggression > safety)
-                "survival_escalation": 0.0003,
+                "survival": 0.10,                 # don't pay too much for passive life
+                "survival_escalation": 0.0001,
                 "death_wall": -40,
                 "death_snake": -30,               # reduced snake death penalty — accept combat risk
                 "straight_penalty": 0.0,
-                "length_bonus": 0.03,             # still rewarded for mass
+                "length_bonus": 0.01,             # growth matters, but pressure/kill signals should dominate
                 "wall_alert_dist": 2000,
                 "enemy_alert_dist": 1500,         # narrower radar — approach enemies
                 "wall_proximity_penalty": 0.5,
-                "enemy_proximity_penalty": 0.3,   # low — don't fear enemies
+                "enemy_proximity_penalty": 0.15,  # very low — contested space is encouraged
                 "enemy_approach_penalty": 0.0,    # zero — closing in is OK
                 "boost_penalty": 0.0,             # boost is free — use it to cut off enemies
+                "mass_loss_penalty": 0.5,
                 "starvation_penalty": 0.012,      # push to hunt, not idle
                 "starvation_grace_steps": 80,
                 "starvation_max_penalty": 2.5,
+                "contest_food_reward": 1.0,
+                "enemy_zone_control_reward": 0.06,
+                "kill_opportunity_reward": 18.0,
                 "max_steps": 99999,               # no limit — final stage
                 "promote_metric": None,           # terminal stage
                 "promote_threshold": None,

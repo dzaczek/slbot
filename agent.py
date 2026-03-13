@@ -14,6 +14,7 @@ from model import DuelingDQN, HybridDuelingDQN
 from per import PrioritizedReplayBuffer
 
 logger = logging.getLogger("slitherbot")
+ACTION_DIM = 14
 
 class DDQNAgent:
     def __init__(self, config: Config):
@@ -38,25 +39,25 @@ class DDQNAgent:
         if self.use_hybrid:
             self.policy_net = HybridDuelingDQN(
                 input_channels=self.input_channels,
-                action_dim=10,
+                action_dim=ACTION_DIM,
                 input_size=self.input_size,
                 sector_dim=config.model.sector_dim,
             ).to(self.device)
             self.target_net = HybridDuelingDQN(
                 input_channels=self.input_channels,
-                action_dim=10,
+                action_dim=ACTION_DIM,
                 input_size=self.input_size,
                 sector_dim=config.model.sector_dim,
             ).to(self.device)
         else:
             self.policy_net = DuelingDQN(
                 input_channels=self.input_channels,
-                action_dim=10,
+                action_dim=ACTION_DIM,
                 input_size=self.input_size,
             ).to(self.device)
             self.target_net = DuelingDQN(
                 input_channels=self.input_channels,
-                action_dim=10,
+                action_dim=ACTION_DIM,
                 input_size=self.input_size,
             ).to(self.device)
 
@@ -96,6 +97,7 @@ class DDQNAgent:
         self.reward_mean = 0.0
         self.reward_std = 1.0
         self.reward_count = 1e-5 # avoid div by zero
+        self.reflex_stats = {}
 
     def get_epsilon(self):
         return self.config.opt.eps_end + (self.config.opt.eps_start - self.config.opt.eps_end) * \
@@ -131,7 +133,33 @@ class DDQNAgent:
         """
         return np.concatenate(frames, axis=0)
 
-    def select_action(self, state):
+    def _ensure_reflex_stats(self, agent_id):
+        if agent_id not in self.reflex_stats:
+            self.reflex_stats[agent_id] = {
+                'total_actions': 0,
+                'reflex_actions': 0,
+                'front': 0,
+                'wall': 0,
+                'head': 0,
+                'converge': 0,
+                'encircle': 0,
+            }
+        return self.reflex_stats[agent_id]
+
+    def consume_episode_stats(self, agent_id=0):
+        stats = dict(self._ensure_reflex_stats(agent_id))
+        self.reflex_stats[agent_id] = {
+            'total_actions': 0,
+            'reflex_actions': 0,
+            'front': 0,
+            'wall': 0,
+            'head': 0,
+            'converge': 0,
+            'encircle': 0,
+        }
+        return stats
+
+    def select_action(self, state, agent_id=0):
         """
         state: dict {'matrix': (12, H, W), 'sectors': (75,)} or numpy array (12, H, W) for legacy.
         Note: steps_done is incremented externally by the trainer (once per batch step)
@@ -141,9 +169,15 @@ class DDQNAgent:
         # Hardcoded survival reflexes that override the network when danger is imminent.
         # The network still learns from the outcomes — reflexes just keep the bot alive
         # long enough to generate useful training data.
+        stats = self._ensure_reflex_stats(agent_id)
+        stats['total_actions'] += 1
+
         if isinstance(state, dict) and 'sectors' in state:
-            reflex_action = self._check_reflexes(state['sectors'])
+            reflex_action, reflex_name = self._check_reflexes(state['sectors'])
             if reflex_action is not None:
+                stats['reflex_actions'] += 1
+                if reflex_name in stats:
+                    stats[reflex_name] += 1
                 return reflex_action
 
         eps_threshold = self.get_epsilon()
@@ -160,11 +194,11 @@ class DDQNAgent:
                     q_values = self.policy_net(state_t)
                 return q_values.max(1)[1].item()
         else:
-            return random.randrange(10)
+            return random.randrange(ACTION_DIM)
 
     def _check_reflexes(self, sectors):
         """
-        Emergency reflexes based on sector vector. Returns action or None.
+        Emergency reflexes based on sector vector. Returns (action, reflex_name) or (None, None).
 
         Sector layout (99 floats, alpha-5):
           [0..23]   food_score per sector (0=ahead, clockwise 15° each)
@@ -175,8 +209,8 @@ class DDQNAgent:
           [97]      snake_length_norm
           [98]      speed_norm
 
-        Actions: 0=straight, 1/2=gentle L/R, 3/4=medium L/R,
-                 5/6=sharp L/R, 7/8=uturn L/R, 9=boost
+        Actions: 0=straight, 1/2=micro L/R, 3/4=gentle L/R, 5/6=medium L/R,
+                 7/8=sharp L/R, 9/10=uturn L/R, 11=boost, 12/13=boost+micro L/R
         """
         ns = 24  # num_sectors
         obstacle = sectors[ns:ns*2]       # obstacle_score per sector
@@ -187,32 +221,32 @@ class DDQNAgent:
         # --- REFLEX 1: Obstacle directly ahead (sectors 0, 23 = front ±15°) ---
         # If something is close in front, turn away hard
         front_danger = max(obstacle[0], obstacle[23], obstacle[1])
-        if front_danger > 0.6:  # >0.6 means within ~800 units (40% of 2000 scope)
+        if front_danger > 0.72:  # harder override — let policy handle moderate pressure
             # Pick the safer side — check left vs right obstacle density
             # Left = sectors 20-23 (−60° to 0°), Right = sectors 1-4 (0° to +60°)
             left_danger = sum(obstacle[20:24]) / 4.0
             right_danger = sum(obstacle[1:5]) / 4.0
 
-            if front_danger > 0.85:  # Very close — U-turn
-                return 7 if left_danger <= right_danger else 8
+            if front_danger > 0.90:  # Very close — U-turn
+                return (9 if left_danger <= right_danger else 10), 'front'
             else:  # Medium close — sharp turn
-                return 5 if left_danger <= right_danger else 6
+                return (7 if left_danger <= right_danger else 8), 'front'
 
         # --- REFLEX 2: Wall proximity emergency ---
         # wall_norm < 0.15 means within 300 units of wall (out of 2000 scope)
-        if wall_norm < 0.15:
+        if wall_norm < 0.10:
             # Turn toward center — check which side has more open space
             left_obs = sum(obstacle[18:24]) / 6.0
             right_obs = sum(obstacle[0:6]) / 6.0
-            return 7 if left_obs <= right_obs else 8
+            return (9 if left_obs <= right_obs else 10), 'wall'
 
         # --- REFLEX 3: Enemy head approaching from front ---
         # Enemy heads (type=1) in front sectors are the most dangerous
         for s_i in [0, 23, 1, 22]:  # front ±30°
-            if obs_type[s_i] == 1 and obstacle[s_i] > 0.4:  # head within ~1200 units
+            if obs_type[s_i] == 1 and obstacle[s_i] > 0.55:  # only hard override on strong head threat
                 left_danger = sum(obstacle[20:24]) / 4.0
                 right_danger = sum(obstacle[1:5]) / 4.0
-                return 5 if left_danger <= right_danger else 6
+                return (7 if left_danger <= right_danger else 8), 'head'
 
         # --- REFLEX 4: Converging trajectories (enemy approaching at angle) ---
         # Detects enemies in front-side sectors (±15°..60°) heading toward us.
@@ -221,12 +255,12 @@ class DDQNAgent:
         enemy_approach = sectors[ns*3:ns*4]  # [72..95]
         # Right side: sectors 2,3 (30°-60°), Left side: sectors 21,22 (300°-330°)
         for s_i in [2, 3, 21, 22]:
-            if enemy_approach[s_i] > 0.5 and obstacle[s_i] > 0.3:
+            if enemy_approach[s_i] > 0.7 and obstacle[s_i] > 0.45:
                 # Enemy converging from this side — turn away
                 if s_i <= 12:  # threat from right → turn left
-                    return 3   # medium left
+                    return 5, 'converge'   # medium left
                 else:          # threat from left → turn right
-                    return 4   # medium right
+                    return 6, 'converge'   # medium right
 
         # --- REFLEX 5: Body encirclement (off by default, enable via reflex5_enabled) ---
         if self.reflex5_enabled:
@@ -242,19 +276,19 @@ class DDQNAgent:
 
                 if best_obs < 0.3:  # Gap found — steer toward it
                     if best_sector <= 6:
-                        if best_sector <= 1: return 0
-                        elif best_sector <= 3: return 4
-                        else: return 6
+                        if best_sector <= 1: return 0, 'encircle'
+                        elif best_sector <= 3: return 6, 'encircle'
+                        else: return 8, 'encircle'
                     else:
-                        if best_sector >= 22: return 0
-                        elif best_sector >= 20: return 3
-                        else: return 5
+                        if best_sector >= 22: return 0, 'encircle'
+                        elif best_sector >= 20: return 5, 'encircle'
+                        else: return 7, 'encircle'
                 else:  # No gap — U-turn
                     left_total = sum(obstacle[18:24])
                     right_total = sum(obstacle[0:7])
-                    return 7 if left_total <= right_total else 8
+                    return (9 if left_total <= right_total else 10), 'encircle'
 
-        return None  # No reflex triggered — let the network decide
+        return None, None  # No reflex triggered — let the network decide
 
     def remember(self, state, action, reward, next_state, done, gamma=None):
         """
@@ -353,9 +387,9 @@ class DDQNAgent:
         weights_batch = torch.tensor(is_weights, dtype=torch.float32).to(self.device)
         gamma_batch = torch.tensor(batch_gamma, dtype=torch.float32).to(self.device)
 
-        # Reward scaling (scale=1.0 preserves signal, clamp asymmetric: deaths must hurt)
+        # Reward scaling (scale=1.0 preserves signal, clamp symmetric to prevent Q-explosion)
         reward_scale = max(self.config.opt.reward_scale, 1.0)
-        norm_rewards = torch.clamp(reward_batch / reward_scale, -50.0, 30.0)
+        norm_rewards = torch.clamp(reward_batch / reward_scale, -10.0, 10.0)
 
         if self.use_hybrid:
             # Unpack tuples: (matrix_u8, sectors_f32)
@@ -369,9 +403,11 @@ class DDQNAgent:
             with torch.no_grad():
                 next_actions = self.policy_net(n_matrices, n_sectors).max(1)[1].unsqueeze(1)
                 next_q_values = self.target_net(n_matrices, n_sectors).gather(1, next_actions).squeeze(1)
+                # Clamp target Q-values to prevent divergence
+                next_q_values = torch.clamp(next_q_values, -100.0, 100.0)
                 # Use per-transition gamma from PER (consistent with n-step return computation)
                 gamma_n = gamma_batch ** self.n_step
-                expected_q_values = (next_q_values * gamma_n * (1 - done_batch)) + norm_rewards
+                expected_q_values = torch.clamp((next_q_values * gamma_n * (1 - done_batch)) + norm_rewards, -100.0, 100.0)
         else:
             # Legacy: plain uint8 arrays
             state_batch = torch.tensor(np.array(batch_state), dtype=torch.float32).to(self.device) / 255.0
@@ -382,22 +418,23 @@ class DDQNAgent:
             with torch.no_grad():
                 next_actions = self.policy_net(next_batch).max(1)[1].unsqueeze(1)
                 next_q_values = self.target_net(next_batch).gather(1, next_actions).squeeze(1)
+                next_q_values = torch.clamp(next_q_values, -100.0, 100.0)
                 gamma_n = gamma_batch ** self.n_step
-                expected_q_values = (next_q_values * gamma_n * (1 - done_batch)) + norm_rewards
+                expected_q_values = torch.clamp((next_q_values * gamma_n * (1 - done_batch)) + norm_rewards, -100.0, 100.0)
 
         # TD Error for PER
         td_errors_raw = (q_values.squeeze(1) - expected_q_values).detach()
         td_errors = td_errors_raw.abs().cpu().numpy()
         self.memory.update_priorities(idxs, td_errors)
 
-        # Loss with IS weights
-        loss = (weights_batch * F.mse_loss(q_values, expected_q_values.unsqueeze(1), reduction='none').squeeze()).mean()
+        # Loss with IS weights (Huber loss — robust to Q-value outliers, prevents loss explosion)
+        loss = (weights_batch * F.smooth_l1_loss(q_values, expected_q_values.unsqueeze(1), reduction='none').squeeze()).mean()
 
         self.optimizer.zero_grad()
         loss.backward()
 
-        # Gradient norm BEFORE clipping (diagnostic)
-        grad_norm = nn.utils.clip_grad_norm_(self.policy_net.parameters(), self.config.opt.grad_clip)
+        # Gradient clipping — clip_grad_norm_ returns the TOTAL norm BEFORE clipping
+        grad_norm_pre = nn.utils.clip_grad_norm_(self.policy_net.parameters(), self.config.opt.grad_clip)
 
         self.optimizer.step()
 
@@ -409,13 +446,25 @@ class DDQNAgent:
                 'q_mean': float(np.mean(q_vals_np)),
                 'q_max': float(np.max(q_vals_np)),
                 'td_error_mean': float(np.mean(td_errors)),
-                'grad_norm': float(grad_norm) if isinstance(grad_norm, (int, float)) else float(grad_norm.item()) if hasattr(grad_norm, 'item') else float(grad_norm),
+                'grad_norm': float(grad_norm_pre) if isinstance(grad_norm_pre, (int, float)) else float(grad_norm_pre.item()) if hasattr(grad_norm_pre, 'item') else float(grad_norm_pre),
             }
 
         return metrics
 
     def update_target(self):
         self.target_net.load_state_dict(self.policy_net.state_dict())
+
+    def _load_matching_state(self, model, state_dict):
+        model_state = model.state_dict()
+        filtered = {}
+        skipped = []
+        for key, value in state_dict.items():
+            if key in model_state and model_state[key].shape == value.shape:
+                filtered[key] = value
+            else:
+                skipped.append(key)
+        missing, unexpected = model.load_state_dict(filtered, strict=False)
+        return missing, unexpected, skipped
 
     def save_checkpoint(self, filepath, episode, max_steps=None, supervisor_state=None, run_uid=None, parent_uid=None):
         checkpoint = {
@@ -438,16 +487,17 @@ class DDQNAgent:
             return 0, 200, None, None  # episode, max_steps (default), supervisor_state, run_uid
 
         checkpoint = torch.load(filepath, map_location=self.device)
-        # strict=False allows loading old DuelingDQN weights into HybridDuelingDQN
-        # (matching CNN layers transfer, new sector/merge layers stay randomly initialized)
-        missing_p, unexpected_p = self.policy_net.load_state_dict(checkpoint['policy_net_state'], strict=False)
-        missing_t, unexpected_t = self.target_net.load_state_dict(checkpoint['target_net_state'], strict=False)
-        if missing_p:
-            logger.info(f"  Checkpoint: Policy net - new layers (randomly init): {len(missing_p)} params")
+        # Load only matching-shape tensors so older checkpoints survive action-space/head changes.
+        missing_p, unexpected_p, skipped_p = self._load_matching_state(self.policy_net, checkpoint['policy_net_state'])
+        missing_t, unexpected_t, skipped_t = self._load_matching_state(self.target_net, checkpoint['target_net_state'])
+        if missing_p or skipped_p:
+            logger.info(f"  Checkpoint: Policy net - new/random layers: {len(missing_p) + len(skipped_p)}")
         if unexpected_p:
-            logger.info(f"  Checkpoint: Policy net - dropped layers: {len(unexpected_p)} params")
+            logger.info(f"  Checkpoint: Policy net - dropped layers: {len(unexpected_p)}")
+        if skipped_p or skipped_t:
+            logger.info(f"  Checkpoint: skipped mismatched tensors due to architecture/action changes")
         # Only load optimizer if architectures match (no missing keys)
-        if not missing_p and not unexpected_p:
+        if not missing_p and not unexpected_p and not skipped_p:
             self.optimizer.load_state_dict(checkpoint['optimizer_state'])
         else:
             logger.info(f"  Checkpoint: Architecture changed - optimizer reset to fresh state")
