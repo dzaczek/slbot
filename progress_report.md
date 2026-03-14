@@ -1,6 +1,6 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-14 07:02:45  
+**Generated:** 2026-03-14 08:04:31  
 **Total Episodes:** 60045  
 **Training Sessions:** 77
 
@@ -149,7 +149,6 @@ Open in browser for zoom, rotate, and hover details:
 
 | Time | Episode | Changes | Reasoning |
 |------|---------|---------|----------|
-| 02-18 23:25 | 10000 | `enemy_proximity_penalty`=3.0, `enemy_approach_penalty`=1.5, `death_snake`=-95.0 | Agent is in Stage 4 but dying 98% from snake collisions, indicating severe enemy avoidance issues. The high sharp turn usage (51%) and low boost usage (5.6%) suggest the agent is panicking rather than strategically avoiding enemies. Need to increase enemy proximity penalty and add enemy approach penalty to teach better enemy avoidance. |
 | 02-19 00:43 | 10200 | `death_snake`=-75.0, `enemy_proximity_penalty`=3.0, `enemy_approach_penalty`=2.0 | Agent is in Stage 4 with 97.4% snake collision deaths, indicating severe struggle with enemy avoidance. The high sharp turn usage (50.4%) and U-turns (17.4%) suggest panic behavior. Need to increase enemy penalties and reduce death penalty to allow more exploration of survival strategies. |
 | 02-19 06:47 | 10400 | `enemy_proximity_penalty`=2.5, `enemy_approach_penalty`=2.0, `death_snake`=-60.0 | Agent is dying 96% from snake collisions in Stage 4 (Mass Management), indicating poor enemy avoidance. The declining reward trend and high sharp turn usage suggest panic responses. Need to strengthen enemy avoidance penalties and reduce death penalties to encourage learning rather than punishing exploration. |
 | 02-19 08:01 | 10600 | `enemy_proximity_penalty`=3.0, `enemy_approach_penalty`=2.0, `lr`=7.5e-05 | Stage 4 shows concerning signs: 96.8% snake collision deaths indicate poor enemy avoidance, declining reward trend suggests learning plateau, and excessive sharp turns (53.3%) suggest panic responses. Need to strengthen enemy avoidance penalties and reduce learning rate for more stable training. |
@@ -249,7 +248,8 @@ Open in browser for zoom, rotate, and hover details:
 | 03-11 12:05 | 51000 | `boost_penalty`=0.6, `survival`=0.25 | The agent shows concerning declining performance with negative reward and steps trends despite healthy food collection. High boost usage (41.6%) and declining survival suggest over-aggressive behavior. Reducing boost penalty to discourage excessive boosting while slightly increasing survival reward should help stabilize performance. |
 | 03-12 10:48 | 54000 | `boost_penalty`=1.2, `survival`=0.35, `gamma`=0.97 | The agent shows concerning trends: reward and steps are declining (-477 reward, -138 steps) despite healthy food efficiency (0.34 food/step). High boost usage (40%) and declining survival suggest the snake is being too aggressive. Need to discourage boosting and encourage more cautious behavior. |
 | 03-13 11:26 | 57000 | `boost_penalty`=1.5, `lr`=8e-05 | The agent shows declining performance with negative reward and steps trends despite healthy food efficiency (0.33). High boost usage (39.8%) and declining Q-values suggest the agent is becoming overly aggressive. Reducing boost penalty to discourage excessive boosting and slightly lowering learning rate to stabilize the declining loss trend. |
+| 03-14 07:27 | 60000 | `boost_penalty`=1.8, `survival`=0.15 | The agent shows concerning negative trends in reward (-424) and steps (-107) despite healthy food efficiency (0.384). High boost usage (45%) and declining performance suggest the agent is becoming overly aggressive. Reducing boost penalty and increasing survival reward should encourage more cautious, sustainable gameplay. |
 
-**Total consultations:** 130  
-**Most adjusted:** `lr` (57x), `enemy_proximity_penalty` (42x), `death_snake` (33x), `enemy_approach_penalty` (33x), `food_reward` (22x), `gamma` (20x), `length_bonus` (17x), `boost_penalty` (12x), `epsilon_target` (10x), `survival` (9x), `food_shaping` (9x), `target_update_freq` (2x), `wall_proximity_penalty` (1x)
+**Total consultations:** 131  
+**Most adjusted:** `lr` (57x), `enemy_proximity_penalty` (42x), `death_snake` (33x), `enemy_approach_penalty` (33x), `food_reward` (22x), `gamma` (20x), `length_bonus` (17x), `boost_penalty` (13x), `epsilon_target` (10x), `survival` (10x), `food_shaping` (9x), `target_update_freq` (2x), `wall_proximity_penalty` (1x)
 
