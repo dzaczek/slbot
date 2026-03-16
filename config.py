@@ -23,7 +23,7 @@ class ModelConfig:
 
 @dataclass
 class OptimizationConfig:
-    lr: float = 1e-4               # Increased from 6.25e-5
+    lr: float = 5e-5               # Reduced for stability in Stage 5
     weight_decay: float = 1e-5
     batch_size: int = 64
     gamma: float = 0.8             # Starting gamma (Stage 1), overridden per-stage

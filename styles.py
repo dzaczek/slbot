@@ -119,23 +119,23 @@ STYLES = {
                 "name": "MASTERY_SURVIVAL",
                 "gamma": 0.95,                    # was 0.99 — reduced to prevent Q-value explosion
                 "food_reward": 6.0,               # less passive farming, more room for contested-play rewards
-                "food_shaping": 0.03,             # weaker shaping — don't tunnel on the nearest dot
-                "survival": 0.12,                 # reduce passive survival pressure
+                "food_shaping": 0.05,             # was 0.03 — slightly more guidance
+                "survival": 0.15,                 # was 0.12 — prioritize life
                 "survival_escalation": 0.0002,    # keep long episodes valuable without overpaying safety
                 "death_wall": -45,                # wall death severely punished
                 "death_snake": -50,               # snake collision = worst outcome
                 "straight_penalty": 0.0,
-                "length_bonus": 0.015,            # still value growth, but don't over-reward hoarding mass
+                "length_bonus": 0.02,             # was 0.015 — value growth more
                 "wall_alert_dist": 2500,
                 "enemy_alert_dist": 2500,         # wide enemy radar — avoid early
                 "wall_proximity_penalty": 0.8,
                 "enemy_proximity_penalty": 0.7,   # stop over-penalizing contested space
                 "enemy_approach_penalty": 0.2,    # allow purposeful engagement
-                "boost_penalty": 0.05,            # boost should be available, not taboo
-                "mass_loss_penalty": 1.2,         # preserve mass, but don't make all aggression wrong
-                "starvation_penalty": 0.008,
-                "starvation_grace_steps": 100,    # more grace — longer episodes
-                "starvation_max_penalty": 1.5,
+                "boost_penalty": 0.40,            # was 0.05 — STOP BOOS ADDICTION
+                "mass_loss_penalty": 1.5,         # was 1.2 — preserve mass
+                "starvation_penalty": 0.015,      # was 0.008 — pressure to eat
+                "starvation_grace_steps": 80,     # was 100 — less idle time
+                "starvation_max_penalty": 2.0,    # was 1.5
                 "contest_food_reward": 0.75,      # food under pressure is strategically valuable
                 "enemy_zone_control_reward": 0.04,# reward holding nearby contested space
                 "kill_opportunity_reward": 12.0,  # reward likely conversions after enemy pressure

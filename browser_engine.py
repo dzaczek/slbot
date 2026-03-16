@@ -988,7 +988,7 @@ class SlitherBrowser:
 
             # Set xm/ym directly — game computes wang = atan2(ym, xm)
             # Distance 300 from origin (0,0 = screen center in game coords)
-            boost_js = "window.accelerating=true;if(window.setAcceleration)window.setAcceleration(1);" if is_boost else "window.accelerating=false;"
+            boost_js = "window.accelerating=true;if(window.setAcceleration)window.setAcceleration(1);" if is_boost else "window.accelerating=false;if(window.setAcceleration)window.setAcceleration(0);"
             self.driver.execute_script(
                 f"xm=Math.cos({angle})*300;ym=Math.sin({angle})*300;"
                 f"window._botTargetAng={angle};{boost_js}"

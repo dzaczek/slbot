@@ -134,6 +134,7 @@ EP_PATTERN = re.compile(
     r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+ - INFO - '
     r'Ep (\d+) \| S(\d+):(\w+) \| '
     r'Rw: ([\-\d.]+) \| St: (\d+) \| Fd: (\d+) \(([\d.]+)/st\) \| '
+    r'Pk: (\d+) \| '
     r'Eps: ([\d.]+) \| L: ([\d.]+) \| '
     r'(?:Q: [\d.\-]+/[\d.\-]+ \| )?'
     r'(\w+)'
@@ -199,8 +200,10 @@ def parse_log(log_path: str) -> Tuple[List[Episode], List[TrainingSession]]:
                     number=int(m.group(2)), stage=int(m.group(3)),
                     stage_name=m.group(4), reward=float(m.group(5)),
                     steps=int(m.group(6)), food=int(m.group(7)),
-                    food_per_step=float(m.group(8)), epsilon=float(m.group(9)),
-                    loss=float(m.group(10)), cause=m.group(11),
+                    food_per_step=float(m.group(8)),
+                    peak_length=int(m.group(9)),
+                    epsilon=float(m.group(10)),
+                    loss=float(m.group(11)), cause=m.group(12),
                     wall_dist=wall_dist, enemy_dist=enemy_dist,
                     timestamp=ts, style=current_style,
                 )
@@ -1089,11 +1092,14 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
     def _setup_full_height_3d_figure(title):
         """Use an explicit axes rectangle so tall 3D charts fill the canvas vertically."""
-        fig = plt.figure(figsize=(14, 22))
+        fig = plt.figure(figsize=(14, 20))
         fig.patch.set_facecolor('#0d1117')
-        fig.suptitle(title, fontsize=16, fontweight='bold', y=0.985)
-        ax = fig.add_axes([0.04, 0.045, 0.92, 0.91], projection='3d')
+        fig.suptitle(title, fontsize=16, fontweight='bold', y=0.992)
+        ax = fig.add_axes([0.01, 0.01, 0.98, 0.965], projection='3d')
         ax.set_facecolor('#0d1117')
+        # Pull the virtual camera closer so the 3D box fills the frame.
+        if hasattr(ax, 'dist'):
+            ax.dist = 4.8
         return fig, ax
 
     # ──────────────────────────────────────────────────
@@ -2573,8 +2579,8 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
 
     fig, ax = _setup_full_height_3d_figure('STEPS vs FOOD vs EPISODE (3D)')
 
-    # Stretch Episode axis (Z) to 2.5× for tall readable proportions
-    ax.set_box_aspect([1, 1, 2.5])
+    # Tall, but still large enough in perspective to fill the frame.
+    ax.set_box_aspect([1.35, 1.15, 3.6])
 
     # Color by stage
     stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
@@ -2645,8 +2651,8 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     fig, ax = _setup_full_height_3d_figure('STEPS vs REWARD vs EPISODE — Bubble (size=Food)')
 
-    # Stretch Episode axis (Z) to 2.5×
-    ax.set_box_aspect([1, 1, 2.5])
+    # Tall, but still large enough in perspective to fill the frame.
+    ax.set_box_aspect([1.35, 1.15, 3.6])
 
     stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
 
