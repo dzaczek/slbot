@@ -1,70 +1,62 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-16 19:43:46  
-**Total Episodes:** 60045  
-**Training Sessions:** 77
+**Generated:** 2026-03-16 20:33:09  
+**Total Episodes:** 6992  
+**Training Sessions:** 9
 
-## Verdict: NOT LEARNING (Confidence: 40%)
+## Verdict: LEARNING (Confidence: 75%)
 
-**Goal Feasibility:** VERY UNLIKELY (<5%)
-
-### Critical Issues
-- Rewards DECLINING: -3345.4
+**Goal Feasibility:** POSSIBLE (25-60%)
 
 ### Positive Signals
+- Rewards improving: +449.3
+- Good episode length: avg=500 steps
 - Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Avg PkLen | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-----------|-------|--------|----------|
-| S1 | FOOD_VECTOR | 2414 | 224.2 | 231.7 | 83.3 | 0.0 | 0.5339 | 0.1% | 65.8% | 34.0% |
-| S2 | WALL_AVOID | 800 | 528.6 | 286.7 | 87.2 | 0.0 | 0.4505 | 0.1% | 70.5% | 28.9% |
-| S3 | ENEMY_AVOID | 1214 | 286.5 | 336.0 | 93.2 | 0.0 | 0.6197 | 0.1% | 97.6% | 2.3% |
-| S4 | MASS_MANAGEMENT | 25198 | 2469.3 | 424.1 | 144.5 | 0.0 | 0.5797 | 0.2% | 95.8% | 4.0% |
-| S5 | MASTERY_SURVIVAL | 30419 | -1174.9 | 516.6 | 157.1 | 0.0 | 0.5192 | 0.2% | 95.8% | 3.9% |
+| S5 | MASTERY_SURVIVAL | 6992 | 1917.1 | 500.0 | 184.4 | 50.4 | 0.6395 | 0.0% | 1.8% | 0.3% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 462.90 | 151870.02 | -18203767.65 | 377.01 | 970.57 | 2427.48 | 7389.87 | 166636.02 |
-| Steps | 459.61 | 1188.80 | 1.00 | 110.00 | 260.00 | 582.00 | 1769.00 | 99999.00 |
-| Food | 146.59 | 154.06 | 0.00 | 50.00 | 92.00 | 184.00 | 499.00 | 4532.00 |
-| PeakLength | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| Loss | 7219239.26 | 97016208.27 | 0.00 | 2.14 | 47.55 | 296.83 | 5650339.50 | 12494751744.00 |
-| Food/Step | 0.55 | 0.77 | 0.00 | 0.30 | 0.36 | 0.51 | 1.20 | 30.67 |
+| Reward | 1917.07 | 1900.14 | -18253.34 | 550.55 | 1281.92 | 2674.00 | 6317.85 | 8749.13 |
+| Steps | 500.02 | 517.47 | 1.00 | 120.00 | 315.00 | 695.25 | 1788.35 | 2000.00 |
+| Food | 184.37 | 167.32 | 0.00 | 62.00 | 126.50 | 252.00 | 585.00 | 792.00 |
+| PeakLength | 50.36 | 12.06 | 0.00 | 47.00 | 54.00 | 57.00 | 62.00 | 172.00 |
+| Loss | 0.69 | 0.39 | 0.00 | 0.43 | 0.63 | 0.87 | 1.28 | 7.85 |
+| Food/Step | 0.64 | 0.89 | 0.00 | 0.36 | 0.40 | 0.52 | 1.60 | 11.75 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 2750.60 | 2454.00 | +106.8588 | 0.3949 |
-| Last 100 | 2299.33 | 2139.05 | +25.0196 | 0.1140 |
-| Last 200 | 2548.65 | 2319.38 | +1.3395 | 0.0011 |
-| Last 500 | 2619.20 | 2354.88 | +0.0835 | 0.0000 |
-| Last 1000 | 2649.37 | 2496.96 | +0.0974 | 0.0001 |
+| Last 50 | 1831.08 | 1804.45 | -25.2581 | 0.0408 |
+| Last 100 | 1957.97 | 1837.55 | -5.4982 | 0.0075 |
+| Last 200 | 2039.79 | 1835.65 | -2.0901 | 0.0043 |
+| Last 500 | 2004.71 | 1892.05 | +0.4874 | 0.0014 |
+| Last 1000 | 1998.90 | 1883.39 | +0.1423 | 0.0005 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
-| Wall | 125 | 0.2% | 735.1 | 3516.8 |
-| SnakeCollision | 56614 | 94.3% | 387.8 | 2024.5 |
-| MaxSteps | 3266 | 5.4% | 1691.7 | -26740.1 |
-| InvalidFrame | 3 | 0.0% | 1039.0 | -5119.0 |
-| BrowserError | 37 | 0.1% | 607.5 | 2448.3 |
+| SnakeCollision | 125 | 1.8% | 609.6 | 2018.1 |
+| MaxSteps | 18 | 0.3% | 2000.0 | 6392.2 |
 
 ## Goal Progress
 
 | Target | Best | Goal | Progress |
 |--------|------|------|----------|
-| Points | 4532 | 6,000 | 75.5% |
-| Survival | 99999 steps | 1,800 steps | 5555.5% |
+| Points | 792 | 6,000 | 13.2% |
+| Survival | 2000 steps | 1,800 steps | 111.1% |
 
 ## Recommendations
 
-Major changes needed: LR, reward structure, curriculum.
+Keep training. Monitor for sustained improvement.
 
 1. No critical issues. Continue training.
 
@@ -144,6 +136,9 @@ Open in browser for zoom, rotate, and hover details:
 
 ### Steps vs Reward vs Episode — Bubble (3D static)
 ![Steps vs Reward vs Episode — Bubble (3D static)](charts/chart_19_bubble_training.png)
+
+### Snake Size (Peak Length) Analysis
+![Snake Size (Peak Length) Analysis](charts/chart_20_peak_length.png)
 
 ## AI Supervisor — Recent Changes
 
