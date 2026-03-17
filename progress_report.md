@@ -1,7 +1,7 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-17 13:10:27  
-**Total Episodes:** 9969  
+**Generated:** 2026-03-17 14:11:56  
+**Total Episodes:** 10121  
 **Training Sessions:** 9
 
 ## Verdict: NOT LEARNING (Confidence: 50%)
@@ -9,43 +9,43 @@
 **Goal Feasibility:** UNLIKELY (5-25%) without tuning
 
 ### Warnings
-- Rewards flat: change = 19.5
+- Rewards flat: change = 45.7
 
 ### Positive Signals
-- Epsilon low (0.121) - exploiting policy
+- Epsilon low (0.086) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Avg PkLen | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-----------|-------|--------|----------|
-| S5 | MASTERY_SURVIVAL | 9969 | 1851.8 | 477.0 | 175.8 | 49.6 | 0.6565 | 0.0% | 1.3% | 0.2% |
+| S5 | MASTERY_SURVIVAL | 10121 | 1855.5 | 477.3 | 175.9 | 49.6 | 0.6567 | 0.0% | 1.2% | 0.2% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 1851.83 | 1860.45 | -18253.34 | 523.38 | 1225.38 | 2568.15 | 6103.29 | 9321.03 |
-| Steps | 477.02 | 501.20 | 1.00 | 114.00 | 299.00 | 664.00 | 1695.60 | 2000.00 |
-| Food | 175.81 | 161.50 | 0.00 | 60.00 | 121.00 | 238.00 | 559.00 | 792.00 |
-| PeakLength | 49.61 | 12.16 | 0.00 | 46.00 | 53.00 | 57.00 | 62.00 | 172.00 |
+| Reward | 1855.50 | 1863.34 | -18253.34 | 525.93 | 1228.84 | 2570.02 | 6112.60 | 9321.03 |
+| Steps | 477.32 | 501.43 | 1.00 | 115.00 | 299.00 | 663.00 | 1700.00 | 2000.00 |
+| Food | 175.93 | 161.58 | 0.00 | 60.00 | 121.00 | 238.00 | 560.00 | 792.00 |
+| PeakLength | 49.62 | 12.12 | 0.00 | 46.00 | 53.00 | 57.00 | 62.00 | 172.00 |
 | Loss | 0.69 | 0.37 | 0.00 | 0.43 | 0.64 | 0.87 | 1.29 | 7.85 |
-| Food/Step | 0.66 | 0.92 | 0.00 | 0.35 | 0.41 | 0.53 | 1.82 | 11.75 |
+| Food/Step | 0.66 | 0.92 | 0.00 | 0.35 | 0.41 | 0.53 | 1.83 | 11.75 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 1845.24 | 1732.87 | -52.1593 | 0.1887 |
-| Last 100 | 1793.58 | 1728.53 | -11.4017 | 0.0363 |
-| Last 200 | 2062.55 | 1911.89 | -4.5944 | 0.0192 |
-| Last 500 | 1932.03 | 1777.52 | +1.3331 | 0.0117 |
-| Last 1000 | 1828.21 | 1777.52 | +0.4997 | 0.0066 |
+| Last 50 | 1552.87 | 1204.69 | +19.9949 | 0.0574 |
+| Last 100 | 2261.97 | 2196.29 | -16.8928 | 0.0493 |
+| Last 200 | 2021.85 | 1954.72 | +0.0759 | 0.0000 |
+| Last 500 | 2103.58 | 1963.34 | -0.3365 | 0.0006 |
+| Last 1000 | 1888.23 | 1816.75 | +0.5964 | 0.0090 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
-| SnakeCollision | 125 | 1.3% | 609.6 | 2018.1 |
+| SnakeCollision | 125 | 1.2% | 609.6 | 2018.1 |
 | MaxSteps | 18 | 0.2% | 2000.0 | 6392.2 |
 
 ## Goal Progress
@@ -131,6 +131,12 @@ Open in browser for zoom, rotate, and hover details:
 
 ### 3D Steps vs Food (Full History - Static)
 ![3D Steps vs Food (Full History - Static)](charts/chart_18_3d_steps_food_full.png)
+
+### 3D Steps vs Food (Recent 10k - Rotating)
+![3D Steps vs Food (Recent 10k - Rotating)](charts/chart_18_3d_steps_food_recent_10k.gif)
+
+### 3D Steps vs Food (Recent 10k - Static)
+![3D Steps vs Food (Recent 10k - Static)](charts/chart_18_3d_steps_food_recent_10k.png)
 
 ### 3D Steps vs Food (Recent 3k - Rotating)
 ![3D Steps vs Food (Recent 3k - Rotating)](charts/chart_18_3d_steps_food_recent_3k.gif)
