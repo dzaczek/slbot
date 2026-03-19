@@ -1,55 +1,56 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-19 21:03:44  
+**Generated:** 2026-03-19 22:05:22  
 ## Training Summary
 
 | Scope | Total Episodes | Best Food | Best Survival | Current Stage |
 |-------|----------------|-----------|---------------|---------------|
-| **Global (All UIDs)** | 78763 | 4532 | 99999 steps | - |
-| **Current Chain** | 18697 | 792 | 2000 steps | MASTERY_SURVIVAL |
+| **Global (All UIDs)** | 78894 | 4532 | 99999 steps | - |
+| **Current Chain** | 18828 | 792 | 2000 steps | MASTERY_SURVIVAL |
 
-## Verdict: LEARNING (Confidence: 70%)
+## Verdict: LEARNING (Confidence: 75%)
 
 **Goal Feasibility:** POSSIBLE (25-60%)
 
 ### Positive Signals
-- Rewards improving: +558.2
+- Rewards improving: +575.9
+- Good episode length: avg=501 steps
 - Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Avg PkLen | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-----------|-------|--------|----------|
-| S5 | MASTERY_SURVIVAL | 18697 | 2127.3 | 499.8 | 179.9 | 48.9 | 0.6451 | 0.1% | 95.9% | 3.8% |
+| S5 | MASTERY_SURVIVAL | 18828 | 2135.2 | 501.1 | 180.4 | 48.9 | 0.6450 | 0.1% | 95.8% | 3.9% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 2127.26 | 2174.81 | -18253.34 | 571.56 | 1382.21 | 2956.51 | 7136.55 | 11439.52 |
-| Steps | 499.79 | 521.81 | 1.00 | 118.00 | 310.00 | 699.00 | 1820.00 | 2000.00 |
-| Food | 179.95 | 165.34 | 0.00 | 60.00 | 123.00 | 246.00 | 581.00 | 792.00 |
-| PeakLength | 48.87 | 12.08 | 0.00 | 44.00 | 52.00 | 56.00 | 61.00 | 172.00 |
+| Reward | 2135.21 | 2182.67 | -18253.34 | 573.28 | 1388.88 | 2971.55 | 7153.74 | 11439.52 |
+| Steps | 501.12 | 522.85 | 1.00 | 119.00 | 312.00 | 701.00 | 1823.65 | 2000.00 |
+| Food | 180.37 | 165.70 | 0.00 | 60.00 | 123.00 | 246.00 | 582.65 | 792.00 |
+| PeakLength | 48.88 | 12.07 | 0.00 | 45.00 | 52.00 | 56.00 | 61.00 | 172.00 |
 | Loss | 0.69 | 0.36 | 0.00 | 0.44 | 0.65 | 0.89 | 1.32 | 7.85 |
-| Food/Step | 0.65 | 0.93 | 0.00 | 0.35 | 0.39 | 0.51 | 1.80 | 11.75 |
+| Food/Step | 0.64 | 0.93 | 0.00 | 0.35 | 0.39 | 0.51 | 1.80 | 11.75 |
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 1750.28 | 1855.60 | -4.1976 | 0.0011 |
-| Last 100 | 1916.54 | 1865.16 | -3.0274 | 0.0022 |
-| Last 200 | 2526.40 | 2380.97 | -9.6668 | 0.0549 |
-| Last 500 | 3002.28 | 2670.59 | -1.6944 | 0.0084 |
-| Last 1000 | 3063.70 | 2673.40 | -0.2657 | 0.0008 |
+| Last 50 | 3797.03 | 3325.53 | +17.9569 | 0.0061 |
+| Last 100 | 3234.38 | 2915.50 | +17.5830 | 0.0303 |
+| Last 200 | 2795.40 | 2659.45 | +10.4958 | 0.0519 |
+| Last 500 | 3143.49 | 2754.90 | -2.0620 | 0.0117 |
+| Last 1000 | 3103.30 | 2706.19 | -0.1973 | 0.0004 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
 | Wall | 28 | 0.1% | 791.2 | 3165.2 |
-| SnakeCollision | 17924 | 95.9% | 439.7 | 1906.8 |
-| MaxSteps | 717 | 3.8% | 2000.0 | 7635.4 |
+| SnakeCollision | 18044 | 95.8% | 440.6 | 1912.2 |
+| MaxSteps | 728 | 3.9% | 2000.0 | 7658.5 |
 | BrowserError | 28 | 0.1% | 268.4 | 1186.8 |
 
 ## Goal Progress
