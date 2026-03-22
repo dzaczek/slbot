@@ -1615,12 +1615,15 @@ def train(args):
         dashboard.stage_name = curriculum.get_config()['name']
         dashboard.start()
 
-    # Initialize AI Supervisor (if enabled)
+    # AI Supervisor & Styles Reload Vars
     ai_supervisor = None
     ai_config_path = os.path.join(base_dir, 'config_ai.json')
-    ai_config_mtime = 0  # track file modification time
+    ai_config_mtime = 0 
+    styles_path = os.path.join(base_dir, 'styles.py')
+    styles_mtime = os.path.getmtime(styles_path) if os.path.exists(styles_path) else 0
 
     if args.ai_supervisor:
+        # ... (keep existing ai_supervisor init)
         from ai_supervisor import AISupervisor
         ai_supervisor = AISupervisor(
             stats_file=stats_file,
@@ -1635,6 +1638,34 @@ def train(args):
         logger.info(f"AI Supervisor enabled: provider={args.ai_supervisor}, interval={args.ai_interval}")
         if dashboard:
             dashboard.log_event(f"AI Supervisor: {args.ai_supervisor}")
+
+    def _check_styles_reload():
+        """Detect changes in styles.py and reload rewards if modified."""
+        nonlocal styles_mtime
+        if not os.path.exists(styles_path):
+            return
+        try:
+            mtime = os.path.getmtime(styles_path)
+            if mtime <= styles_mtime:
+                return
+            styles_mtime = mtime
+            
+            import importlib
+            import styles as styles_mod
+            importlib.reload(styles_mod)
+            
+            # Update the global STYLES and curriculum
+            new_styles = styles_mod.STYLES
+            if style_name in new_styles:
+                curriculum.style_config = new_styles[style_name]
+                stage_cfg = curriculum.get_config()
+                env.set_stage(stage_cfg)
+                super_pattern.reset_stage(stage_cfg)
+                logger.info(f"[LiveUpdate] styles.py reloaded! New settings applied.")
+                if dashboard:
+                    dashboard.log_event("styles.py hot-reloaded!")
+        except Exception as e:
+            logger.error(f"[LiveUpdate] Failed to reload styles.py: {e}")
 
     def _apply_ai_config():
         """Check for new config_ai.json and apply parameter changes."""
@@ -1865,6 +1896,9 @@ def train(args):
         if ai_supervisor:
             ai_supervisor.notify_episode(start_episode)
             _apply_ai_config()
+        
+        # Live Styles Reload
+        _check_styles_reload()
 
         # Per-agent board tracking
         agent_total_eps[agent_index] += 1

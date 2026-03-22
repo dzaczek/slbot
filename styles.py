@@ -88,23 +88,23 @@ STYLES = {
             4: {
                 "name": "MASS_MANAGEMENT",
                 "gamma": 0.97,
-                "food_reward": 8.0,               # strong food drive to grow mass
-                "food_shaping": 0.3,              # was 0.15 — aggressively chase food
+                "food_reward": 8.0,               
+                "food_shaping": 0.3,              
                 "survival": 0.2,
                 "survival_escalation": 0.001,
                 "death_wall": -35,
-                "death_snake": -50,               # was -25 — snake collision must hurt
-                "straight_penalty": 0.05,         # mild nudge: don't go straight too long
-                "length_bonus": 0.02,             # reward for being big (size 100 = +2/step)
+                "death_snake": -50,               
+                "straight_penalty": 0.05,         
+                "length_bonus": 0.02,             
                 "wall_alert_dist": 2000,
-                "enemy_alert_dist": 2000,         # was 1000 — detect enemies earlier
+                "enemy_alert_dist": 2000,         
                 "wall_proximity_penalty": 0.5,
-                "enemy_proximity_penalty": 1.2,   # reduced from 2.0 to prevent panic loops
-                "enemy_approach_penalty": 0.8,    # was 0.3 — don't approach enemies
-                "boost_penalty": 0.5,             # was 1.0 — moderate boost cost
-                "mass_loss_penalty": 2.0,         # penalty per unit of mass lost (boost burns mass)
-                "starvation_penalty": 0.10,       # increased from 0.03 to force movement
-                "starvation_grace_steps": 20,     # reduced from 40 to increase pressure
+                "enemy_proximity_penalty": 1.2,   
+                "enemy_approach_penalty": 0.8,    
+                "boost_penalty": 1.2,             # increased from 0.5 — make boosting expensive
+                "mass_loss_penalty": 3.0,         # increased from 2.0 — losing mass must hurt
+                "starvation_penalty": 0.10,       
+                "starvation_grace_steps": 20,     
                 "starvation_max_penalty": 3.0,
                 "max_steps": 2000,
                 # Promote: avg_steps >= 1000 AND avg_peak_length >= 30 (must actually grow)
@@ -117,29 +117,29 @@ STYLES = {
             },
             5: {
                 "name": "MASTERY_SURVIVAL",
-                "gamma": 0.95,                    # was 0.99 — reduced to prevent Q-value explosion
-                "food_reward": 6.0,               # less passive farming, more room for contested-play rewards
-                "food_shaping": 0.05,             # was 0.03 — slightly more guidance
-                "survival": 0.15,                 # was 0.12 — prioritize life
-                "survival_escalation": 0.0002,    # keep long episodes valuable without overpaying safety
-                "death_wall": -45,                # wall death severely punished
-                "death_snake": -50,               # snake collision = worst outcome
+                "gamma": 0.95,                    
+                "food_reward": 6.0,               
+                "food_shaping": 0.20,             
+                "survival": 0.20,                 
+                "survival_escalation": 0.0002,    
+                "death_wall": -45,                
+                "death_snake": -50,               
                 "straight_penalty": 0.0,
-                "length_bonus": 0.02,             # was 0.015 — value growth more
+                "length_bonus": 0.05,             
                 "wall_alert_dist": 2500,
-                "enemy_alert_dist": 2500,         # wide enemy radar — avoid early
-                "wall_proximity_penalty": 0.8,
-                "enemy_proximity_penalty": 0.7,   # stop over-penalizing contested space
-                "enemy_approach_penalty": 0.2,    # allow purposeful engagement
-                "boost_penalty": 0.40,            # was 0.05 — STOP BOOS ADDICTION
-                "mass_loss_penalty": 1.5,         # was 1.2 — preserve mass
-                "starvation_penalty": 0.015,      # was 0.008 — pressure to eat
-                "starvation_grace_steps": 80,     # was 100 — less idle time
-                "starvation_max_penalty": 2.0,    # was 1.5
-                "contest_food_reward": 0.75,      # food under pressure is strategically valuable
-                "enemy_zone_control_reward": 0.04,# reward holding nearby contested space
-                "kill_opportunity_reward": 12.0,  # reward likely conversions after enemy pressure
-                "max_steps": 2000,                # was 99999 — cap to prevent unbounded Q-values
+                "enemy_alert_dist": 2500,         
+                "wall_proximity_penalty": 0.35,   
+                "enemy_proximity_penalty": 0.35,  
+                "enemy_approach_penalty": 0.1,    
+                "boost_penalty": 2.0,             # doubled from 1.0/0.4 — stop boost spam
+                "mass_loss_penalty": 4.0,         # increased from 1.5/2.0 — preserve mass at all costs
+                "starvation_penalty": 0.03,       
+                "starvation_grace_steps": 60,     
+                "starvation_max_penalty": 1.5,    
+                "contest_food_reward": 0.75,      
+                "enemy_zone_control_reward": 0.04,
+                "kill_opportunity_reward": 12.0,  
+                "max_steps": 2500,                
                 # Promote: avg_steps >= 1500 AND avg_peak_length >= 80 (serious growth)
                 "promote_metric": "compound",
                 "promote_conditions": {

@@ -42,12 +42,14 @@ class SlitherEnv:
         self.map_center_y = self.MAP_CENTER_Y
         self.boundary_type = 'circle' # Force circle
         self.boundary_vertices = []
-        self.matrix_size = matrix_size # Output grid size (default 84x84)
-        self.view_plus = view_plus  # Enable visual overlay
+        # Fixed scale logic: 1 pixel = ~15.6 units (128px matrix covers 2000x2000 area)
+        self.CONSTANT_VIEW_RANGE = 1000.0 
+        self.matrix_size = matrix_size
+        self.view_plus = view_plus
+        self.scale = self.matrix_size / (self.CONSTANT_VIEW_RANGE * 2)
         
-        # Dynamic view size - will be updated from game data
-        self.view_size = 500  # Initial estimate, updated dynamically
-        self.scale = self.matrix_size / (self.view_size * 2)
+        # Dynamic view size from game - kept only for wall rendering bounds
+        self.view_size = 500  
         
         # Flag to print map vars only once
         self._map_vars_printed = False
@@ -974,15 +976,22 @@ class SlitherEnv:
                     sectors[24 + si] = sc
                     sectors[48 + si] = 1.0  # head type
 
-                    # Enemy approach: dot product of enemy velocity toward us
+                    # Enemy approach: dot product of RELATIVE velocity toward us
                     # Enemy heading vector (slither: ang=0 → East, Y-down)
-                    e_vx = math.cos(e_ang)
-                    e_vy = math.sin(e_ang)
+                    e_vx = math.cos(e_ang) * (e.get('sp', 5.7) / 5.7)
+                    e_vy = math.sin(e_ang) * (e.get('sp', 5.7) / 5.7)
+                    # Our velocity vector
+                    m_vx = math.cos(ang) * (spd / 5.7)
+                    m_vy = math.sin(ang) * (spd / 5.7)
+                    # Relative velocity (enemy vs us)
+                    rel_vx = e_vx - m_vx
+                    rel_vy = e_vy - m_vy
+                    
                     # Vector from enemy to us
                     to_us_x, to_us_y = mx - ex, my_ - ey
                     to_us_len = max(dist, 1.0)
-                    # Dot product: +1 = heading straight at us, -1 = away
-                    approach = (e_vx * to_us_x + e_vy * to_us_y) / to_us_len
+                    # Dot product: positive = they are closing in on our head fast
+                    approach = (rel_vx * to_us_x + rel_vy * to_us_y) / to_us_len
                     sectors[72 + si] = max(-1.0, min(1.0, approach))
 
             # Body points
@@ -1083,15 +1092,14 @@ class SlitherEnv:
             """World-relative (dx,dy) → egocentric (rx,ry) unscaled."""
             return -sin_a * dx + cos_a * dy, -cos_a * dx - sin_a * dy
 
-        # UPDATE view_size from actual game data!
+        # Use CONSTANT_VIEW_RANGE for scaling, but track actual view_radius for wall rendering
         game_view_radius = data.get('view_radius')
         if game_view_radius and game_view_radius > 0:
-            # Enforce minimum view radius to ensure bot sees enough context
-            self.view_size = max(float(game_view_radius), 500.0)
-            self.scale = self.matrix_size / (self.view_size * 2)
+            self.view_size = float(game_view_radius)
         else:
             self.view_size = 500.0
-            self.scale = self.matrix_size / (self.view_size * 2)
+        
+        # self.scale is now fixed from __init__
         
         # UPDATE map params from game data
         self._update_from_game_data(data)

@@ -137,6 +137,7 @@ EP_PATTERN = re.compile(
     r'Pk: (\d+) \| '
     r'Eps: ([\d.]+) \| L: ([\d.]+) \| '
     r'(?:Q: [\d.\-]+/[\d.\-]+ \| )?'
+    r'(?:Rx:[\d.]+% \| )?'
     r'(\w+)'
 )
 
@@ -1060,26 +1061,35 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
         print(c("  matplotlib not installed, skipping charts.", C.YEL))
         return
 
-    # Extract arrays — use global_idx for x-axis
-    ep_nums = np.array([e.global_idx for e in episodes])
-    orig_ep_nums = np.array([e.number for e in episodes])
+    # Helper to extract arrays from a list of episodes
+    def _extract_arrays(eps_list):
+        e_nums = np.array([e.global_idx for e in eps_list])
+        o_nums = np.array([e.number for e in eps_list])
+        rws = np.array([e.reward for e in eps_list])
+        sts = np.array([e.steps for e in eps_list], dtype=float)
+        fds = np.array([e.food for e in eps_list], dtype=float)
+        lss = np.array([e.loss for e in eps_list])
+        eps = np.array([e.epsilon for e in eps_list])
+        stgs = np.array([e.stage for e in eps_list])
+        fps = np.array([e.food_per_step for e in eps_list])
+        pks = np.array([e.peak_length for e in eps_list], dtype=float)
+        cses = np.array([e.cause for e in eps_list])
+        return e_nums, o_nums, rws, sts, fds, lss, eps, stgs, fps, pks, cses
+
+    # CURRENT CHAIN (Filtered)
+    ep_nums, orig_ep_nums, rewards, steps, food, losses, epsilons, stages_arr, food_per_step, peak_lengths, causes_arr = _extract_arrays(episodes)
     branch_points = get_branch_points(episodes)
-    rewards = np.array([e.reward for e in episodes])
-    steps = np.array([e.steps for e in episodes], dtype=float)
-    food = np.array([e.food for e in episodes], dtype=float)
-    losses = np.array([e.loss for e in episodes])
-    epsilons = np.array([e.epsilon for e in episodes])
-    stages_arr = np.array([e.stage for e in episodes])
-    causes_arr = np.array([e.cause for e in episodes])
-    food_per_step = np.array([e.food_per_step for e in episodes])
-    peak_lengths = np.array([e.peak_length for e in episodes], dtype=float)
+    
+    # GLOBAL DATA (All UIDs)
+    g_ep_nums, g_orig_ep_nums, g_rewards, g_steps, g_food, g_losses, g_epsilons, g_stages_arr, g_food_per_step, g_peak_lengths, g_causes_arr = _extract_arrays(csv_episodes)
 
     # CSV-only fields
-    lr_arr = np.array([e.lr for e in episodes]) if episodes[0].lr > 0 or any(e.lr > 0 for e in episodes) else None
+    lr_arr = np.array([e.lr for e in episodes]) if len(episodes) > 0 and (episodes[0].lr > 0 or any(e.lr > 0 for e in episodes)) else None
     beta_arr = np.array([e.beta for e in episodes]) if any(e.beta > 0 for e in episodes) else None
 
     N = len(episodes)
     sma_w = min(50, N // 3) if N > 30 else max(3, N // 3)
+    g_sma_w = min(500, len(csv_episodes) // 10) if len(csv_episodes) > 1000 else 50
 
     charts_dir = os.path.join(output_dir, 'charts')
     os.makedirs(charts_dir, exist_ok=True)
@@ -2577,50 +2587,81 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
     # ──────────────────────────────────────────────────
     from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
-    fig, ax = _setup_full_height_3d_figure('STEPS vs FOOD vs EPISODE (3D)')
+    def _generate_3d_steps_food(data_indices, suffix, title_prefix="3D", use_global=False):
+        fig, ax = _setup_full_height_3d_figure(f'{title_prefix} STEPS vs FOOD vs EPISODE')
+        ax.set_box_aspect([1.35, 1.15, 3.6])
+        
+        # Slicing
+        if use_global:
+            s_steps = g_steps[data_indices]
+            s_food = g_food[data_indices]
+            s_eps = g_orig_ep_nums[data_indices]  # USE REAL EPISODE NUMBERS
+            s_stages = g_stages_arr[data_indices]
+            s_pk = g_peak_lengths[data_indices]
+        else:
+            s_steps = steps[data_indices]
+            s_food = food[data_indices]
+            s_eps = orig_ep_nums[data_indices]    # USE REAL EPISODE NUMBERS
+            s_stages = stages_arr[data_indices]
+            s_pk = peak_lengths[data_indices]
+        
+        # Color by stage
+        s_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in s_stages])
+        
+        # Bubble size: based on peak_length (min 4, max 100)
+        pk_min, pk_max = s_pk.min(), s_pk.max()
+        if pk_max > pk_min:
+            s_sizes = 4 + ((s_pk - pk_min) / (pk_max - pk_min)) * 96
+        else:
+            s_sizes = np.full(len(data_indices), 10)
 
-    # Tall, but still large enough in perspective to fill the frame.
-    ax.set_box_aspect([1.35, 1.15, 3.6])
+        # Scatter
+        ax.scatter(s_steps, s_food, s_eps, c=s_colors, alpha=0.3, s=s_sizes, depthshade=True)
 
-    # Color by stage
-    stage_colors = np.array([STAGE_COLORS_HEX.get(s, '#888') for s in stages_arr])
+        # Rolling average trajectory
+        if use_global:
+            # For Full History, compute SMA on the TRULY GLOBAL full dataset
+            # so the line is continuous and accurate till the end
+            global_sma_w = 200 # larger window for global view
+            if len(g_steps) > global_sma_w:
+                sma_steps_g = moving_average(g_steps, global_sma_w)
+                sma_food_g = moving_average(g_food, global_sma_w)
+                sma_ep_g = g_orig_ep_nums[global_sma_w - 1:]
+                
+                # Filter SMA line to stay within the range of current view if needed
+                # (for Full History we just plot the whole thing)
+                ax.plot(sma_steps_g, sma_food_g, sma_ep_g,
+                        color='#f0883e', linewidth=4, alpha=1.0, label=f'SMA-{global_sma_w}', zorder=10)
+        else:
+            # For Recent views, use local indices
+            local_n = len(data_indices)
+            local_sma_w = min(100, local_n // 5) if local_n > 20 else 5
+            if local_n > local_sma_w:
+                sma_steps_l = moving_average(s_steps, local_sma_w)
+                sma_food_l = moving_average(s_food, local_sma_w)
+                sma_ep_l = s_eps[local_sma_w - 1:]
+                ax.plot(sma_steps_l, sma_food_l, sma_ep_l,
+                        color='#f0883e', linewidth=3, alpha=0.9, label=f'SMA-{local_sma_w}', zorder=10)
 
-    # Subsample if too many points (>5000) for readability
-    if N > 5000:
-        idx = np.linspace(0, N - 1, 5000, dtype=int)
-        ax.scatter(steps[idx], food[idx], ep_nums[idx],
-                   c=stage_colors[idx], alpha=0.3, s=4, depthshade=True)
-    else:
-        ax.scatter(steps, food, ep_nums,
-                   c=stage_colors, alpha=0.3, s=4, depthshade=True)
+        ax.set_xlabel('Steps', fontsize=11, labelpad=10)
+        ax.set_ylabel('Food', fontsize=11, labelpad=10)
+        ax.set_zlabel('Episode', fontsize=11, labelpad=10)
+        ax.view_init(elev=20, azim=135)
 
-    # Rolling average trajectory (thick line)
-    if N > sma_w:
-        sma_steps = moving_average(steps, sma_w)
-        sma_food = moving_average(food, sma_w)
-        sma_ep = ep_nums[sma_w - 1:]
-        ax.plot(sma_steps, sma_food, sma_ep,
-                color='#f0883e', linewidth=2.5, alpha=0.9, label=f'SMA-{sma_w}')
+        # Legend
+        from matplotlib.lines import Line2D
+        legend_elems = [Line2D([0], [0], marker='o', color='w', markerfacecolor=STAGE_COLORS_HEX.get(s, '#888'),
+                               markersize=8, label=f'Stage {s}') for s in sorted(set(s_stages))]
+        ax.legend(handles=legend_elems, fontsize=9, loc='upper left')
 
-    ax.set_xlabel('Steps', fontsize=11, labelpad=10)
-    ax.set_ylabel('Food', fontsize=11, labelpad=10)
-    ax.set_zlabel('Episode', fontsize=11, labelpad=10)
-    ax.view_init(elev=20, azim=135)
+        ax.xaxis.pane.set_facecolor('#161b22')
+        ax.yaxis.pane.set_facecolor('#161b22')
+        ax.zaxis.pane.set_facecolor('#161b22')
+        ax.tick_params(colors='#8b949e')
 
-    # Stage legend
-    from matplotlib.lines import Line2D
-    legend_elems = [Line2D([0], [0], marker='o', color='w', markerfacecolor=STAGE_COLORS_HEX.get(s, '#888'),
-                           markersize=8, label=f'Stage {s}') for s in sorted(set(stages_arr))]
-    if N > sma_w:
-        legend_elems.append(Line2D([0], [0], color='#f0883e', linewidth=2.5, label=f'SMA-{sma_w}'))
-    ax.legend(handles=legend_elems, fontsize=9, loc='upper left')
-
-    ax.xaxis.pane.set_facecolor('#161b22')
-    ax.yaxis.pane.set_facecolor('#161b22')
-    ax.zaxis.pane.set_facecolor('#161b22')
-    ax.tick_params(colors='#8b949e')
-
-    _save(fig, 'chart_18_3d_steps_food_episode.png')
+        _save(fig, f'chart_18_3d_steps_food_{suffix}.png')
+        _save_rotating_gif(fig, ax, f'chart_18_3d_steps_food_{suffix}.gif')
+        plt.close(fig)
 
     # ── Helper: save rotating GIF from a 3D figure ──
     def _save_rotating_gif(fig, ax, gif_name, elev=25):
@@ -2629,22 +2670,42 @@ def generate_charts(episodes, csv_episodes, sessions, verdict, output_dir):
             import io
             from PIL import Image as PILImage
             frames = []
-            for angle in range(0, 360, 3):  # 120 frames, 3° per frame
+            # Optimization: 120 frames is heavy, use 60 frames (6° step) for GIFs
+            for angle in range(0, 360, 6): 
                 ax.view_init(elev=elev, azim=angle)
                 buf = io.BytesIO()
-                fig.savefig(buf, format='png', dpi=100, facecolor=fig.get_facecolor())
+                fig.savefig(buf, format='png', dpi=80, facecolor=fig.get_facecolor())
                 buf.seek(0)
                 frames.append(PILImage.open(buf).copy())
                 buf.close()
             gif_path = os.path.join(charts_dir, gif_name)
             frames[0].save(gif_path, save_all=True, append_images=frames[1:],
-                            duration=33, loop=0, optimize=True)
+                            duration=50, loop=0, optimize=True)
             print(c(f'  Chart saved: charts/{gif_name} (rotating GIF)', C.GRN))
         except ImportError:
-            print(c('  Pillow not installed — skipping rotating GIF (pip install Pillow)', C.YEL))
+            print(c('  Pillow not installed — skipping rotating GIF', C.YEL))
 
-    _save_rotating_gif(fig, ax, 'chart_18_3d_steps_food_episode.gif')
-    plt.close(fig)
+    # Generate Full History
+    GN = len(g_ep_nums)
+    if GN > 10000:
+        # Subsample full history for performance if very large
+        full_idx = np.linspace(0, GN - 1, 10000, dtype=int)
+    else:
+        full_idx = np.arange(GN)
+    _generate_3d_steps_food(full_idx, "full", "FULL HISTORY", use_global=True)
+
+    # Generate Recent Detail (Last 10k of CURRENT lineage)
+    if N > 10000:
+        recent_idx = np.arange(N-10000, N)
+        _generate_3d_steps_food(recent_idx, "recent_10k", "RECENT 10K", use_global=False)
+    
+    # Generate Ultra Detail (Last 3k of CURRENT lineage)
+    if N > 3000:
+        ultra_idx = np.arange(N-3000, N)
+        _generate_3d_steps_food(ultra_idx, "recent_3k", "RECENT 3K", use_global=False)
+    elif N > 0:
+        # If less than 3k, just show what we have as "recent"
+        _generate_3d_steps_food(np.arange(N), "recent_3k", "RECENT DATA", use_global=False)
 
     # ──────────────────────────────────────────────────
     # CHART 19: 3D BUBBLE — STEPS vs REWARD vs EPISODE (size=Food)
@@ -3012,7 +3073,7 @@ def _parse_ai_supervisor_log(log_path):
     return entries
 
 
-def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
+def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path, all_loaded_episodes=None):
     rewards = np.array([e.reward for e in episodes])
     steps = np.array([e.steps for e in episodes])
     food = np.array([e.food for e in episodes])
@@ -3025,8 +3086,22 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
     with open(output_path, 'w') as f:
         f.write("# Slither.io Bot - Training Progress Report v3\n\n")
         f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  \n")
-        f.write(f"**Total Episodes:** {N}  \n")
-        f.write(f"**Training Sessions:** {len(sessions)}\n\n")
+        
+        # Summary Table: Global vs Current Chain
+        f.write("## Training Summary\n\n")
+        f.write("| Scope | Total Episodes | Best Food | Best Survival | Current Stage |\n")
+        f.write("|-------|----------------|-----------|---------------|---------------|\n")
+        
+        if all_loaded_episodes:
+            g_total = len(all_loaded_episodes)
+            g_food = max([e.food for e in all_loaded_episodes]) if all_loaded_episodes else 0
+            g_steps = max([e.steps for e in all_loaded_episodes]) if all_loaded_episodes else 0
+            f.write(f"| **Global (All UIDs)** | {g_total} | {g_food} | {g_steps} steps | - |\n")
+            
+        cur_food = max(food) if len(food) > 0 else 0
+        cur_steps = max(steps) if len(steps) > 0 else 0
+        cur_stage = STAGE_NAMES.get(episodes[-1].stage, "?") if episodes else "?"
+        f.write(f"| **Current Chain** | {N} | {cur_food} | {cur_steps} steps | {cur_stage} |\n\n")
 
         status = "LEARNING" if verdict.is_learning else "NOT LEARNING"
         f.write(f"## Verdict: {status} (Confidence: {verdict.confidence * 100:.0f}%)\n\n")
@@ -3195,8 +3270,19 @@ def generate_markdown(episodes, csv_episodes, sessions, verdict, output_path):
             ('charts/chart_15_auto_scaling.png', 'Active Agents Over Time'),
             ('charts/chart_16_maxsteps_analysis.png', 'MaxSteps Analysis'),
             ('charts/chart_17_survival_percentiles.png', 'Survival Percentiles'),
-            ('charts/chart_18_3d_steps_food_episode.gif', 'Steps vs Food vs Episode (3D rotating)'),
-            ('charts/chart_18_3d_steps_food_episode.png', 'Steps vs Food vs Episode (3D static)'),
+            
+            # 3D Steps vs Food (Full)
+            ('charts/chart_18_3d_steps_food_full.gif', '3D Steps vs Food (Full History - Rotating)'),
+            ('charts/chart_18_3d_steps_food_full.png', '3D Steps vs Food (Full History - Static)'),
+            
+            # 3D Steps vs Food (Recent 10k)
+            ('charts/chart_18_3d_steps_food_recent_10k.gif', '3D Steps vs Food (Recent 10k - Rotating)'),
+            ('charts/chart_18_3d_steps_food_recent_10k.png', '3D Steps vs Food (Recent 10k - Static)'),
+            
+            # 3D Steps vs Food (Recent 3k)
+            ('charts/chart_18_3d_steps_food_recent_3k.gif', '3D Steps vs Food (Recent 3k - Rotating)'),
+            ('charts/chart_18_3d_steps_food_recent_3k.png', '3D Steps vs Food (Recent 3k - Static)'),
+
             ('charts/chart_19_bubble_training.gif', 'Steps vs Reward vs Episode — Bubble (3D rotating)'),
             ('charts/chart_19_bubble_training.png', 'Steps vs Reward vs Episode — Bubble (3D static)'),
             ('charts/chart_20_peak_length.png', 'Snake Size (Peak Length) Analysis'),
@@ -3281,6 +3367,12 @@ def main():
         csv_episodes = parse_csv(csv_path)
         print(c(f'  Found {len(csv_episodes)} episodes in CSV', C.GRN))
 
+    # PRESERVE FULL UNFILTERED DATA for global views
+    all_global_episodes = list(csv_episodes) if csv_episodes else list(episodes)
+    for i, ep in enumerate(all_global_episodes):
+        if not hasattr(ep, 'global_idx') or ep.global_idx is None:
+            ep.global_idx = i
+
     if not episodes and csv_episodes:
         episodes = csv_episodes
 
@@ -3342,12 +3434,14 @@ def main():
 
     if not args.no_charts:
         section('GENERATING CHARTS')
-        generate_charts(episodes, csv_episodes, sessions, verdict, script_dir)
+        # Use all_global_episodes for charts so "Full View" is truly full
+        generate_charts(episodes, all_global_episodes, sessions, verdict, script_dir)
 
     if not args.no_report:
         section('GENERATING REPORT')
         md_path = os.path.join(script_dir, 'progress_report.md')
-        generate_markdown(episodes, csv_episodes, sessions, verdict, md_path)
+        # Pass both filtered episodes (lineage chain) AND all loaded episodes for global stats
+        generate_markdown(episodes, csv_episodes, sessions, verdict, md_path, all_loaded_episodes=all_global_episodes)
 
     print()
     print(c('  Analysis complete.', C.GRN, C.B))

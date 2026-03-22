@@ -389,7 +389,7 @@ class DDQNAgent:
 
         # Reward scaling (scale=1.0 preserves signal, clamp symmetric to prevent Q-explosion)
         reward_scale = max(self.config.opt.reward_scale, 1.0)
-        norm_rewards = torch.clamp(reward_batch / reward_scale, -10.0, 10.0)
+        norm_rewards = torch.clamp(reward_batch / reward_scale, -100.0, 100.0)
 
         if self.use_hybrid:
             # Unpack tuples: (matrix_u8, sectors_f32)

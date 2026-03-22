@@ -4,7 +4,7 @@ from typing import Tuple
 @dataclass
 class EnvironmentConfig:
     frame_stack: int = 4
-    frame_skip: int = 8
+    frame_skip: int = 4              # Reduced from 8 for better responsiveness
     resolution: Tuple[int, int] = (128, 128)
     grayscale: bool = False
     num_agents: int = 1
@@ -25,13 +25,13 @@ class ModelConfig:
 class OptimizationConfig:
     lr: float = 5e-5               # Reduced for stability in Stage 5
     weight_decay: float = 1e-5
-    batch_size: int = 64
+    batch_size: int = 128          # Increased from 64
     gamma: float = 0.8             # Starting gamma (Stage 1), overridden per-stage
     grad_clip: float = 0.5
     eps_start: float = 1.0
     eps_end: float = 0.08          # Less randomness at convergence
     eps_decay: int = 8000          # Calibrated for steps_done += 1 per batch
-    target_update_freq: int = 1000  # Slower target updates for stability
+    target_update_freq: int = 5000  # Increased from 1000 for stability in multi-agent setup
     max_episodes: int = 5000000
     checkpoint_every: int = 50
     reward_scale: float = 1.0
@@ -42,7 +42,7 @@ class OptimizationConfig:
     scheduler_min_lr: float = 1e-5
     adaptive_eps_patience: int = 500
     super_pattern_enabled: bool = True
-    super_pattern_window: int = 50
+    super_pattern_window: int = 200    # Increased from 50 to filter noise
     super_pattern_wall_ratio: float = 0.55
     super_pattern_snake_ratio: float = 0.55
     super_pattern_food_ratio_low: float = 0.15    # was 0.07 — below this: boost food_reward

@@ -1,0 +1,329 @@
+
+[0;32m========================================[0m
+[0;32m  SlitherBot Auto Report (3600s)[0m
+[0;32m  Repo: /Users/dzaczek/slbot[0m
+[0;32m  Ctrl+C to stop[0m
+[0;32m========================================[0m
+
+[0;34m[06:04:41][0m --- Iteration #1 ---
+[0;34m[06:04:41][0m Cleaning up old data...
+--- Data Cleanup Started: 2026-03-05 06:04:41 ---
+[Cleanup] Removed 3 old/low-performance checkpoints. Kept 30 best/recent models.
+[Cleanup] Removed 1124 old event files (older than 2 days).
+--- Cleanup Finished ---
+[0;34m[06:04:41][0m Running analyzer...
+
+[92m[1m  Analysis complete.[0m
+
+[0;34m[06:06:50][0m Staged 27 files
+ charts/chart_01_dashboard.png               |  Bin 312807 -> 310007 bytes
+ charts/chart_02_stage_progression.png       |  Bin 159143 -> 156840 bytes
+ charts/chart_03_stage_distributions.png     |  Bin 91873 -> 91890 bytes
+ charts/chart_04_hyperparameters.png         |  Bin 176049 -> 173980 bytes
+ charts/chart_05_correlations.png            |  Bin 497917 -> 489578 bytes
+ charts/chart_05b_correlation_heatmap.png    |  Bin 196871 -> 197383 bytes
+ charts/chart_06_performance_bands.png       |  Bin 219871 -> 217980 bytes
+ charts/chart_07_death_analysis.png          |  Bin 290180 -> 286118 bytes
+ charts/chart_08_food_efficiency.png         |  Bin 185684 -> 184048 bytes
+ charts/chart_09_reward_distributions.png    |  Bin 235617 -> 235747 bytes
+ charts/chart_10_learning_detection.png      |  Bin 180736 -> 179853 bytes
+ charts/chart_11_goal_gauges.png             |  Bin 80909 -> 78478 bytes
+ charts/chart_11b_goal_over_time.png         |  Bin 320943 -> 320193 bytes
+ charts/chart_12_hyperparameter_analysis.png |  Bin 515448 -> 476208 bytes
+ charts/chart_13_qvalue_gradients.png        |  Bin 341831 -> 356949 bytes
+ charts/chart_14_action_distribution.png     |  Bin 412805 -> 423585 bytes
+ charts/chart_15_auto_scaling.png            |  Bin 84945 -> 90565 bytes
+ charts/chart_16_maxsteps_analysis.png       |  Bin 158626 -> 155747 bytes
+ charts/chart_17_survival_percentiles.png    |  Bin 711183 -> 709352 bytes
+ charts/chart_18_3d_steps_food_episode.gif   |  Bin 11871875 -> 8903625 bytes
+ charts/chart_18_3d_steps_food_episode.png   |  Bin 678460 -> 443773 bytes
+ charts/chart_19_bubble_training.gif         |  Bin 11483555 -> 8264324 bytes
+ charts/chart_19_bubble_training.png         |  Bin 614649 -> 269054 bytes
+ logs/app.log                                | 1711 +++++++++++++++++++++++++++
+ logs/train.log                              | 1711 +++++++++++++++++++++++++++
+ progress_report.md                          |   46 +-
+ training_stats.csv                          | 1223 +++++++++++++++++++
+ 27 files changed, 4668 insertions(+), 23 deletions(-)
+ 27 files changed, 4668 insertions(+), 23 deletions(-)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   1aa71362..298c45df  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[06:06:59][0m Next: 07:06:59
+[0;34m[06:06:59][0m ---
+
+[0;34m[07:06:59][0m --- Iteration #2 ---
+[0;34m[07:06:59][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[07:06:59][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[07:07:00][0m Staged 27 files
+ logs/app.log       | 371 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 371 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 259 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 1001 insertions(+)
+ 3 files changed, 1001 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   298c45df..bb2a0365  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[07:07:03][0m Next: 08:07:03
+[0;34m[07:07:03][0m ---
+
+[0;34m[08:07:04][0m --- Iteration #3 ---
+[0;34m[08:07:04][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[08:07:04][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[08:07:05][0m Staged 27 files
+ logs/app.log       | 316 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 316 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 248 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 880 insertions(+)
+ 3 files changed, 880 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   bb2a0365..8f0e41a5  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[08:07:08][0m Next: 09:07:08
+[0;34m[08:07:08][0m ---
+
+[0;34m[09:07:08][0m --- Iteration #4 ---
+[0;34m[09:07:08][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[09:07:08][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[09:07:09][0m Staged 27 files
+ logs/app.log       | 304 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 304 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 235 +++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 843 insertions(+)
+ 3 files changed, 843 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   8f0e41a5..a8b85914  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[09:07:13][0m Next: 10:07:13
+[0;34m[09:07:13][0m ---
+
+[0;34m[10:07:13][0m --- Iteration #5 ---
+[0;34m[10:07:13][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[10:07:13][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[10:07:14][0m Staged 27 files
+ logs/app.log       | 340 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 340 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 288 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 968 insertions(+)
+ 3 files changed, 968 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   a8b85914..786f03a7  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[10:07:17][0m Next: 11:07:17
+[0;34m[10:07:17][0m ---
+
+[0;34m[11:07:17][0m --- Iteration #6 ---
+[0;34m[11:07:17][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[11:07:17][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[11:07:18][0m Staged 27 files
+ logs/app.log       | 341 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 341 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 298 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 980 insertions(+)
+ 3 files changed, 980 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   786f03a7..73628d1e  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[11:07:22][0m Next: 12:07:22
+[0;34m[11:07:22][0m ---
+
+[0;34m[12:07:22][0m --- Iteration #7 ---
+[0;34m[12:07:22][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[12:07:22][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[12:07:23][0m Staged 27 files
+ logs/app.log       | 306 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 306 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 266 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 878 insertions(+)
+ 3 files changed, 878 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   73628d1e..634329d0  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[12:07:27][0m Next: 13:07:27
+[0;34m[12:07:27][0m ---
+
+[0;34m[13:07:27][0m --- Iteration #8 ---
+[0;34m[13:07:27][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[13:07:27][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[13:07:28][0m Staged 27 files
+ logs/app.log       | 311 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 311 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 267 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 889 insertions(+)
+ 3 files changed, 889 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   634329d0..927aad3c  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[13:07:32][0m Next: 14:07:32
+[0;34m[13:07:32][0m ---
+
+[0;34m[14:07:32][0m --- Iteration #9 ---
+[0;34m[14:07:32][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[14:07:32][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[14:07:33][0m Staged 27 files
+ logs/app.log       | 277 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 277 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 238 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 792 insertions(+)
+ 3 files changed, 792 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   927aad3c..9f1f4974  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[14:07:36][0m Next: 15:07:36
+[0;34m[14:07:36][0m ---
+
+[0;34m[15:07:36][0m --- Iteration #10 ---
+[0;34m[15:07:36][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[15:07:36][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[15:07:37][0m Staged 27 files
+ logs/app.log       | 295 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 295 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 254 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 844 insertions(+)
+ 3 files changed, 844 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   9f1f4974..0ba86ac4  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[15:07:41][0m Next: 16:07:41
+[0;34m[15:07:41][0m ---
+
+[0;34m[16:07:41][0m --- Iteration #11 ---
+[0;34m[16:07:41][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[16:07:41][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[16:07:42][0m Staged 27 files
+ logs/app.log       | 243 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 243 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 206 +++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 692 insertions(+)
+ 3 files changed, 692 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   0ba86ac4..1e016d42  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[16:07:46][0m Next: 17:07:46
+[0;34m[16:07:46][0m ---
+
+[0;34m[17:07:46][0m --- Iteration #12 ---
+[0;34m[17:07:46][0m Cleaning up old data...
+Fatal Python error: init_sys_streams: can't initialize sys standard streams
+Python runtime state: core initialized
+OSError: [Errno 9] Bad file descriptor
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[17:07:46][0m Running analyzer...
+
+Current thread 0x00000001f8c98cc0 (most recent call first):
+  <no Python frame>
+[0;34m[17:07:47][0m Staged 27 files
+ logs/app.log       | 249 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ logs/train.log     | 249 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ training_stats.csv | 199 ++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 697 insertions(+)
+ 3 files changed, 697 insertions(+)
+[0;32m[OK][0m Committed
+To github.com:dzaczek/slbot.git
+   1e016d42..c12da90a  main -> main
+[0;32m[OK][0m Pushed to GitHub
+[0;34m[17:07:51][0m Next: 18:07:51
+[0;34m[17:07:51][0m ---
+
