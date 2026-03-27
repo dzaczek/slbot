@@ -1,72 +1,80 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-27 20:09:43  
+**Generated:** 2026-03-27 21:10:26  
 ## Training Summary
 
 | Scope | Total Episodes | Best Food | Best Survival | Current Stage |
 |-------|----------------|-----------|---------------|---------------|
-| **Global (All UIDs)** | 101078 | 4532 | 99999 steps | - |
-| **Current Chain** | 41012 | 934 | 3000 steps | MASS_MANAGEMENT |
+| **Global (All UIDs)** | 101092 | 4532 | 99999 steps | - |
+| **Current Chain** | 11 | 237 | 927 steps | MASS_MANAGEMENT |
 
-## Verdict: NOT LEARNING (Confidence: 45%)
+## Verdict: NOT LEARNING (Confidence: 10%)
 
-**Goal Feasibility:** UNLIKELY (5-25%) without tuning
+**Goal Feasibility:** 
 
 ### Critical Issues
-- Rewards DECLINING: -1084.2
-
-### Positive Signals
-- Good episode length: avg=538 steps
-- Epsilon low (0.080) - exploiting policy
+- Insufficient data (< 20 episodes)
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Avg PkLen | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-----------|-------|--------|----------|
-| S4 | MASS_MANAGEMENT | 10024 | 699.9 | 663.7 | 168.5 | 41.3 | 0.4509 | 0.2% | 89.8% | 10.0% |
-| S5 | MASTERY_SURVIVAL | 30988 | 1948.6 | 496.8 | 167.7 | 46.6 | 0.6134 | 0.2% | 95.6% | 4.1% |
+| S4 | MASS_MANAGEMENT | 11 | 451.4 | 402.0 | 113.5 | 31.3 | 0.3128 | 0.0% | 100.0% | 0.0% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 1643.40 | 2749.87 | -75485.65 | 394.76 | 1055.07 | 2431.74 | 6365.27 | 14234.60 |
-| Steps | 537.59 | 563.41 | 1.00 | 130.00 | 330.00 | 745.00 | 2000.00 | 3000.00 |
-| Food | 167.88 | 156.55 | 0.00 | 56.00 | 114.00 | 226.00 | 527.00 | 934.00 |
-| PeakLength | 45.33 | 13.95 | 0.00 | 35.00 | 49.00 | 55.00 | 62.00 | 172.00 |
-| Loss | 0.62 | 0.35 | 0.00 | 0.37 | 0.57 | 0.81 | 1.25 | 7.85 |
-| Food/Step | 0.57 | 0.87 | 0.00 | 0.32 | 0.37 | 0.47 | 1.30 | 12.50 |
+| Reward | 451.44 | 302.87 | 67.35 | 207.53 | 362.09 | 650.25 | 951.29 | 1012.98 |
+| Steps | 402.00 | 303.12 | 50.00 | 141.50 | 361.00 | 592.00 | 919.00 | 927.00 |
+| Food | 113.45 | 75.10 | 21.00 | 39.50 | 108.00 | 165.50 | 232.00 | 237.00 |
+| PeakLength | 31.27 | 4.92 | 25.00 | 27.00 | 31.00 | 35.00 | 38.50 | 39.00 |
+| Loss | 51.54 | 98.75 | 0.00 | 5.31 | 14.15 | 38.10 | 217.20 | 355.31 |
+| Food/Step | 0.31 | 0.06 | 0.24 | 0.27 | 0.29 | 0.35 | 0.42 | 0.42 |
+
+## Q-Value & Gradient Health
+
+| Metric | Last | Avg (50) | Min | Max | Trend |
+|--------|------|----------|-----|-----|-------|
+| Q Mean | -64.9982 | -20.6564 | -64.9982 | 40.1742 | DOWN (slope=-4.0422) |
+| Q Max | 458.5070 | 1116.1786 | 0.0000 | 2088.9019 | DOWN (slope=-48.5374) |
+| TD Error | 145.3874 | 322.4705 | 0.0000 | 854.9417 | DOWN (slope=-27.0559) |
+| Grad Norm | 480.1998 | 769.5013 | 0.0000 | 2199.2097 | DOWN (slope=-44.6669) |
+
+## Action Distribution
+
+| Action | Overall % | Last 100 % | First 100 % | Change |
+|--------|----------|-----------|------------|--------|
+| Straight | 0.6% | 0.6% | 0.6% | 0.0% |
+| Gentle | 25.6% | 25.6% | 25.6% | 0.0% |
+| Medium | 18.3% | 18.3% | 18.3% | 0.0% |
+| Sharp | 29.2% | 29.2% | 29.2% | 0.0% |
+| U-turn | 20.9% | 20.9% | 20.9% | 0.0% |
+| Boost | 5.4% | 5.4% | 5.4% | 0.0% |
+
+**Action Entropy (last 100):** 2.07 / 2.58 bits (80% diversity)
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
-| Last 50 | 668.54 | 484.56 | +1.3378 | 0.0016 |
-| Last 100 | 700.28 | 604.78 | -1.2694 | 0.0037 |
-| Last 200 | 674.39 | 680.97 | -0.4572 | 0.0015 |
-| Last 500 | 1002.32 | 982.38 | -1.6052 | 0.0556 |
-| Last 1000 | 1169.10 | 1085.12 | -0.6885 | 0.0335 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
-| Wall | 72 | 0.2% | 798.3 | 2623.2 |
-| SnakeCollision | 38635 | 94.2% | 448.4 | 1628.6 |
-| MaxSteps | 2262 | 5.5% | 2057.7 | 1881.4 |
-| InvalidFrame | 3 | 0.0% | 972.0 | -3193.8 |
-| BrowserError | 40 | 0.1% | 257.0 | 1106.6 |
+| SnakeCollision | 11 | 100.0% | 402.0 | 451.4 |
 
 ## Goal Progress
 
 | Target | Best | Goal | Progress |
 |--------|------|------|----------|
-| Points | 934 | 6,000 | 15.6% |
-| Survival | 3000 steps | 1,800 steps | 166.7% |
+| Points | 237 | 6,000 | 4.0% |
+| Survival | 927 steps | 1,800 steps | 51.5% |
 
 ## Recommendations
 
-Fine-tune hyperparameters, increase training duration.
+
 
 1. No critical issues. Continue training.
 
