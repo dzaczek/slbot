@@ -230,14 +230,18 @@ class SlitherEnv:
         return (width / 2.0) * 1.2
 
     def _min_enemy_distance(self, enemies, mx, my):
+        """Surface-to-surface distance to nearest enemy (accounts for body width)."""
         min_enemy_dist = float('inf')
         for e in enemies or []:
             ex, ey = e.get('x', 0), e.get('y', 0)
-            min_enemy_dist = min(min_enemy_dist, math.hypot(ex - mx, ey - my))
+            half_width = e.get('sc', 1.0) * 29.0 * 0.5
+            head_dist = max(0.0, math.hypot(ex - mx, ey - my) - half_width)
+            min_enemy_dist = min(min_enemy_dist, head_dist)
             for pt in e.get('pts', []):
                 if len(pt) >= 2:
                     px, py = pt[0], pt[1]
-                    min_enemy_dist = min(min_enemy_dist, math.hypot(px - mx, py - my))
+                    body_dist = max(0.0, math.hypot(px - mx, py - my) - half_width)
+                    min_enemy_dist = min(min_enemy_dist, body_dist)
         return min_enemy_dist
     
     def _is_outside_map(self, x, y):
@@ -403,7 +407,13 @@ class SlitherEnv:
              cause = "Wall"
              penalty = self.death_wall_penalty
 
-        # Priority 5: Default → SnakeCollision
+        # Priority 5: No enemy detected at all + within 600 of wall → likely Wall
+        # (covers map_radius inaccuracy — up to ~600 units of error)
+        elif min_enemy_dist == float('inf') and dist_to_wall_py < 600:
+             cause = "Wall"
+             penalty = self.death_wall_penalty
+
+        # Priority 6: Default → SnakeCollision
         else:
             cause = "SnakeCollision"
             penalty = self.death_snake_penalty
@@ -422,7 +432,7 @@ class SlitherEnv:
             if len(self._wall_death_samples) >= 3:
                 # Use the minimum death distance as the real radius (with small buffer)
                 estimated_radius = min(self._wall_death_samples) - 100
-                if estimated_radius < self.map_radius * 0.8:  # Only apply if significantly smaller
+                if estimated_radius < self.map_radius * 0.97:  # Was 0.8 — real error is ~2-3%, not 20%
                     old_radius = self.map_radius
                     self.map_radius = estimated_radius
                     self._radius_calibrated = True
@@ -558,11 +568,14 @@ class SlitherEnv:
             boost = 1
 
         # Get current state before action (use cache from previous step if available)
+        t_start = time.time()
         if self._cached_data is not None:
             data = self._cached_data
             self._cached_data = None
         else:
             data = self.browser.get_game_data()
+        
+        latency_ms = (time.time() - t_start) * 1000
 
         # Robust check (Validation Logic from tsrgy0)
         if not data:
@@ -829,10 +842,9 @@ class SlitherEnv:
                         pressure = max(0.0, 1.0 - (min_enemy_dist / enemy_pressure_dist))
                         reward += self.enemy_zone_control_reward * pressure
 
-        # 8. Boost penalty — scales with snake size (small snake = boost free, big = costly)
+        # 8. Boost penalty — applied consistently to prevent spam
         if self.boost_penalty > 0 and boost == 1:
-            size_factor = max(0.0, (new_len - 30) / 70.0)  # 0 at len≤30, 1.0 at len=100
-            reward -= self.boost_penalty * min(size_factor, 1.0)
+            reward -= self.boost_penalty
 
         # 9. Starvation penalty: escalating penalty for not eating
         # Kicks in after grace period, grows linearly with steps without food
@@ -865,6 +877,7 @@ class SlitherEnv:
             "enemy_dist": min_enemy_dist if min_enemy_dist != float('inf') else -1,
             "nearby_food_mass": nearby_food_mass,
             "server_id": data.get('server_id', ''),
+            "latency_ms": latency_ms,
         }
 
     def _get_state(self):
@@ -1207,7 +1220,8 @@ class SlitherEnv:
             # Calculate snake width in matrix pixels
             sc = e.get('sc', 1.0)
             width_world = sc * 29.0
-            width_matrix = max(1.0, width_world * self.scale)
+            # Enforce minimum width of 2.5 pixels so small snakes are always visible
+            width_matrix = max(2.5, width_world * self.scale)
 
             # Draw Head
             head_radius = (width_matrix / 2.0) * 1.2
@@ -1236,7 +1250,8 @@ class SlitherEnv:
 
         my_pts = my_snake.get('pts', [])
         my_sc = my_snake.get('sc', 1.0)
-        my_width_matrix = max(1.0, (my_sc * 29.0) * self.scale)
+        # Enforce minimum width of 2.5 pixels for self as well
+        my_width_matrix = max(2.5, (my_sc * 29.0) * self.scale)
 
         # Head to first point
         if my_pts:
@@ -1283,10 +1298,9 @@ class SlitherEnv:
              # Check distance from map center
              dist_sq = (wx - self.map_center_x)**2 + (wy - self.map_center_y)**2
 
-             # Safety margin: behave as if wall is slightly closer (radius - 500)
-             # This ensures we don't accidentally go out.
-             # Note: map_radius is 21600.
-             radius_sq = (self.map_radius - 500)**2
+             # Safety margin: behave as if wall is slightly closer (radius - 200)
+             # Reduced from -500: with cst-based radius, accuracy is ~2-3%
+             radius_sq = (self.map_radius - 200)**2
 
              wall_mask = dist_sq > radius_sq
              matrix[1][wall_mask] = 1.0

@@ -365,7 +365,7 @@ class SlitherBrowser:
             if (typeof window.grd !== 'undefined' && window.grd > 1000) {
                 mapCenterX = window.grd; mapCenterY = window.grd;
                 if (typeof window.bsr !== 'undefined' && window.bsr > 1000) { mapRadius = window.bsr; boundarySource = 'bsr'; }
-                else if (typeof window.cst !== 'undefined' && window.cst > 0.1 && window.cst < 0.95) { mapRadius = window.grd*window.cst; boundarySource = 'grd*cst'; }
+                else if (typeof window.cst !== 'undefined' && window.cst > 0.1) { mapRadius = window.grd*window.cst; boundarySource = 'grd*cst'; }
                 else { mapRadius = window.grd * 0.98; boundarySource = 'grd'; }
             }
             var distFromCenter = Math.sqrt(Math.pow(my_snake.x-mapCenterX,2)+Math.pow(my_snake.y-mapCenterY,2));
@@ -795,8 +795,8 @@ class SlitherBrowser:
                         possibleMapVars['arena_size'] = window.arena_size;
                     }}
 
-                    // Check cst (server scale factor) — eslither uses grd*cst as real radius
-                    if (!foundSpecific && typeof window.cst !== 'undefined' && window.cst > 0.1 && window.cst < 0.95) {{
+                    // Check cst (server scale factor) — works for all servers including standard slither.io
+                    if (!foundSpecific && typeof window.cst !== 'undefined' && window.cst > 0.1) {{
                         mapRadius = window.grd * window.cst;
                         boundarySource = 'grd*cst';
                         foundSpecific = true;
@@ -804,7 +804,7 @@ class SlitherBrowser:
                         possibleMapVars['grd*cst'] = mapRadius;
                     }}
 
-                    // Fallback: grd * 0.98 (works for standard slither.io where cst~1.0)
+                    // Fallback: grd * 0.98 (only if cst is not available)
                     if (!foundSpecific) {{
                         mapRadius = window.grd * 0.98;
                         boundarySource = 'grd';
@@ -1291,7 +1291,7 @@ class SlitherBrowser:
                     mapRadius = window.game_radius; boundarySource = 'game_radius';
                 } else if (typeof window.arena_size !== 'undefined' && window.arena_size > 1000) {
                     mapRadius = window.arena_size; boundarySource = 'arena_size';
-                } else if (typeof window.cst !== 'undefined' && window.cst > 0.1 && window.cst < 0.95) {
+                } else if (typeof window.cst !== 'undefined' && window.cst > 0.1) {
                     mapRadius = window.grd * window.cst; boundarySource = 'grd*cst';
                 } else {
                     mapRadius = window.grd * 0.98; boundarySource = 'grd';

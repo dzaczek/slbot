@@ -4,8 +4,8 @@ from typing import Tuple
 @dataclass
 class EnvironmentConfig:
     frame_stack: int = 4
-    frame_skip: int = 4              # Reduced from 8 for better responsiveness
-    resolution: Tuple[int, int] = (128, 128)
+    frame_skip: int = 3              # Reduced from 4 for better responsiveness
+    resolution: Tuple[int, int] = (160, 160)
     grayscale: bool = False
     num_agents: int = 1
     view_first: bool = False
@@ -31,7 +31,7 @@ class OptimizationConfig:
     eps_start: float = 1.0
     eps_end: float = 0.08          # Less randomness at convergence
     eps_decay: int = 8000          # Calibrated for steps_done += 1 per batch
-    target_update_freq: int = 5000  # Increased from 1000 for stability in multi-agent setup
+    target_update_freq: int = 10000 # Increased for stability with 10 agents
     max_episodes: int = 5000000
     checkpoint_every: int = 50
     reward_scale: float = 1.0

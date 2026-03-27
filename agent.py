@@ -221,20 +221,20 @@ class DDQNAgent:
         # --- REFLEX 1: Obstacle directly ahead (sectors 0, 23 = front ±15°) ---
         # If something is close in front, turn away hard
         front_danger = max(obstacle[0], obstacle[23], obstacle[1])
-        if front_danger > 0.72:  # harder override — let policy handle moderate pressure
+        if front_danger > 0.55:  # lowered from 0.72 for earlier reaction
             # Pick the safer side — check left vs right obstacle density
             # Left = sectors 20-23 (−60° to 0°), Right = sectors 1-4 (0° to +60°)
             left_danger = sum(obstacle[20:24]) / 4.0
             right_danger = sum(obstacle[1:5]) / 4.0
 
-            if front_danger > 0.90:  # Very close — U-turn
+            if front_danger > 0.85:  # lowered from 0.90 — U-turn sooner
                 return (9 if left_danger <= right_danger else 10), 'front'
             else:  # Medium close — sharp turn
                 return (7 if left_danger <= right_danger else 8), 'front'
 
         # --- REFLEX 2: Wall proximity emergency ---
-        # wall_norm < 0.15 means within 300 units of wall (out of 2000 scope)
-        if wall_norm < 0.10:
+        # wall_norm < 0.20 means within 400 units of wall (out of 2000 scope)
+        if wall_norm < 0.20: # increased from 0.10 for safer margin
             # Turn toward center — check which side has more open space
             left_obs = sum(obstacle[18:24]) / 6.0
             right_obs = sum(obstacle[0:6]) / 6.0
@@ -243,7 +243,7 @@ class DDQNAgent:
         # --- REFLEX 3: Enemy head approaching from front ---
         # Enemy heads (type=1) in front sectors are the most dangerous
         for s_i in [0, 23, 1, 22]:  # front ±30°
-            if obs_type[s_i] == 1 and obstacle[s_i] > 0.55:  # only hard override on strong head threat
+            if obs_type[s_i] == 1 and obstacle[s_i] > 0.45:  # lowered from 0.55
                 left_danger = sum(obstacle[20:24]) / 4.0
                 right_danger = sum(obstacle[1:5]) / 4.0
                 return (7 if left_danger <= right_danger else 8), 'head'

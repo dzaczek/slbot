@@ -16,17 +16,14 @@ config_ai.json.tmp
 *.onnx
 backup_models/
 
-# === Training data & logs ===
-training_stats.csv
+# === Logs (may contain debug info — keep off GitHub) ===
 logs/
 events/
 chromedriver.log
 geckodriver.log
 fatal_error.log
 
-# === Generated charts ===
-chart_*.png
-chart_*.gif
+# === Generated reports ===
 progress_report.md
 
 # === Python ===

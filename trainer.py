@@ -325,7 +325,10 @@ class TrainingDashboard:
         perf_table.add_column("key", style="bold", width=12)
         perf_table.add_column("value")
         best_str = f"{self.best_avg_reward:.2f}" if self.best_avg_reward > -1e9 else "—"
-        perf_table.add_row("Best Avg", best_str)
+        perf_table.add_row("Best Avg Rw", best_str)
+        if self.length_history:
+            max_len = max(self.length_history)
+            perf_table.add_row("Session Max", f"[bold gold1]{max_len:.1f}[/]")
         if self.reward_history:
             last10 = list(self.reward_history)[-10:]
             perf_table.add_row("Last 10 Avg", f"{sum(last10)/len(last10):.2f}")
@@ -420,6 +423,11 @@ class TrainingDashboard:
         trend_text.append(self._sparkline(self.food_ratio_history), style="magenta")
         if self.food_ratio_history:
             trend_text.append(f"  {list(self.food_ratio_history)[-1]:.4f}", style="dim")
+        trend_text.append("\n\n")
+        trend_text.append("Size Trend: ", style="bold")
+        trend_text.append(self._sparkline(self.length_history), style="bold gold1")
+        if self.length_history:
+            trend_text.append(f"  {list(self.length_history)[-1]:.1f}", style="bold cyan")
         right_layout["trends"].update(Panel(trend_text, title="[bold]Episode Trends (100ep)", border_style="magenta"))
 
         # Action distribution
@@ -1660,6 +1668,7 @@ def train(args):
                 curriculum.style_config = new_styles[style_name]
                 stage_cfg = curriculum.get_config()
                 env.set_stage(stage_cfg)
+                agent.set_gamma(stage_cfg.get('gamma', cfg.opt.gamma))
                 super_pattern.reset_stage(stage_cfg)
                 logger.info(f"[LiveUpdate] styles.py reloaded! New settings applied.")
                 if dashboard:
@@ -2011,6 +2020,10 @@ def train(args):
 
             # Update states
             states = list(next_states) if not isinstance(next_states, list) else next_states
+
+            # Live Styles Reload (check every 100 batches for responsiveness)
+            if batch_count % 100 == 0:
+                _check_styles_reload()
 
             # Auto-scale agents based on system resources
             if monitor and monitor.should_check():
