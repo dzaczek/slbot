@@ -1,80 +1,87 @@
 # Slither.io Bot - Training Progress Report v3
 
-**Generated:** 2026-03-27 21:10:26  
+**Generated:** 2026-03-27 22:11:11  
 ## Training Summary
 
 | Scope | Total Episodes | Best Food | Best Survival | Current Stage |
 |-------|----------------|-----------|---------------|---------------|
-| **Global (All UIDs)** | 101092 | 4532 | 99999 steps | - |
-| **Current Chain** | 11 | 237 | 927 steps | MASS_MANAGEMENT |
+| **Global (All UIDs)** | 101154 | 4532 | 99999 steps | - |
+| **Current Chain** | 73 | 583 | 2000 steps | MASS_MANAGEMENT |
 
-## Verdict: NOT LEARNING (Confidence: 10%)
+## Verdict: LEARNING (Confidence: 95%)
 
-**Goal Feasibility:** 
+**Goal Feasibility:** LIKELY (>60%)
 
-### Critical Issues
-- Insufficient data (< 20 episodes)
+### Positive Signals
+- Q-values increasing (slope=0.5119, R²=0.182)
+- Positive reward trend (slope=8.0852, R²=0.058)
+- Episodes getting longer (slope=8.620/ep)
+- Good episode length: avg=844 steps
+- Food collection improving (slope=2.2927/ep)
+- Epsilon low (0.080) - exploiting policy
 
 ## Curriculum Stage Breakdown
 
 | Stage | Name | Episodes | Avg Reward | Avg Steps | Avg Food | Avg PkLen | Food/Step | Wall% | Snake% | MaxSteps% |
 |-------|------|----------|------------|-----------|----------|-----------|-----------|-------|--------|----------|
-| S4 | MASS_MANAGEMENT | 11 | 451.4 | 402.0 | 113.5 | 31.3 | 0.3128 | 0.0% | 100.0% | 0.0% |
+| S4 | MASS_MANAGEMENT | 73 | 833.3 | 843.5 | 223.8 | 34.5 | 0.2880 | 0.0% | 79.5% | 20.5% |
 
 ## Key Statistics
 
 | Metric | Mean | Std | Min | P25 | Median | P75 | P95 | Max |
 |--------|------|-----|-----|-----|--------|-----|-----|-----|
-| Reward | 451.44 | 302.87 | 67.35 | 207.53 | 362.09 | 650.25 | 951.29 | 1012.98 |
-| Steps | 402.00 | 303.12 | 50.00 | 141.50 | 361.00 | 592.00 | 919.00 | 927.00 |
-| Food | 113.45 | 75.10 | 21.00 | 39.50 | 108.00 | 165.50 | 232.00 | 237.00 |
-| PeakLength | 31.27 | 4.92 | 25.00 | 27.00 | 31.00 | 35.00 | 38.50 | 39.00 |
-| Loss | 51.54 | 98.75 | 0.00 | 5.31 | 14.15 | 38.10 | 217.20 | 355.31 |
-| Food/Step | 0.31 | 0.06 | 0.24 | 0.27 | 0.29 | 0.35 | 0.42 | 0.42 |
+| Reward | 833.26 | 704.54 | 67.35 | 300.30 | 528.53 | 1375.83 | 2098.22 | 2605.79 |
+| Steps | 843.55 | 711.99 | 50.00 | 266.00 | 596.00 | 1689.00 | 2000.00 | 2000.00 |
+| Food | 223.78 | 181.36 | 21.00 | 82.00 | 166.00 | 383.00 | 531.80 | 583.00 |
+| PeakLength | 34.55 | 6.82 | 25.00 | 29.00 | 33.00 | 39.00 | 48.00 | 53.00 |
+| Loss | 11.66 | 41.95 | 0.00 | 2.15 | 4.73 | 7.55 | 21.52 | 355.31 |
+| Food/Step | 0.29 | 0.05 | 0.20 | 0.25 | 0.28 | 0.29 | 0.39 | 0.52 |
 
 ## Q-Value & Gradient Health
 
 | Metric | Last | Avg (50) | Min | Max | Trend |
 |--------|------|----------|-----|-----|-------|
-| Q Mean | -64.9982 | -20.6564 | -64.9982 | 40.1742 | DOWN (slope=-4.0422) |
-| Q Max | 458.5070 | 1116.1786 | 0.0000 | 2088.9019 | DOWN (slope=-48.5374) |
-| TD Error | 145.3874 | 322.4705 | 0.0000 | 854.9417 | DOWN (slope=-27.0559) |
-| Grad Norm | 480.1998 | 769.5013 | 0.0000 | 2199.2097 | DOWN (slope=-44.6669) |
+| Q Mean | 18.1466 | 2.3849 | -69.5641 | 44.9928 | UP (slope=0.5119) |
+| Q Max | 80.0348 | 122.4115 | 0.0000 | 2088.9019 | DOWN (slope=-13.8782) |
+| TD Error | 18.3055 | 42.8826 | 0.0000 | 854.9417 | DOWN (slope=-3.9694) |
+| Grad Norm | 679.6086 | 557.3840 | 0.0000 | 2199.2097 | DOWN (slope=-7.2260) |
 
 ## Action Distribution
 
 | Action | Overall % | Last 100 % | First 100 % | Change |
 |--------|----------|-----------|------------|--------|
-| Straight | 0.6% | 0.6% | 0.6% | 0.0% |
-| Gentle | 25.6% | 25.6% | 25.6% | 0.0% |
-| Medium | 18.3% | 18.3% | 18.3% | 0.0% |
-| Sharp | 29.2% | 29.2% | 29.2% | 0.0% |
-| U-turn | 20.9% | 20.9% | 20.9% | 0.0% |
-| Boost | 5.4% | 5.4% | 5.4% | 0.0% |
+| Straight | 3.5% | 3.5% | 3.5% | 0.0% |
+| Gentle | 21.8% | 21.8% | 21.8% | 0.0% |
+| Medium | 22.5% | 22.5% | 22.5% | 0.0% |
+| Sharp | 22.5% | 22.5% | 22.5% | 0.0% |
+| U-turn | 15.5% | 15.5% | 15.5% | 0.0% |
+| Boost | 14.2% | 14.2% | 14.2% | 0.0% |
 
-**Action Entropy (last 100):** 2.07 / 2.58 bits (80% diversity)
+**Action Entropy (last 100):** 2.33 / 2.58 bits (90% diversity)
 
 ## Windowed Trend Analysis
 
 | Window | Mean Reward | Std | Slope | R² |
 |--------|-----------|-----|-------|----|
+| Last 50 | 1001.42 | 747.76 | -5.4617 | 0.0111 |
 
 ## Death Cause Analysis
 
 | Cause | Count | % | Avg Steps | Avg Reward |
 |-------|-------|---|-----------|------------|
-| SnakeCollision | 11 | 100.0% | 402.0 | 451.4 |
+| SnakeCollision | 58 | 79.5% | 544.5 | 540.6 |
+| MaxSteps | 15 | 20.5% | 2000.0 | 1964.9 |
 
 ## Goal Progress
 
 | Target | Best | Goal | Progress |
 |--------|------|------|----------|
-| Points | 237 | 6,000 | 4.0% |
-| Survival | 927 steps | 1,800 steps | 51.5% |
+| Points | 583 | 6,000 | 9.7% |
+| Survival | 2000 steps | 1,800 steps | 111.1% |
 
 ## Recommendations
 
-
+Training looks healthy. Continue and monitor.
 
 1. No critical issues. Continue training.
 
