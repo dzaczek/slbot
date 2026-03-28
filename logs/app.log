@@ -839,3 +839,282 @@
 2026-03-28 12:27:40,751 - INFO - Ep 98660 | S4:MASS_MANAGEMENT | Rw: 153.95 | St: 502 | Fd: 175 (0.349/st) | Pk: 57 | Eps: 0.080 | L: 0.4281 | Q: -35.65/25.01 | Rx:47.01% | SnakeCollision | Pos:(26534,32471) Wall:7980 Enemy:16
 2026-03-28 12:27:40,752 - INFO - Death Stats: {'Wall': 12, 'SnakeCollision': 587, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 2}
 2026-03-28 12:27:40,766 - INFO -   [Curriculum] Compound blocked: avg_steps=426<600
+2026-03-28 12:30:58,461 - INFO - Ep 98661 | S4:MASS_MANAGEMENT | Rw: 845.56 | St: 2000 | Fd: 645 (0.323/st) | Pk: 62 | Eps: 0.080 | L: 1.4188 | Q: -39.17/20.99 | Rx:18.15% | MaxSteps | Pos:(43822,33978) Wall:2634 Enemy:990
+2026-03-28 12:30:58,589 - INFO -   >> New Best Fitness: 1542.1 (steps=517.8, food=174.9, peak_len=49.9). Saved: best_model_20260328-ecf7e01b_ep98661_s517_f174_pk49.pth
+2026-03-28 12:30:58,601 - INFO -   [Curriculum] Compound blocked: avg_steps=436<600
+2026-03-28 12:31:53,370 - INFO - Ep 98662 | S4:MASS_MANAGEMENT | Rw: 594.61 | St: 2000 | Fd: 617 (0.308/st) | Pk: 58 | Eps: 0.080 | L: 0.4005 | Q: -41.12/19.38 | Rx:14.10% | MaxSteps | Pos:(45279,34753) Wall:1078 Enemy:484
+2026-03-28 12:31:53,384 - INFO -   [Curriculum] Compound blocked: avg_steps=446<600
+2026-03-28 12:31:54,247 - INFO - Ep 98663 | S4:MASS_MANAGEMENT | Rw: 243.14 | St: 2000 | Fd: 647 (0.324/st) | Pk: 55 | Eps: 0.080 | L: 0.2483 | Q: -35.32/27.54 | Rx:22.60% | MaxSteps | Pos:(29504,34093) Wall:10582 Enemy:821
+2026-03-28 12:31:54,362 - INFO -   >> New Best Fitness: 1581.4 (steps=532.9, food=179.9, peak_len=49.7). Saved: best_model_20260328-ecf7e01b_ep98663_s532_f179_pk49.pth
+2026-03-28 12:31:54,374 - INFO -   [Curriculum] Compound blocked: avg_steps=455<600
+2026-03-28 12:32:10,085 - INFO - Ep 98664 | S4:MASS_MANAGEMENT | Rw: 681.65 | St: 1574 | Fd: 531 (0.337/st) | Pk: 67 | Eps: 0.080 | L: 0.6305 | Q: -37.79/40.04 | Rx:31.26% | SnakeCollision | Pos:(32769,38496) Wall:8047 Enemy:27
+2026-03-28 12:32:10,200 - INFO -   >> New Best Fitness: 1602.7 (steps=540.0, food=182.7, peak_len=49.7). Saved: best_model_20260328-ecf7e01b_ep98664_s540_f182_pk49.pth
+2026-03-28 12:32:10,211 - INFO -   [Curriculum] Compound blocked: avg_steps=462<600
+2026-03-28 12:32:36,311 - INFO - Ep 98665 | S4:MASS_MANAGEMENT | Rw: 4.85 | St: 527 | Fd: 186 (0.353/st) | Pk: 59 | Eps: 0.080 | L: 0.7066 | Q: -40.79/18.03 | Rx:29.22% | SnakeCollision | Pos:(21701,32919) Wall:3141 Enemy:44
+2026-03-28 12:32:36,442 - INFO -   >> New Best Fitness: 1615.1 (steps=544.1, food=184.2, peak_len=50.0). Saved: best_model_20260328-ecf7e01b_ep98665_s544_f184_pk50.pth
+2026-03-28 12:32:36,454 - INFO -   [Curriculum] Compound blocked: avg_steps=464<600
+2026-03-28 12:32:40,369 - INFO - Ep 98666 | S4:MASS_MANAGEMENT | Rw: 203.62 | St: 208 | Fd: 79 (0.380/st) | Pk: 46 | Eps: 0.080 | L: 1.5106 | Q: -39.55/23.62 | Rx:38.46% | SnakeCollision | Pos:(34867,34919) Wall:10683 Enemy:494
+2026-03-28 12:32:40,500 - INFO -   >> New Best Fitness: 1620.7 (steps=546.2, food=184.8, peak_len=50.3). Saved: best_model_20260328-ecf7e01b_ep98666_s546_f184_pk50.pth
+2026-03-28 12:32:40,513 - INFO -   [Curriculum] Compound blocked: avg_steps=465<600
+2026-03-28 12:32:42,838 - INFO - Ep 98667 | S4:MASS_MANAGEMENT | Rw: 215.71 | St: 207 | Fd: 82 (0.396/st) | Pk: 52 | Eps: 0.080 | L: 1.5225 | Q: -39.54/24.67 | Rx:18.84% | SnakeCollision | Pos:(38641,30156) Wall:7452 Enemy:199
+2026-03-28 12:32:42,959 - INFO -   >> New Best Fitness: 1624.9 (steps=547.5, food=185.2, peak_len=50.5). Saved: best_model_20260328-ecf7e01b_ep98667_s547_f185_pk50.pth
+2026-03-28 12:32:42,971 - INFO -   [Curriculum] Compound blocked: avg_steps=465<600
+2026-03-28 12:32:42,974 - INFO - Ep 98668 | S4:MASS_MANAGEMENT | Rw: -36.12 | St: 2 | Fd: 2 (1.000/st) | Pk: 6 | Eps: 0.080 | L: 1.5225 | Q: -39.54/24.67 | Rx:100.00% | SnakeCollision | Pos:(36433,30241) Wall:9479 Enemy:241
+2026-03-28 12:32:42,987 - INFO -   [Curriculum] Compound blocked: avg_steps=465<600
+2026-03-28 12:33:39,433 - INFO - Ep 98669 | S4:MASS_MANAGEMENT | Rw: 299.82 | St: 458 | Fd: 158 (0.345/st) | Pk: 53 | Eps: 0.080 | L: 0.8070 | Q: -35.24/33.46 | Rx:26.20% | SnakeCollision | Pos:(34344,36006) Wall:10102 Enemy:36
+2026-03-28 12:33:39,447 - INFO -   [Curriculum] Compound blocked: avg_steps=466<600
+2026-03-28 12:34:14,371 - INFO - Ep 98670 | S4:MASS_MANAGEMENT | Rw: 190.48 | St: 186 | Fd: 74 (0.398/st) | Pk: 55 | Eps: 0.080 | L: 1.4793 | Q: -37.01/19.87 | Rx:21.51% | SnakeCollision | Pos:(31534,36811) Wall:9616 Enemy:30
+2026-03-28 12:34:14,372 - INFO - Death Stats: {'Wall': 12, 'SnakeCollision': 594, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 5}
+2026-03-28 12:34:14,387 - INFO -   [Curriculum] Compound blocked: avg_steps=466<600
+2026-03-28 12:37:04,395 - INFO - Ep 98671 | S4:MASS_MANAGEMENT | Rw: 575.04 | St: 1519 | Fd: 474 (0.312/st) | Pk: 54 | Eps: 0.080 | L: 0.9810 | Q: -36.79/23.39 | Rx:18.04% | SnakeCollision | Pos:(39212,29436) Wall:6643 Enemy:18
+2026-03-28 12:37:04,408 - INFO -   [Curriculum] Compound blocked: avg_steps=472<600
+2026-03-28 12:37:10,609 - INFO - Ep 98672 | S4:MASS_MANAGEMENT | Rw: 98.65 | St: 1533 | Fd: 505 (0.329/st) | Pk: 58 | Eps: 0.080 | L: 0.8052 | Q: -35.78/27.85 | Rx:18.98% | SnakeCollision | Pos:(24276,31123) Wall:5601 Enemy:30
+2026-03-28 12:37:10,734 - INFO -   >> New Best Fitness: 1650.5 (steps=557.7, food=188.6, peak_len=50.0). Saved: best_model_20260328-ecf7e01b_ep98672_s557_f188_pk50.pth
+2026-03-28 12:37:10,745 - INFO -   [Curriculum] Compound blocked: avg_steps=477<600
+2026-03-28 12:37:46,937 - INFO - Ep 98673 | S4:MASS_MANAGEMENT | Rw: 488.52 | St: 1195 | Fd: 406 (0.340/st) | Pk: 58 | Eps: 0.080 | L: 0.8159 | Q: -41.20/32.44 | Rx:20.92% | SnakeCollision | Pos:(30174,39318) Wall:6824 Enemy:253
+2026-03-28 12:37:47,077 - INFO -   >> New Best Fitness: 1677.9 (steps=568.0, food=191.9, peak_len=50.2). Saved: best_model_20260328-ecf7e01b_ep98673_s568_f191_pk50.pth
+2026-03-28 12:37:47,089 - INFO -   [Curriculum] Compound blocked: avg_steps=480<600
+2026-03-28 12:38:10,804 - INFO - Ep 98674 | S4:MASS_MANAGEMENT | Rw: 220.72 | St: 295 | Fd: 103 (0.349/st) | Pk: 54 | Eps: 0.080 | L: 0.6387 | Q: -39.87/23.56 | Rx:21.69% | SnakeCollision | Pos:(37573,41057) Wall:4117 Enemy:17
+2026-03-28 12:38:10,818 - INFO -   [Curriculum] Compound blocked: avg_steps=480<600
+2026-03-28 12:38:42,839 - INFO - Ep 98675 | S4:MASS_MANAGEMENT | Rw: 254.09 | St: 2000 | Fd: 607 (0.303/st) | Pk: 58 | Eps: 0.080 | L: 0.9549 | Q: -35.39/43.45 | Rx:17.10% | MaxSteps | Pos:(41249,30373) Wall:5029 Enemy:860
+2026-03-28 12:38:42,963 - INFO -   >> New Best Fitness: 1717.1 (steps=583.6, food=196.5, peak_len=50.3). Saved: best_model_20260328-ecf7e01b_ep98675_s583_f196_pk50.pth
+2026-03-28 12:38:42,977 - INFO -   [Curriculum] Compound blocked: avg_steps=489<600
+2026-03-28 12:39:12,613 - INFO - Ep 98676 | S4:MASS_MANAGEMENT | Rw: 153.07 | St: 154 | Fd: 69 (0.448/st) | Pk: 45 | Eps: 0.080 | L: 0.4744 | Q: -38.76/29.09 | Rx:20.78% | SnakeCollision | Pos:(38197,32641) Wall:8349 Enemy:52
+2026-03-28 12:39:12,628 - INFO -   [Curriculum] Compound blocked: avg_steps=489<600
+2026-03-28 12:39:37,841 - INFO - Ep 98677 | S4:MASS_MANAGEMENT | Rw: 116.00 | St: 125 | Fd: 54 (0.432/st) | Pk: 56 | Eps: 0.080 | L: 0.9297 | Q: -35.22/17.78 | Rx:28.00% | SnakeCollision | Pos:(25306,27297) Wall:5048 Enemy:40
+2026-03-28 12:39:37,860 - INFO -   [Curriculum] Compound blocked: avg_steps=490<600
+2026-03-28 12:39:43,268 - INFO - Ep 98678 | S4:MASS_MANAGEMENT | Rw: 37.71 | St: 574 | Fd: 223 (0.389/st) | Pk: 56 | Eps: 0.080 | L: 1.4691 | Q: -40.57/20.38 | Rx:23.17% | SnakeCollision | Pos:(39250,27775) Wall:5769 Enemy:40
+2026-03-28 12:39:43,281 - INFO -   [Curriculum] Compound blocked: avg_steps=492<600
+2026-03-28 12:39:45,594 - INFO - Ep 98679 | S4:MASS_MANAGEMENT | Rw: 78.02 | St: 750 | Fd: 282 (0.376/st) | Pk: 59 | Eps: 0.080 | L: 0.3226 | Q: -39.13/23.49 | Rx:19.20% | SnakeCollision | Pos:(19143,34497) Wall:448 Enemy:1225
+2026-03-28 12:39:45,612 - INFO -   [Curriculum] Compound blocked: avg_steps=494<600
+2026-03-28 12:39:47,989 - INFO - Ep 98680 | S4:MASS_MANAGEMENT | Rw: 234.31 | St: 469 | Fd: 202 (0.431/st) | Pk: 65 | Eps: 0.080 | L: 1.2942 | Q: -39.61/-0.42 | Rx:27.29% | SnakeCollision | Pos:(41299,30635) Wall:5040 Enemy:77
+2026-03-28 12:39:47,989 - INFO - Death Stats: {'Wall': 12, 'SnakeCollision': 603, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 6}
+2026-03-28 12:39:48,008 - INFO -   [Curriculum] Compound blocked: avg_steps=496<600
+2026-03-28 12:40:51,312 - INFO - Ep 98681 | S4:MASS_MANAGEMENT | Rw: 309.07 | St: 351 | Fd: 140 (0.399/st) | Pk: 56 | Eps: 0.080 | L: 1.0428 | Q: -34.47/32.09 | Rx:7.98% | SnakeCollision | Pos:(38812,40384) Wall:3967
+2026-03-28 12:40:51,327 - INFO -   [Curriculum] Compound blocked: avg_steps=496<600
+2026-03-28 12:41:25,907 - INFO - Ep 98682 | S4:MASS_MANAGEMENT | Rw: 95.48 | St: 529 | Fd: 175 (0.331/st) | Pk: 47 | Eps: 0.080 | L: 0.4502 | Q: -35.33/53.55 | Rx:28.17% | SnakeCollision | Pos:(33141,36105) Wall:10393 Enemy:46
+2026-03-28 12:41:25,924 - INFO -   [Curriculum] Compound blocked: avg_steps=498<600
+2026-03-28 12:41:51,481 - INFO - >> Target Network Updated
+2026-03-28 12:42:04,449 - INFO - Ep 98683 | S4:MASS_MANAGEMENT | Rw: 127.69 | St: 348 | Fd: 129 (0.371/st) | Pk: 55 | Eps: 0.080 | L: 0.7231 | Q: -31.94/22.11 | Rx:28.74% | SnakeCollision | Pos:(36206,23268) Wall:4020 Enemy:649
+2026-03-28 12:42:04,463 - INFO -   [Curriculum] Compound blocked: avg_steps=498<600
+2026-03-28 12:43:04,738 - INFO - Ep 98684 | S4:MASS_MANAGEMENT | Rw: 20.01 | St: 290 | Fd: 94 (0.324/st) | Pk: 50 | Eps: 0.080 | L: 1.5697 | Q: -25.71/44.12 | Rx:38.28% | SnakeCollision | Pos:(28107,36915) Wall:7768 Enemy:45
+2026-03-28 12:43:04,752 - INFO -   [Curriculum] Compound blocked: avg_steps=496<600
+2026-03-28 12:43:33,795 - INFO - Ep 98685 | S4:MASS_MANAGEMENT | Rw: 208.22 | St: 613 | Fd: 227 (0.370/st) | Pk: 61 | Eps: 0.080 | L: 0.5562 | Q: -29.04/27.03 | Rx:33.77% | SnakeCollision | Pos:(44970,28812) Wall:1026 Enemy:10
+2026-03-28 12:43:33,809 - INFO -   [Curriculum] Compound blocked: avg_steps=496<600
+2026-03-28 12:44:01,898 - INFO - Ep 98686 | S4:MASS_MANAGEMENT | Rw: 79.72 | St: 306 | Fd: 89 (0.291/st) | Pk: 50 | Eps: 0.080 | L: 0.8958 | Q: -30.66/11.97 | Rx:10.46% | SnakeCollision | Pos:(33013,42541) Wall:3995
+2026-03-28 12:44:01,913 - INFO -   [Curriculum] Compound blocked: avg_steps=496<600
+2026-03-28 12:45:21,121 - INFO - Ep 98687 | S4:MASS_MANAGEMENT | Rw: 925.45 | St: 1684 | Fd: 586 (0.348/st) | Pk: 64 | Eps: 0.080 | L: 0.1698 | Q: -32.35/65.00 | Rx:32.78% | SnakeCollision | Pos:(34227,28497) Wall:9611 Enemy:10
+2026-03-28 12:45:21,135 - INFO -   [Curriculum] Compound blocked: avg_steps=504<600
+2026-03-28 12:46:12,842 - INFO - Ep 98688 | S4:MASS_MANAGEMENT | Rw: 102.36 | St: 2000 | Fd: 666 (0.333/st) | Pk: 58 | Eps: 0.080 | L: 0.4438 | Q: -28.52/38.53 | Rx:20.90% | MaxSteps | Pos:(38634,39488) Wall:4769 Enemy:828
+2026-03-28 12:46:12,968 - INFO -   >> New Best Fitness: 1717.7 (steps=578.3, food=197.8, peak_len=50.2). Saved: best_model_20260328-ecf7e01b_ep98688_s578_f197_pk50.pth
+2026-03-28 12:46:12,980 - INFO -   [Curriculum] Compound blocked: avg_steps=510<600
+2026-03-28 12:46:29,380 - INFO - Ep 98689 | S4:MASS_MANAGEMENT | Rw: 90.57 | St: 71 | Fd: 38 (0.535/st) | Pk: 38 | Eps: 0.080 | L: 2.3067 | Q: -27.23/44.35 | Rx:28.17% | SnakeCollision | Pos:(33621,33456) Wall:12593 Enemy:16
+2026-03-28 12:46:29,398 - INFO -   [Curriculum] Compound blocked: avg_steps=504<600
+2026-03-28 12:46:48,808 - INFO - Ep 98690 | S4:MASS_MANAGEMENT | Rw: -238.01 | St: 1011 | Fd: 336 (0.332/st) | Pk: 57 | Eps: 0.080 | L: 1.0088 | Q: -26.85/40.83 | Rx:32.05% | SnakeCollision | Pos:(38958,34994) Wall:7138 Enemy:55
+2026-03-28 12:46:48,809 - INFO - Death Stats: {'Wall': 12, 'SnakeCollision': 612, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 7}
+2026-03-28 12:46:48,826 - INFO -   [Curriculum] Compound blocked: avg_steps=505<600
+2026-03-28 12:47:42,791 - INFO - Ep 98691 | S4:MASS_MANAGEMENT | Rw: -216.11 | St: 1157 | Fd: 373 (0.322/st) | Pk: 52 | Eps: 0.080 | L: 1.4393 | Q: -30.87/40.80 | Rx:29.56% | SnakeCollision | Pos:(27725,23243) Wall:3513 Enemy:650
+2026-03-28 12:47:42,922 - INFO -   >> New Best Fitness: 1745.8 (steps=589.2, food=201.2, peak_len=50.3). Saved: best_model_20260328-ecf7e01b_ep98691_s589_f201_pk50.pth
+2026-03-28 12:47:42,933 - INFO -   [Curriculum] Compound blocked: avg_steps=508<600
+2026-03-28 12:48:27,783 - INFO - Ep 98692 | S4:MASS_MANAGEMENT | Rw: -40.13 | St: 593 | Fd: 205 (0.346/st) | Pk: 59 | Eps: 0.080 | L: 1.1552 | Q: -34.80/27.24 | Rx:32.88% | SnakeCollision | Pos:(19995,26664) Wall:131 Enemy:204
+2026-03-28 12:48:27,906 - INFO -   >> New Best Fitness: 1751.3 (steps=590.7, food=202.0, peak_len=50.2). Saved: best_model_20260328-ecf7e01b_ep98692_s590_f201_pk50.pth
+2026-03-28 12:48:27,917 - INFO -   [Curriculum] Compound blocked: avg_steps=510<600
+2026-03-28 12:49:07,196 - INFO - Ep 98693 | S4:MASS_MANAGEMENT | Rw: -19.63 | St: 705 | Fd: 271 (0.384/st) | Pk: 60 | Eps: 0.080 | L: 0.7588 | Q: -30.73/12.80 | Rx:20.00% | SnakeCollision | Pos:(37852,30883) Wall:8439 Enemy:10
+2026-03-28 12:49:07,212 - INFO -   [Curriculum] Compound blocked: avg_steps=510<600
+2026-03-28 12:49:50,545 - INFO - Ep 98694 | S4:MASS_MANAGEMENT | Rw: 45.14 | St: 642 | Fd: 202 (0.315/st) | Pk: 46 | Eps: 0.080 | L: 1.5907 | Q: -24.95/33.89 | Rx:17.76% | SnakeCollision | Pos:(36087,34787) Wall:9812 Enemy:21
+2026-03-28 12:49:50,560 - INFO -   [Curriculum] Compound blocked: avg_steps=510<600
+2026-03-28 12:51:29,296 - INFO - Ep 98695 | S4:MASS_MANAGEMENT | Rw: 347.14 | St: 2000 | Fd: 697 (0.348/st) | Pk: 59 | Eps: 0.080 | L: 1.2112 | Q: -28.01/43.03 | Rx:16.90% | MaxSteps | Pos:(41765,32644) Wall:4781 Enemy:820
+2026-03-28 12:51:29,409 - INFO -   >> New Best Fitness: 1776.3 (steps=597.3, food=205.5, peak_len=50.5). Saved: best_model_20260328-ecf7e01b_ep98695_s597_f205_pk50.pth
+2026-03-28 12:51:29,422 - INFO -   [Curriculum] Compound blocked: avg_steps=519<600
+2026-03-28 12:51:38,282 - INFO - Ep 98696 | S4:MASS_MANAGEMENT | Rw: 55.72 | St: 1053 | Fd: 324 (0.308/st) | Pk: 54 | Eps: 0.080 | L: 0.2136 | Q: -30.32/22.32 | Rx:24.31% | SnakeCollision | Pos:(37899,37550) Wall:6674 Enemy:30
+2026-03-28 12:51:38,297 - INFO -   [Curriculum] Compound blocked: avg_steps=524<600
+2026-03-28 12:52:11,020 - INFO - Ep 98697 | S4:MASS_MANAGEMENT | Rw: 131.14 | St: 182 | Fd: 78 (0.429/st) | Pk: 51 | Eps: 0.080 | L: 1.5506 | Q: -31.10/47.15 | Rx:26.92% | SnakeCollision | Pos:(38161,31008) Wall:8177 Enemy:31
+2026-03-28 12:52:11,036 - INFO -   [Curriculum] Compound blocked: avg_steps=524<600
+2026-03-28 12:52:26,980 - INFO - Ep 98698 | S4:MASS_MANAGEMENT | Rw: 37.84 | St: 286 | Fd: 83 (0.290/st) | Pk: 42 | Eps: 0.080 | L: 0.6483 | Q: -28.03/33.54 | Rx:60.49% | SnakeCollision | Pos:(35371,33225) Wall:11096 Enemy:17
+2026-03-28 12:52:26,994 - INFO -   [Curriculum] Compound blocked: avg_steps=524<600
+2026-03-28 12:53:17,099 - INFO - Ep 98699 | S4:MASS_MANAGEMENT | Rw: 302.99 | St: 1374 | Fd: 419 (0.305/st) | Pk: 52 | Eps: 0.080 | L: 1.0380 | Q: -27.63/31.30 | Rx:20.45% | Wall | Pos:(28357,45674) Wall:219
+2026-03-28 12:53:17,240 - INFO -   >> New Best Fitness: 1796.0 (steps=605.0, food=207.8, peak_len=50.6). Saved: best_model_20260328-ecf7e01b_ep98699_s605_f207_pk50.pth
+2026-03-28 12:53:17,254 - INFO -   [Curriculum] Compound blocked: avg_steps=529<600
+2026-03-28 12:53:19,594 - INFO - Ep 98700 | S4:MASS_MANAGEMENT | Rw: 65.78 | St: 264 | Fd: 82 (0.311/st) | Pk: 37 | Eps: 0.080 | L: 1.4314 | Q: -28.62/11.68 | Rx:24.62% | SnakeCollision | Pos:(37567,43386) Wall:2056 Enemy:366
+2026-03-28 12:53:19,594 - INFO - Death Stats: {'Wall': 13, 'SnakeCollision': 620, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 8}
+2026-03-28 12:53:19,740 - INFO -   >> New Best Fitness: 1796.7 (steps=606.0, food=207.9, peak_len=50.5). Saved: best_model_20260328-ecf7e01b_ep98700_s606_f207_pk50.pth
+2026-03-28 12:53:19,754 - INFO -   [Curriculum] Compound blocked: avg_steps=529<600
+2026-03-28 12:53:47,588 - INFO - Ep 98701 | S4:MASS_MANAGEMENT | Rw: 135.02 | St: 126 | Fd: 64 (0.508/st) | Pk: 48 | Eps: 0.080 | L: 0.4924 | Q: -28.71/65.70 | Rx:17.46% | SnakeCollision | Pos:(30545,23478) Wall:4705 Enemy:45
+2026-03-28 12:53:47,602 - INFO -   [Curriculum] Compound blocked: avg_steps=527<600
+2026-03-28 12:53:51,242 - INFO - Ep 98702 | S4:MASS_MANAGEMENT | Rw: -117.50 | St: 464 | Fd: 165 (0.356/st) | Pk: 54 | Eps: 0.080 | L: 0.6534 | Q: -25.93/28.44 | Rx:35.34% | SnakeCollision | Pos:(34757,34049) Wall:11329 Enemy:355
+2026-03-28 12:53:51,380 - INFO -   >> New Best Fitness: 1802.1 (steps=608.5, food=208.5, peak_len=50.4). Saved: best_model_20260328-ecf7e01b_ep98702_s608_f208_pk50.pth
+2026-03-28 12:53:51,392 - INFO -   [Curriculum] Compound blocked: avg_steps=529<600
+2026-03-28 12:53:51,394 - INFO - Ep 98703 | S4:MASS_MANAGEMENT | Rw: -17.91 | St: 1267 | Fd: 448 (0.354/st) | Pk: 60 | Eps: 0.080 | L: 0.6534 | Q: -25.93/28.44 | Rx:25.41% | SnakeCollision | Pos:(32975,33960) Wall:12524 Enemy:539
+2026-03-28 12:53:51,498 - INFO -   >> New Best Fitness: 1837.1 (steps=621.1, food=212.7, peak_len=50.8). Saved: best_model_20260328-ecf7e01b_ep98703_s621_f212_pk50.pth
+2026-03-28 12:53:51,511 - INFO -   [Curriculum] Compound blocked: avg_steps=532<600
+2026-03-28 12:53:55,447 - INFO - Ep 98704 | S4:MASS_MANAGEMENT | Rw: 277.14 | St: 127 | Fd: 76 (0.598/st) | Pk: 56 | Eps: 0.080 | L: 0.4124 | Q: -26.93/21.88 | Rx:32.28% | SnakeCollision | Pos:(28253,33281) Wall:9638 Enemy:217
+2026-03-28 12:53:55,570 - INFO -   >> New Best Fitness: 1840.3 (steps=621.5, food=213.2, peak_len=51.0). Saved: best_model_20260328-ecf7e01b_ep98704_s621_f213_pk51.pth
+2026-03-28 12:53:55,582 - INFO -   [Curriculum] Compound blocked: avg_steps=530<600
+2026-03-28 12:53:57,889 - INFO - Ep 98705 | S4:MASS_MANAGEMENT | Rw: -32.27 | St: 2 | Fd: 2 (1.000/st) | Pk: 6 | Eps: 0.080 | L: 0.9786 | Q: -23.04/51.91 | Rx:100.00% | SnakeCollision | Pos:(29574,31279) Wall:10761 Enemy:462
+2026-03-28 12:53:57,902 - INFO -   [Curriculum] Compound blocked: avg_steps=529<600
+2026-03-28 12:54:02,720 - INFO - Ep 98706 | S4:MASS_MANAGEMENT | Rw: 105.86 | St: 4 | Fd: 20 (5.000/st) | Pk: 25 | Eps: 0.080 | L: 0.6552 | Q: -29.11/36.64 | Rx:50.00% | SnakeCollision | Pos:(38199,39671) Wall:4907 Enemy:198
+2026-03-28 12:54:02,735 - INFO -   [Curriculum] Compound blocked: avg_steps=528<600
+2026-03-28 12:54:06,698 - INFO - Ep 98707 | S4:MASS_MANAGEMENT | Rw: 97.69 | St: 4 | Fd: 19 (4.750/st) | Pk: 25 | Eps: 0.080 | L: 1.4013 | Q: -28.90/45.24 | Rx:50.00% | SnakeCollision | Pos:(28323,36427) Wall:8261 Enemy:464
+2026-03-28 12:54:06,712 - INFO -   [Curriculum] Compound blocked: avg_steps=527<600
+2026-03-28 12:54:09,060 - INFO - Ep 98708 | S4:MASS_MANAGEMENT | Rw: 96.24 | St: 4 | Fd: 19 (4.750/st) | Pk: 25 | Eps: 0.080 | L: 0.9023 | Q: -29.20/34.51 | Rx:50.00% | SnakeCollision | Pos:(28606,39743) Wall:5793 Enemy:178
+2026-03-28 12:54:09,074 - INFO -   [Curriculum] Compound blocked: avg_steps=527<600
+2026-03-28 12:54:52,533 - INFO - Ep 98709 | S4:MASS_MANAGEMENT | Rw: 106.21 | St: 250 | Fd: 101 (0.404/st) | Pk: 47 | Eps: 0.080 | L: 0.2409 | Q: -33.45/26.65 | Rx:37.20% | SnakeCollision | Pos:(31044,37457) Wall:8864 Enemy:15
+2026-03-28 12:54:52,549 - INFO -   [Curriculum] Compound blocked: avg_steps=525<600
+2026-03-28 12:55:42,603 - INFO - Ep 98710 | S4:MASS_MANAGEMENT | Rw: 37.41 | St: 276 | Fd: 97 (0.351/st) | Pk: 49 | Eps: 0.080 | L: 0.9513 | Q: -31.56/22.40 | Rx:40.94% | SnakeCollision | Pos:(27525,34418) Wall:8636 Enemy:79
+2026-03-28 12:55:42,604 - INFO - Death Stats: {'Wall': 13, 'SnakeCollision': 630, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 8}
+2026-03-28 12:55:42,617 - INFO -   [Curriculum] Compound blocked: avg_steps=524<600
+2026-03-28 12:55:47,028 - INFO - Ep 98711 | S4:MASS_MANAGEMENT | Rw: 52.87 | St: 529 | Fd: 186 (0.352/st) | Pk: 48 | Eps: 0.080 | L: 0.8552 | Q: -27.51/43.90 | Rx:9.45% | SnakeCollision | Pos:(23130,36897) Wall:3622 Enemy:1173
+2026-03-28 12:55:47,043 - INFO -   [Curriculum] Compound blocked: avg_steps=521<600
+2026-03-28 12:55:51,582 - INFO - Ep 98712 | S4:MASS_MANAGEMENT | Rw: 109.34 | St: 528 | Fd: 214 (0.405/st) | Pk: 59 | Eps: 0.080 | L: 1.4889 | Q: -28.79/43.71 | Rx:35.04% | SnakeCollision | Pos:(27004,35210) Wall:7846 Enemy:62
+2026-03-28 12:55:51,595 - INFO -   [Curriculum] Compound blocked: avg_steps=522<600
+2026-03-28 12:55:59,490 - INFO - Ep 98713 | S4:MASS_MANAGEMENT | Rw: 139.91 | St: 25 | Fd: 23 (0.920/st) | Pk: 26 | Eps: 0.080 | L: 0.2669 | Q: -27.93/39.76 | Rx:88.00% | SnakeCollision | Pos:(28352,30937) Wall:9499 Enemy:17
+2026-03-28 12:55:59,508 - INFO -   [Curriculum] Compound blocked: avg_steps=515<600
+2026-03-28 12:56:53,216 - INFO - Ep 98714 | S4:MASS_MANAGEMENT | Rw: 152.19 | St: 333 | Fd: 143 (0.429/st) | Pk: 56 | Eps: 0.080 | L: 0.5840 | Q: -27.73/49.82 | Rx:12.31% | SnakeCollision | Pos:(32307,45493) Wall:1051
+2026-03-28 12:56:53,229 - INFO -   [Curriculum] Compound blocked: avg_steps=517<600
+2026-03-28 12:56:56,493 - INFO - Ep 98715 | S4:MASS_MANAGEMENT | Rw: 57.60 | St: 336 | Fd: 134 (0.399/st) | Pk: 52 | Eps: 0.080 | L: 0.4082 | Q: -25.57/39.56 | Rx:33.04% | SnakeCollision | Pos:(33744,27834) Wall:9132 Enemy:485
+2026-03-28 12:56:56,505 - INFO -   [Curriculum] Compound blocked: avg_steps=517<600
+2026-03-28 12:56:59,982 - INFO - Ep 98716 | S4:MASS_MANAGEMENT | Rw: 329.08 | St: 313 | Fd: 135 (0.431/st) | Pk: 63 | Eps: 0.080 | L: 1.0235 | Q: -29.46/38.43 | Rx:17.25% | SnakeCollision | Pos:(33983,38259) Wall:8110 Enemy:857
+2026-03-28 12:56:59,995 - INFO -   [Curriculum] Compound blocked: avg_steps=518<600
+2026-03-28 12:57:41,803 - INFO - Ep 98717 | S4:MASS_MANAGEMENT | Rw: 25.09 | St: 215 | Fd: 96 (0.447/st) | Pk: 55 | Eps: 0.080 | L: 0.8401 | Q: -30.03/22.43 | Rx:30.23% | SnakeCollision | Pos:(40252,32564) Wall:6294 Enemy:22
+2026-03-28 12:57:41,819 - INFO -   [Curriculum] Compound blocked: avg_steps=517<600
+2026-03-28 12:57:50,408 - INFO - Ep 98718 | S4:MASS_MANAGEMENT | Rw: 6.60 | St: 238 | Fd: 84 (0.353/st) | Pk: 49 | Eps: 0.080 | L: 1.3312 | Q: -34.12/19.65 | Rx:37.82% | SnakeCollision | Pos:(38833,39287) Wall:4785 Enemy:40
+2026-03-28 12:57:50,420 - INFO -   [Curriculum] Compound blocked: avg_steps=517<600
+2026-03-28 12:57:54,742 - INFO - Ep 98719 | S4:MASS_MANAGEMENT | Rw: 112.04 | St: 26 | Fd: 22 (0.846/st) | Pk: 26 | Eps: 0.080 | L: 1.2865 | Q: -28.56/33.93 | Rx:46.15% | SnakeCollision | Pos:(33971,33227) Wall:12422 Enemy:824
+2026-03-28 12:57:54,755 - INFO -   [Curriculum] Compound blocked: avg_steps=517<600
+2026-03-28 12:57:54,761 - INFO - Ep 98720 | S4:MASS_MANAGEMENT | Rw: -28.88 | St: 240 | Fd: 103 (0.429/st) | Pk: 51 | Eps: 0.080 | L: 1.2865 | Q: -28.56/33.93 | Rx:39.17% | SnakeCollision | Pos:(24266,34336) Wall:5522 Enemy:255
+2026-03-28 12:57:54,761 - INFO - Death Stats: {'Wall': 13, 'SnakeCollision': 640, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 8}
+2026-03-28 12:57:54,772 - INFO -   [Curriculum] Compound blocked: avg_steps=516<600
+2026-03-28 12:58:28,595 - INFO - Ep 98721 | S4:MASS_MANAGEMENT | Rw: 2.29 | St: 185 | Fd: 68 (0.368/st) | Pk: 41 | Eps: 0.080 | L: 0.5885 | Q: -31.12/8.57 | Rx:28.65% | SnakeCollision | Pos:(28139,31664) Wall:9497 Enemy:26
+2026-03-28 12:58:28,610 - INFO -   [Curriculum] Compound blocked: avg_steps=516<600
+2026-03-28 12:58:59,526 - INFO - Ep 98722 | S4:MASS_MANAGEMENT | Rw: 23.40 | St: 346 | Fd: 119 (0.344/st) | Pk: 52 | Eps: 0.080 | L: 0.9524 | Q: -30.28/49.75 | Rx:45.66% | SnakeCollision | Pos:(27478,30420) Wall:8495 Enemy:53
+2026-03-28 12:58:59,544 - INFO -   [Curriculum] Compound blocked: avg_steps=518<600
+2026-03-28 12:59:16,727 - INFO - Ep 98723 | S4:MASS_MANAGEMENT | Rw: -77.45 | St: 1531 | Fd: 535 (0.349/st) | Pk: 60 | Eps: 0.080 | L: 1.1446 | Q: -30.97/53.30 | Rx:26.26% | SnakeCollision | Pos:(25452,32645) Wall:6898 Enemy:45
+2026-03-28 12:59:16,740 - INFO -   [Curriculum] Compound blocked: avg_steps=525<600
+2026-03-28 12:59:40,137 - INFO - Ep 98724 | S4:MASS_MANAGEMENT | Rw: 99.96 | St: 205 | Fd: 93 (0.454/st) | Pk: 52 | Eps: 0.080 | L: 0.4612 | Q: -26.73/58.32 | Rx:33.17% | SnakeCollision | Pos:(33977,26627) Wall:7904 Enemy:20
+2026-03-28 12:59:40,159 - INFO -   [Curriculum] Compound blocked: avg_steps=524<600
+2026-03-28 12:59:50,654 - INFO - Ep 98725 | S4:MASS_MANAGEMENT | Rw: 38.53 | St: 408 | Fd: 151 (0.370/st) | Pk: 48 | Eps: 0.080 | L: 0.6677 | Q: -26.94/52.81 | Rx:14.46% | SnakeCollision | Pos:(38311,23445) Wall:3222 Enemy:17
+2026-03-28 12:59:50,668 - INFO -   [Curriculum] Compound blocked: avg_steps=525<600
+2026-03-28 12:59:55,459 - INFO - Ep 98726 | S4:MASS_MANAGEMENT | Rw: 115.55 | St: 44 | Fd: 33 (0.750/st) | Pk: 35 | Eps: 0.080 | L: 0.3020 | Q: -26.96/42.49 | Rx:45.45% | SnakeCollision | Pos:(30558,37606) Wall:8562 Enemy:67
+2026-03-28 12:59:55,474 - INFO -   [Curriculum] Compound blocked: avg_steps=523<600
+2026-03-28 13:00:04,406 - INFO - Ep 98727 | S4:MASS_MANAGEMENT | Rw: 134.75 | St: 34 | Fd: 31 (0.912/st) | Pk: 32 | Eps: 0.080 | L: 0.8548 | Q: -31.92/26.33 | Rx:38.24% | SnakeCollision | Pos:(37353,25258) Wall:5265 Enemy:21
+2026-03-28 13:00:04,421 - INFO -   [Curriculum] Compound blocked: avg_steps=517<600
+2026-03-28 13:00:45,635 - INFO - Ep 98728 | S4:MASS_MANAGEMENT | Rw: 316.27 | St: 839 | Fd: 274 (0.327/st) | Pk: 59 | Eps: 0.080 | L: 0.9143 | Q: -25.29/56.00 | Rx:22.29% | SnakeCollision | Pos:(32779,41310) Wall:5234 Enemy:30
+2026-03-28 13:00:45,649 - INFO -   [Curriculum] Compound blocked: avg_steps=519<600
+2026-03-28 13:01:00,406 - INFO - Ep 98729 | S4:MASS_MANAGEMENT | Rw: 130.57 | St: 44 | Fd: 38 (0.864/st) | Pk: 39 | Eps: 0.080 | L: 0.6538 | Q: -31.07/25.51 | Rx:72.73% | SnakeCollision | Pos:(31365,38992) Wall:7447 Enemy:36
+2026-03-28 13:01:00,420 - INFO -   [Curriculum] Compound blocked: avg_steps=517<600
+2026-03-28 13:01:03,287 - INFO - Ep 98730 | S4:MASS_MANAGEMENT | Rw: 204.54 | St: 457 | Fd: 237 (0.519/st) | Pk: 58 | Eps: 0.080 | L: 0.5965 | Q: -33.17/26.41 | Rx:38.95% | SnakeCollision | Pos:(25457,30270) Wall:6546 Enemy:242
+2026-03-28 13:01:03,287 - INFO - Death Stats: {'Wall': 13, 'SnakeCollision': 650, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 8}
+2026-03-28 13:01:03,300 - INFO -   [Curriculum] Compound blocked: avg_steps=519<600
+2026-03-28 13:01:07,012 - INFO - Ep 98731 | S4:MASS_MANAGEMENT | Rw: 55.90 | St: 259 | Fd: 111 (0.429/st) | Pk: 55 | Eps: 0.080 | L: 0.5551 | Q: -33.29/8.09 | Rx:38.61% | SnakeCollision | Pos:(28673,29165) Wall:8850 Enemy:346
+2026-03-28 13:01:07,025 - INFO -   [Curriculum] Compound blocked: avg_steps=520<600
+2026-03-28 13:01:42,146 - INFO - Ep 98732 | S4:MASS_MANAGEMENT | Rw: 132.62 | St: 175 | Fd: 86 (0.491/st) | Pk: 53 | Eps: 0.080 | L: 0.7726 | Q: -31.58/49.42 | Rx:49.71% | SnakeCollision | Pos:(33572,30517) Wall:11721 Enemy:24
+2026-03-28 13:01:42,162 - INFO -   [Curriculum] Compound blocked: avg_steps=519<600
+2026-03-28 13:02:22,051 - INFO - Ep 98733 | S4:MASS_MANAGEMENT | Rw: 256.35 | St: 230 | Fd: 76 (0.330/st) | Pk: 39 | Eps: 0.080 | L: 1.0648 | Q: -33.31/3.90 | Rx:15.22% | SnakeCollision | Pos:(23022,42044) Wall:546 Enemy:21
+2026-03-28 13:02:22,069 - INFO -   [Curriculum] Compound blocked: avg_steps=519<600
+2026-03-28 13:03:18,787 - INFO - Ep 98734 | S4:MASS_MANAGEMENT | Rw: -410.82 | St: 1006 | Fd: 332 (0.330/st) | Pk: 55 | Eps: 0.080 | L: 2.3135 | Q: -27.43/39.12 | Rx:17.69% | Wall | Pos:(42314,23188) Wall:469
+2026-03-28 13:03:18,806 - INFO -   [Curriculum] Compound blocked: avg_steps=522<600
+2026-03-28 13:03:23,197 - INFO - Ep 98735 | S4:MASS_MANAGEMENT | Rw: -59.99 | St: 718 | Fd: 261 (0.364/st) | Pk: 55 | Eps: 0.080 | L: 1.2326 | Q: -28.64/37.73 | Rx:42.62% | SnakeCollision | Pos:(36718,32065) Wall:9801 Enemy:294
+2026-03-28 13:03:23,210 - INFO -   [Curriculum] Compound blocked: avg_steps=524<600
+2026-03-28 13:03:25,562 - INFO - Ep 98736 | S4:MASS_MANAGEMENT | Rw: 172.95 | St: 718 | Fd: 243 (0.338/st) | Pk: 49 | Eps: 0.080 | L: 2.3026 | Q: -27.50/28.71 | Rx:24.65% | SnakeCollision | Pos:(27808,34501) Wall:8868 Enemy:94
+2026-03-28 13:03:25,687 - INFO -   >> New Best Fitness: 1848.5 (steps=620.3, food=215.5, peak_len=50.3). Saved: best_model_20260328-ecf7e01b_ep98736_s620_f215_pk50.pth
+2026-03-28 13:03:25,699 - INFO -   [Curriculum] Compound blocked: avg_steps=527<600
+2026-03-28 13:03:38,330 - INFO - Ep 98737 | S4:MASS_MANAGEMENT | Rw: 139.67 | St: 53 | Fd: 28 (0.528/st) | Pk: 31 | Eps: 0.080 | L: 0.6164 | Q: -32.41/24.31 | Rx:54.72% | SnakeCollision | Pos:(38210,36095) Wall:7318 Enemy:31
+2026-03-28 13:03:38,343 - INFO -   [Curriculum] Compound blocked: avg_steps=523<600
+2026-03-28 13:03:46,778 - INFO - Ep 98738 | S4:MASS_MANAGEMENT | Rw: 90.73 | St: 384 | Fd: 133 (0.346/st) | Pk: 47 | Eps: 0.080 | L: 0.7718 | Q: -28.76/35.72 | Rx:24.74% | SnakeCollision | Pos:(30015,37595) Wall:8351 Enemy:66
+2026-03-28 13:03:46,794 - INFO -   [Curriculum] Compound blocked: avg_steps=517<600
+2026-03-28 13:03:49,236 - INFO - Ep 98739 | S4:MASS_MANAGEMENT | Rw: 117.13 | St: 72 | Fd: 53 (0.736/st) | Pk: 55 | Eps: 0.080 | L: 0.8206 | Q: -26.50/33.56 | Rx:29.17% | SnakeCollision | Pos:(26035,36192) Wall:6533 Enemy:315
+2026-03-28 13:03:49,248 - INFO -   [Curriculum] Compound blocked: avg_steps=518<600
+2026-03-28 13:04:45,630 - INFO - Ep 98740 | S4:MASS_MANAGEMENT | Rw: -75.54 | St: 381 | Fd: 133 (0.349/st) | Pk: 51 | Eps: 0.080 | L: 1.0228 | Q: -30.69/40.38 | Rx:25.46% | SnakeCollision | Pos:(31044,26754) Wall:8008 Enemy:24
+2026-03-28 13:04:45,631 - INFO - Death Stats: {'Wall': 14, 'SnakeCollision': 659, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 8}
+2026-03-28 13:04:45,645 - INFO -   [Curriculum] Compound blocked: avg_steps=518<600
+2026-03-28 13:04:49,634 - INFO - Ep 98741 | S4:MASS_MANAGEMENT | Rw: 5.43 | St: 312 | Fd: 117 (0.375/st) | Pk: 50 | Eps: 0.080 | L: 0.7965 | Q: -30.74/16.40 | Rx:24.68% | SnakeCollision | Pos:(25868,26293) Wall:4842 Enemy:410
+2026-03-28 13:04:49,651 - INFO -   [Curriculum] Compound blocked: avg_steps=513<600
+2026-03-28 13:04:51,992 - INFO - Ep 98742 | S4:MASS_MANAGEMENT | Rw: -12.99 | St: 312 | Fd: 106 (0.340/st) | Pk: 49 | Eps: 0.080 | L: 1.5415 | Q: -35.10/43.91 | Rx:16.67% | SnakeCollision | Pos:(25450,23830) Wall:2752 Enemy:79
+2026-03-28 13:04:52,011 - INFO -   [Curriculum] Compound blocked: avg_steps=514<600
+2026-03-28 13:05:18,242 - INFO - Ep 98743 | S4:MASS_MANAGEMENT | Rw: 153.08 | St: 119 | Fd: 60 (0.504/st) | Pk: 46 | Eps: 0.080 | L: 0.6205 | Q: -26.33/43.79 | Rx:65.55% | SnakeCollision | Pos:(31832,31313) Wall:12566 Enemy:416
+2026-03-28 13:05:18,257 - INFO -   [Curriculum] Compound blocked: avg_steps=513<600
+2026-03-28 13:05:21,497 - INFO - Ep 98744 | S4:MASS_MANAGEMENT | Rw: -2.25 | St: 447 | Fd: 179 (0.400/st) | Pk: 58 | Eps: 0.080 | L: 0.5616 | Q: -27.63/44.75 | Rx:16.33% | SnakeCollision | Pos:(34118,33753) Wall:12020 Enemy:380
+2026-03-28 13:05:21,511 - INFO -   [Curriculum] Compound blocked: avg_steps=513<600
+2026-03-28 13:06:02,048 - INFO - Ep 98745 | S4:MASS_MANAGEMENT | Rw: -33.38 | St: 215 | Fd: 77 (0.358/st) | Pk: 46 | Eps: 0.080 | L: 0.7160 | Q: -30.08/9.05 | Rx:32.09% | SnakeCollision | Pos:(36862,28239) Wall:7899 Enemy:19
+2026-03-28 13:06:02,064 - INFO -   [Curriculum] Compound blocked: avg_steps=514<600
+2026-03-28 13:06:04,583 - INFO - Ep 98746 | S4:MASS_MANAGEMENT | Rw: 103.48 | St: 217 | Fd: 94 (0.433/st) | Pk: 49 | Eps: 0.080 | L: 1.3984 | Q: -30.49/40.71 | Rx:31.34% | SnakeCollision | Pos:(29579,35600) Wall:9739 Enemy:531
+2026-03-28 13:06:04,597 - INFO -   [Curriculum] Compound blocked: avg_steps=515<600
+2026-03-28 13:07:43,618 - INFO - Ep 98747 | S4:MASS_MANAGEMENT | Rw: 61.20 | St: 864 | Fd: 276 (0.319/st) | Pk: 55 | Eps: 0.080 | L: 1.3016 | Q: -27.92/11.07 | Rx:20.72% | SnakeCollision | Pos:(38712,31318) Wall:7713 Enemy:15
+2026-03-28 13:07:43,635 - INFO -   [Curriculum] Compound blocked: avg_steps=519<600
+2026-03-28 13:08:41,391 - INFO - Ep 98748 | S4:MASS_MANAGEMENT | Rw: -177.57 | St: 1185 | Fd: 419 (0.354/st) | Pk: 56 | Eps: 0.080 | L: 1.5200 | Q: -29.33/55.74 | Rx:35.02% | SnakeCollision | Pos:(29252,31526) Wall:10543 Enemy:53
+2026-03-28 13:08:41,407 - INFO -   [Curriculum] Compound blocked: avg_steps=524<600
+2026-03-28 13:08:45,291 - INFO - Ep 98749 | S4:MASS_MANAGEMENT | Rw: 70.53 | St: 853 | Fd: 283 (0.332/st) | Pk: 51 | Eps: 0.080 | L: 0.3009 | Q: -27.33/42.72 | Rx:22.04% | Wall | Pos:(19381,35447) Wall:513
+2026-03-28 13:08:45,306 - INFO -   [Curriculum] Compound blocked: avg_steps=528<600
+2026-03-28 13:12:03,364 - INFO - Ep 98750 | S4:MASS_MANAGEMENT | Rw: -150.61 | St: 1137 | Fd: 356 (0.313/st) | Pk: 56 | Eps: 0.080 | L: 0.5797 | Q: -30.07/36.87 | Rx:36.15% | SnakeCollision | Pos:(33338,32800) Wall:13169 Enemy:25
+2026-03-28 13:12:03,365 - INFO - Death Stats: {'Wall': 15, 'SnakeCollision': 668, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 8}
+2026-03-28 13:12:03,383 - INFO -   [Curriculum] Compound blocked: avg_steps=533<600
+2026-03-28 13:12:05,869 - INFO - Ep 98751 | S4:MASS_MANAGEMENT | Rw: 825.87 | St: 2000 | Fd: 577 (0.288/st) | Pk: 57 | Eps: 0.080 | L: 0.9833 | Q: -26.25/48.71 | Rx:19.45% | MaxSteps | Pos:(23890,25066) Wall:2551 Enemy:226
+2026-03-28 13:12:05,882 - INFO -   [Curriculum] Compound blocked: avg_steps=541<600
+2026-03-28 13:12:10,704 - INFO - Ep 98752 | S4:MASS_MANAGEMENT | Rw: 50.53 | St: 16 | Fd: 13 (0.812/st) | Pk: 18 | Eps: 0.080 | L: 0.1849 | Q: -31.71/30.69 | Rx:75.00% | SnakeCollision | Pos:(26912,31440) Wall:8251 Enemy:17
+2026-03-28 13:12:10,718 - INFO -   [Curriculum] Compound blocked: avg_steps=540<600
+2026-03-28 13:13:32,419 - INFO - Ep 98753 | S4:MASS_MANAGEMENT | Rw: -175.52 | St: 466 | Fd: 168 (0.361/st) | Pk: 50 | Eps: 0.080 | L: 2.1395 | Q: -27.98/21.04 | Rx:33.05% | SnakeCollision | Pos:(32153,36168) Wall:10357 Enemy:50
+2026-03-28 13:13:32,435 - INFO -   [Curriculum] Compound blocked: avg_steps=539<600
+2026-03-28 13:13:42,786 - INFO - Ep 98754 | S4:MASS_MANAGEMENT | Rw: 1584.34 | St: 2000 | Fd: 643 (0.322/st) | Pk: 57 | Eps: 0.080 | L: 1.3548 | Q: -30.95/24.31 | Rx:17.95% | MaxSteps | Pos:(23803,40629) Wall:2089 Enemy:905
+2026-03-28 13:13:42,798 - INFO -   [Curriculum] Compound blocked: avg_steps=548<600
+2026-03-28 13:14:08,677 - INFO - Ep 98755 | S4:MASS_MANAGEMENT | Rw: 97.31 | St: 654 | Fd: 230 (0.352/st) | Pk: 54 | Eps: 0.080 | L: 1.5244 | Q: -27.93/30.14 | Rx:48.78% | SnakeCollision | Pos:(34429,33393) Wall:11937 Enemy:16
+2026-03-28 13:14:08,693 - INFO -   [Curriculum] Compound blocked: avg_steps=551<600
+2026-03-28 13:14:41,883 - INFO - Ep 98756 | S4:MASS_MANAGEMENT | Rw: 1016.25 | St: 2000 | Fd: 577 (0.288/st) | Pk: 58 | Eps: 0.080 | L: 0.7770 | Q: -28.39/30.34 | Rx:16.45% | MaxSteps | Pos:(32561,42042) Wall:4504 Enemy:1520
+2026-03-28 13:14:41,897 - INFO -   [Curriculum] Compound blocked: avg_steps=559<600
+2026-03-28 13:14:45,596 - INFO - >> Target Network Updated
+2026-03-28 13:15:29,757 - INFO - Ep 98757 | S4:MASS_MANAGEMENT | Rw: 16.25 | St: 593 | Fd: 193 (0.325/st) | Pk: 50 | Eps: 0.080 | L: 0.6523 | Q: -26.65/18.35 | Rx:15.68% | SnakeCollision | Pos:(29484,21609) Wall:2634 Enemy:874
+2026-03-28 13:15:29,775 - INFO -   [Curriculum] Compound blocked: avg_steps=557<600
+2026-03-28 13:15:58,648 - INFO - Ep 98758 | S4:MASS_MANAGEMENT | Rw: 56.59 | St: 146 | Fd: 63 (0.432/st) | Pk: 54 | Eps: 0.080 | L: 1.5768 | Q: -20.76/51.67 | Rx:23.29% | SnakeCollision | Pos:(33011,22655) Wall:4091 Enemy:11
+2026-03-28 13:15:58,663 - INFO -   [Curriculum] Compound blocked: avg_steps=556<600
+2026-03-28 13:16:10,568 - INFO - Ep 98759 | S4:MASS_MANAGEMENT | Rw: 117.76 | St: 50 | Fd: 27 (0.540/st) | Pk: 32 | Eps: 0.080 | L: 1.3282 | Q: -23.38/76.66 | Rx:34.00% | SnakeCollision | Pos:(30785,33060) Wall:12159 Enemy:27
+2026-03-28 13:16:10,584 - INFO -   [Curriculum] Compound blocked: avg_steps=555<600
+2026-03-28 13:16:21,642 - INFO - Ep 98760 | S4:MASS_MANAGEMENT | Rw: 173.74 | St: 32 | Fd: 31 (0.969/st) | Pk: 34 | Eps: 0.080 | L: 0.6321 | Q: -20.83/50.47 | Rx:40.62% | SnakeCollision | Pos:(30699,33090) Wall:12068 Enemy:10
+2026-03-28 13:16:21,642 - INFO - Death Stats: {'Wall': 15, 'SnakeCollision': 675, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 11}
+2026-03-28 13:16:21,659 - INFO -   [Curriculum] Compound blocked: avg_steps=552<600
+2026-03-28 13:16:24,521 - INFO - Ep 98761 | S4:MASS_MANAGEMENT | Rw: -15.40 | St: 499 | Fd: 189 (0.379/st) | Pk: 54 | Eps: 0.080 | L: 1.9675 | Q: -22.46/58.08 | Rx:37.27% | SnakeCollision | Pos:(31598,26138) Wall:7514 Enemy:168
+2026-03-28 13:16:24,539 - INFO -   [Curriculum] Compound blocked: avg_steps=553<600
+2026-03-28 13:17:20,098 - INFO - Ep 98762 | S4:MASS_MANAGEMENT | Rw: -140.72 | St: 957 | Fd: 315 (0.329/st) | Pk: 57 | Eps: 0.080 | L: 0.7039 | Q: -22.35/26.27 | Rx:27.69% | SnakeCollision | Pos:(32080,33752) Wall:12706 Enemy:152
+2026-03-28 13:17:20,115 - INFO -   [Curriculum] Compound blocked: avg_steps=547<600
+2026-03-28 13:17:24,603 - INFO - Ep 98763 | S4:MASS_MANAGEMENT | Rw: 167.79 | St: 265 | Fd: 114 (0.430/st) | Pk: 53 | Eps: 0.080 | L: 1.2535 | Q: -18.65/35.38 | Rx:45.66% | SnakeCollision | Pos:(35235,36487) Wall:9231 Enemy:369
+2026-03-28 13:17:24,616 - INFO -   [Curriculum] Compound blocked: avg_steps=546<600
+2026-03-28 13:17:26,938 - INFO - Ep 98764 | S4:MASS_MANAGEMENT | Rw: -212.37 | St: 1151 | Fd: 379 (0.329/st) | Pk: 51 | Eps: 0.080 | L: 0.3628 | Q: -16.19/64.84 | Rx:19.55% | SnakeCollision | Pos:(26445,27060) Wall:5786 Enemy:25
+2026-03-28 13:17:26,951 - INFO -   [Curriculum] Compound blocked: avg_steps=548<600
+2026-03-28 13:17:49,593 - INFO - Ep 98765 | S4:MASS_MANAGEMENT | Rw: 130.93 | St: 111 | Fd: 48 (0.432/st) | Pk: 34 | Eps: 0.080 | L: 0.7915 | Q: -21.22/43.66 | Rx:66.67% | SnakeCollision | Pos:(34806,28425) Wall:9294 Enemy:76
+2026-03-28 13:17:49,608 - INFO -   [Curriculum] Compound blocked: avg_steps=548<600
+2026-03-28 13:18:04,408 - INFO - Ep 98766 | S4:MASS_MANAGEMENT | Rw: -39.82 | St: 444 | Fd: 231 (0.520/st) | Pk: 58 | Eps: 0.080 | L: 2.2052 | Q: -25.65/22.05 | Rx:34.46% | SnakeCollision | Pos:(35751,36321) Wall:9050 Enemy:65
+2026-03-28 13:18:04,424 - INFO -   [Curriculum] Compound blocked: avg_steps=550<600
+2026-03-28 13:18:57,700 - INFO - Ep 98767 | S4:MASS_MANAGEMENT | Rw: 26.55 | St: 472 | Fd: 160 (0.339/st) | Pk: 54 | Eps: 0.080 | L: 1.4866 | Q: -24.12/63.63 | Rx:29.24% | SnakeCollision | Pos:(36636,19871) Wall:676 Enemy:16
+2026-03-28 13:18:57,715 - INFO -   [Curriculum] Compound blocked: avg_steps=552<600
+2026-03-28 13:19:36,536 - INFO - Ep 98768 | S4:MASS_MANAGEMENT | Rw: -208.78 | St: 503 | Fd: 192 (0.382/st) | Pk: 58 | Eps: 0.080 | L: 0.3954 | Q: -22.00/40.09 | Rx:33.60% | SnakeCollision | Pos:(34898,34441) Wall:10982 Enemy:7
+2026-03-28 13:19:36,551 - INFO -   [Curriculum] Compound blocked: avg_steps=554<600
+2026-03-28 13:20:03,118 - INFO - Ep 98769 | S4:MASS_MANAGEMENT | Rw: 14.34 | St: 303 | Fd: 127 (0.419/st) | Pk: 59 | Eps: 0.080 | L: 0.5138 | Q: -22.57/83.49 | Rx:36.96% | SnakeCollision | Pos:(40791,36990) Wall:4636 Enemy:184
+2026-03-28 13:20:03,133 - INFO -   [Curriculum] Compound blocked: avg_steps=553<600
+2026-03-28 13:21:10,633 - INFO - Ep 98770 | S4:MASS_MANAGEMENT | Rw: -439.53 | St: 1148 | Fd: 387 (0.337/st) | Pk: 60 | Eps: 0.080 | L: 1.1774 | Q: -24.86/18.43 | Rx:26.92% | SnakeCollision | Pos:(26983,39399) Wall:5170 Enemy:21
+2026-03-28 13:21:10,634 - INFO - Death Stats: {'Wall': 15, 'SnakeCollision': 685, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 11}
+2026-03-28 13:21:10,647 - INFO -   [Curriculum] Compound blocked: avg_steps=553<600
+2026-03-28 13:21:34,033 - INFO - Ep 98771 | S4:MASS_MANAGEMENT | Rw: 93.97 | St: 580 | Fd: 193 (0.333/st) | Pk: 46 | Eps: 0.080 | L: 1.4167 | Q: -18.09/56.40 | Rx:10.00% | SnakeCollision | Pos:(22110,31353) Wall:3488 Enemy:16
+2026-03-28 13:21:34,047 - INFO -   [Curriculum] Compound blocked: avg_steps=554<600
+2026-03-28 13:21:40,469 - INFO - Ep 98772 | S4:MASS_MANAGEMENT | Rw: 79.45 | St: 120 | Fd: 58 (0.483/st) | Pk: 50 | Eps: 0.080 | L: 0.6127 | Q: -20.64/69.12 | Rx:29.17% | SnakeCollision | Pos:(32908,31521) Wall:12907 Enemy:9
+2026-03-28 13:21:40,483 - INFO -   [Curriculum] Compound blocked: avg_steps=552<600
+2026-03-28 13:21:47,482 - INFO - Ep 98773 | S4:MASS_MANAGEMENT | Rw: 431.27 | St: 1173 | Fd: 390 (0.332/st) | Pk: 52 | Eps: 0.080 | L: 1.7218 | Q: -25.21/57.99 | Rx:16.11% | SnakeCollision | Pos:(29621,37652) Wall:8113 Enemy:4
+2026-03-28 13:21:47,496 - INFO -   [Curriculum] Compound blocked: avg_steps=557<600
+2026-03-28 13:21:55,698 - INFO - Ep 98774 | S4:MASS_MANAGEMENT | Rw: -224.38 | St: 534 | Fd: 192 (0.360/st) | Pk: 52 | Eps: 0.080 | L: 1.0168 | Q: -24.26/37.24 | Rx:27.15% | SnakeCollision | Pos:(25104,30180) Wall:6182 Enemy:26
+2026-03-28 13:21:55,712 - INFO -   [Curriculum] Compound blocked: avg_steps=557<600
+2026-03-28 13:22:00,422 - INFO - Ep 98775 | S4:MASS_MANAGEMENT | Rw: 95.43 | St: 27 | Fd: 22 (0.815/st) | Pk: 27 | Eps: 0.080 | L: 1.3426 | Q: -23.04/50.18 | Rx:29.63% | SnakeCollision | Pos:(30878,24672) Wall:5943 Enemy:623
+2026-03-28 13:22:00,437 - INFO -   [Curriculum] Compound blocked: avg_steps=556<600
+2026-03-28 13:22:48,349 - INFO - Ep 98776 | S4:MASS_MANAGEMENT | Rw: -7.68 | St: 279 | Fd: 105 (0.376/st) | Pk: 47 | Eps: 0.080 | L: 2.1868 | Q: -26.19/19.97 | Rx:17.56% | SnakeCollision | Pos:(24210,31013) Wall:5516 Enemy:22
+2026-03-28 13:22:48,363 - INFO -   [Curriculum] Compound blocked: avg_steps=551<600
+2026-03-28 13:22:53,493 - INFO - Ep 98777 | S4:MASS_MANAGEMENT | Rw: 275.93 | St: 290 | Fd: 108 (0.372/st) | Pk: 45 | Eps: 0.080 | L: 0.6521 | Q: -19.52/41.43 | Rx:17.93% | SnakeCollision | Pos:(36557,40669) Wall:4943 Enemy:73
+2026-03-28 13:22:53,510 - INFO -   [Curriculum] Compound blocked: avg_steps=545<600
+2026-03-28 13:24:51,470 - INFO - Ep 98778 | S4:MASS_MANAGEMENT | Rw: 318.98 | St: 654 | Fd: 200 (0.306/st) | Pk: 40 | Eps: 0.080 | L: 0.3279 | Q: -22.02/51.59 | Rx:14.68% | SnakeCollision | Pos:(37852,39778) Wall:5032 Enemy:40
+2026-03-28 13:24:51,484 - INFO -   [Curriculum] Compound blocked: avg_steps=541<600
+2026-03-28 13:24:54,779 - INFO - Ep 98779 | S4:MASS_MANAGEMENT | Rw: -48.78 | St: 650 | Fd: 229 (0.352/st) | Pk: 53 | Eps: 0.080 | L: 1.0773 | Q: -20.20/63.15 | Rx:21.23% | SnakeCollision | Pos:(35008,25007) Wall:6063 Enemy:795
+2026-03-28 13:24:54,791 - INFO -   [Curriculum] Compound blocked: avg_steps=543<600
+2026-03-28 13:25:18,564 - INFO - Ep 98780 | S4:MASS_MANAGEMENT | Rw: 3.12 | St: 127 | Fd: 47 (0.370/st) | Pk: 39 | Eps: 0.080 | L: 1.0797 | Q: -21.88/45.68 | Rx:20.47% | SnakeCollision | Pos:(35256,22300) Wall:3395 Enemy:215
+2026-03-28 13:25:18,565 - INFO - Death Stats: {'Wall': 15, 'SnakeCollision': 695, 'InvalidFrame': 0, 'BrowserError': 0, 'MaxSteps': 11}
+2026-03-28 13:25:18,583 - INFO -   [Curriculum] Compound blocked: avg_steps=543<600
+2026-03-28 13:28:12,900 - INFO - Ep 98781 | S4:MASS_MANAGEMENT | Rw: 455.72 | St: 2000 | Fd: 655 (0.328/st) | Pk: 71 | Eps: 0.080 | L: 0.9961 | Q: -19.89/58.82 | Rx:24.80% | MaxSteps | Pos:(39917,21467) Wall:688
+2026-03-28 13:28:12,917 - INFO -   [Curriculum] Compound blocked: avg_steps=551<600
+2026-03-28 13:28:13,620 - INFO - Ep 98782 | S4:MASS_MANAGEMENT | Rw: -502.08 | St: 2000 | Fd: 645 (0.323/st) | Pk: 61 | Eps: 0.080 | L: 0.7810 | Q: -20.60/55.02 | Rx:27.30% | MaxSteps | Pos:(30077,36366) Wall:9449 Enemy:709
+2026-03-28 13:28:13,634 - INFO -   [Curriculum] Compound blocked: avg_steps=556<600
+2026-03-28 13:28:58,565 - INFO - Ep 98783 | S4:MASS_MANAGEMENT | Rw: -625.12 | St: 1352 | Fd: 405 (0.300/st) | Pk: 54 | Eps: 0.080 | L: 0.8786 | Q: -21.12/21.96 | Rx:8.36% | SnakeCollision | Pos:(36505,21212) Wall:1989
+2026-03-28 13:28:58,577 - INFO -   [Curriculum] Compound blocked: avg_steps=562<600
