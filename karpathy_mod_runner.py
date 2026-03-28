@@ -226,6 +226,8 @@ class KarpathyRunner:
         self.parallel = args.parallel
         self.target_stage = args.stage
         self.warmup = args.warmup
+        self.max_time = args.max_time * 3600 if args.max_time else 0  # hours → seconds
+        self.global_start = time.time()
         self.trainer_args = self._build_trainer_args(args)
         self.mutator = Mutator()
         self.dry_run = args.dry_run
@@ -281,6 +283,7 @@ class KarpathyRunner:
         print(f"  Target stage: {self.target_stage or 'auto'}")
         print(f"  Warmup: {self.warmup} episodes")
         print(f"  Max rounds: {self.max_rounds or 'unlimited'}")
+        print(f"  Max time: {self.max_time/3600:.1f}h" if self.max_time else "  Max time: unlimited")
         print("=" * 70)
 
         os.makedirs(self.worktree_base, exist_ok=True)
@@ -290,6 +293,11 @@ class KarpathyRunner:
                 self.round_num += 1
                 if self.max_rounds and self.round_num > self.max_rounds:
                     print(f"\n[*] Reached max rounds ({self.max_rounds}). Stopping.")
+                    break
+
+                if self.max_time and (time.time() - self.global_start) > self.max_time:
+                    elapsed_h = (time.time() - self.global_start) / 3600
+                    print(f"\n[*] Reached max time ({elapsed_h:.1f}h). Stopping.")
                     break
 
                 print(f"\n{'='*60}")
@@ -424,35 +432,70 @@ class KarpathyRunner:
         return 'keep' if best else 'discard'
 
     def _monitor_progress(self, workers: List[ExperimentWorker]):
-        """Poll workers until all reach budget or crash."""
+        """Poll workers until all reach budget or crash.
+
+        Safety features:
+        - Per-round timeout: budget * 30s (reasonable upper bound)
+        - Stall detection: if no new episodes for 5 min, kill stalled workers
+        - Dead process detection: mark crashed workers immediately
+        """
         start_time = time.time()
-        timeout = self.budget * 120  # ~2 min per episode max
+        timeout = self.budget * 30  # ~30s per episode max (was 120 — way too generous)
+        stall_timeout = 300  # 5 min without progress = stalled
+
+        # Track last known progress per worker for stall detection
+        last_progress = {w.experiment_id: 0 for w in workers}
+        last_progress_time = {w.experiment_id: time.time() for w in workers}
 
         while True:
             all_done = True
             status_parts = []
 
             for w in workers:
-                if w.process and w.process.poll() is not None:
-                    # Process exited
+                if w.status == 'done':
                     progress = w.check_progress()
                     status_parts.append(f"{w.experiment_id[:6]}:DONE({progress})")
-                    w.status = 'done'
-                else:
+                    continue
+
+                if w.process and w.process.poll() is not None:
+                    # Process exited (crashed or finished)
                     progress = w.check_progress()
-                    if progress < self.budget:
-                        all_done = False
-                    status_parts.append(f"{w.experiment_id[:6]}:{progress}/{self.budget}")
+                    exit_code = w.process.returncode
+                    status_parts.append(f"{w.experiment_id[:6]}:EXIT({exit_code},ep={progress})")
+                    w.status = 'done'
+                    continue
+
+                progress = w.check_progress()
+
+                # Stall detection: no new episodes for stall_timeout
+                if progress > last_progress[w.experiment_id]:
+                    last_progress[w.experiment_id] = progress
+                    last_progress_time[w.experiment_id] = time.time()
+                elif time.time() - last_progress_time[w.experiment_id] > stall_timeout:
+                    stall_mins = (time.time() - last_progress_time[w.experiment_id]) / 60
+                    print(f"\n  [!] Worker {w.experiment_id[:6]} stalled for {stall_mins:.0f}min "
+                          f"at {progress}/{self.budget} episodes. Killing.")
+                    w.stop_training()
+                    status_parts.append(f"{w.experiment_id[:6]}:STALLED({progress})")
+                    continue
+
+                if progress < self.budget:
+                    all_done = False
+                status_parts.append(f"{w.experiment_id[:6]}:{progress}/{self.budget}")
 
             elapsed = time.time() - start_time
-            print(f"\r  [{elapsed:.0f}s] {' | '.join(status_parts)}", end='', flush=True)
+            elapsed_min = elapsed / 60
+            print(f"\r  [{elapsed_min:.0f}m] {' | '.join(status_parts)}", end='', flush=True)
 
             if all_done:
                 print()
                 break
 
             if elapsed > timeout:
-                print(f"\n  [!] Timeout after {elapsed:.0f}s")
+                print(f"\n  [!] Round timeout after {elapsed_min:.0f}min. Killing all workers.")
+                for w in workers:
+                    if w.status != 'done':
+                        w.stop_training()
                 break
 
             time.sleep(15)
@@ -607,6 +650,8 @@ Examples:
                         help='Game URL')
     parser.add_argument('--backend', type=str, default='selenium',
                         help='Browser backend')
+    parser.add_argument('--max-time', type=float, default=0,
+                        help='Max total runtime in hours (0=unlimited, default: 0)')
     parser.add_argument('--cleanup', action='store_true',
                         help='Clean up leftover worktrees and exit')
 
