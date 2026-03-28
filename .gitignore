@@ -48,5 +48,7 @@ temp_slitherbot/
 debug_screens/
 *.log
 
-
-logs/
+# === Karpathy Mod (experiment artifacts) ===
+karpathy_mod_results.tsv
+karpathy_mod_state.json
+.karpathy_worktrees/
