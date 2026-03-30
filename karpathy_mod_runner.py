@@ -634,8 +634,8 @@ Examples:
   %(prog)s --budget 500 --max-rounds 10    # Stop after 10 rounds
         """
     )
-    parser.add_argument('--budget', type=int, default=500,
-                        help='Episodes per experiment (default: 500)')
+    parser.add_argument('--budget', type=int, default=1500,
+                        help='Episodes per experiment (default: 1500)')
     parser.add_argument('--parallel', type=int, default=1,
                         help='Number of parallel experiments (default: 1)')
     parser.add_argument('--stage', type=int, default=0,

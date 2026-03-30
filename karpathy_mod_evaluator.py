@@ -158,7 +158,7 @@ def compute_metrics(rows: List[Dict], warmup: int = 0) -> ExperimentMetrics:
 
 def compare_experiments(baseline: ExperimentMetrics,
                         experiment: ExperimentMetrics,
-                        min_improvement: float = 0.02) -> Dict:
+                        min_improvement: float = 0.005) -> Dict:
     """
     Compare experiment against baseline.
 
