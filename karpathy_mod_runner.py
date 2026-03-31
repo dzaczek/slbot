@@ -32,6 +32,7 @@ import copy
 import csv
 import json
 import os
+import random
 import shutil
 import signal
 import subprocess
@@ -68,11 +69,13 @@ class ExperimentWorker:
     """Manages a single experiment in a git worktree."""
 
     def __init__(self, experiment_id: str, mutation: Dict,
-                 worktree_base: str, budget: int, trainer_args: List[str]):
+                 worktree_base: str, budget: int, trainer_args: List[str],
+                 force_stage: Optional[int] = None):
         self.experiment_id = experiment_id
         self.mutation = mutation
         self.budget = budget
         self.trainer_args = trainer_args
+        self.force_stage = force_stage
         self.worktree_dir = os.path.join(worktree_base, f'exp_{experiment_id}')
         self.branch_name = f'karpathy/exp-{experiment_id}'
         self.process: Optional[subprocess.Popen] = None
@@ -144,6 +147,9 @@ class ExperimentWorker:
     def start_training(self):
         """Start trainer subprocess in the worktree."""
         cmd = [sys.executable, 'trainer.py'] + self.trainer_args
+        if self.force_stage is not None:
+            cmd += ['--stage', str(self.force_stage)]
+
         env = os.environ.copy()
         env['KARPATHY_EXPERIMENT_ID'] = self.experiment_id
 
@@ -320,30 +326,40 @@ class KarpathyRunner:
 
     def _run_round(self) -> str:
         """Execute one round of experiments. Returns 'keep'/'discard'/'error'."""
-        # 1. Load current styles as baseline
+        # 1. Load current styles
         from importlib import reload
         import styles as styles_module
         reload(styles_module)
         from styles import STYLES
         curriculum = STYLES["Standard (Curriculum)"]
+        stages = curriculum.get("stages", {})
 
-        # 2. Collect baseline metrics from recent training
-        print("\n  [1/5] Collecting baseline metrics...")
-        baseline_rows = read_csv_tail(CSV_FILE, self.budget)
-        if len(baseline_rows) < self.warmup + 50:
-            print(f"  [!] Not enough baseline data ({len(baseline_rows)} rows). "
-                  f"Need at least {self.warmup + 50}. Train more first.")
+        # 2. Determine target stage for this round
+        if self.target_stage > 0 and self.target_stage in stages:
+            round_stage = self.target_stage
+        else:
+            # Pick a random stage from those available
+            round_stage = random.choice(list(stages.keys()))
+
+        stage_name = stages[round_stage].get('name', f'S{round_stage}')
+        print(f"\n  [1/5] Target stage: {round_stage} ({stage_name})")
+
+        # 3. Collect baseline metrics for this stage
+        print(f"  [2/5] Collecting baseline metrics for S{round_stage}...")
+        baseline_rows = read_csv_tail(CSV_FILE, self.budget, stage_filter=round_stage)
+        if len(baseline_rows) < 100:
+            print(f"  [!] Not enough baseline data for stage {round_stage} ({len(baseline_rows)} rows). "
+                  f"Need at least 100 episodes for a stable baseline.")
             return 'error'
 
         baseline = compute_metrics(baseline_rows, warmup=self.warmup)
-        print(f"  Baseline: avg_steps={baseline.avg_steps:.0f}, "
-              f"score={baseline.score():.1f}, "
-              f"snake_death={baseline.snake_death_rate:.1%}")
+        print(f"  Baseline (S{round_stage}): score={baseline.score():.1f}, "
+              f"steps={baseline.avg_steps:.0f}, food={baseline.avg_food:.1f}")
 
-        # 3. Generate mutations
-        print(f"\n  [2/5] Generating {self.parallel} mutation(s)...")
+        # 4. Generate mutations
+        print(f"\n  [3/5] Generating {self.parallel} mutation(s) for S{round_stage}...")
         mutations = self.mutator.generate_batch(
-            curriculum, count=self.parallel, target_stage=self.target_stage
+            curriculum, count=self.parallel, target_stage=round_stage
         )
         for i, m in enumerate(mutations):
             print(f"    [{i}] {m['description']}")
@@ -352,8 +368,8 @@ class KarpathyRunner:
             print("\n  [DRY RUN] Would execute above mutations. Exiting.")
             raise KeyboardInterrupt("dry-run")
 
-        # 4. Setup workers
-        print(f"\n  [3/5] Setting up {self.parallel} worktree(s)...")
+        # 5. Setup workers
+        print(f"\n  [4/5] Setting up {self.parallel} worktree(s)...")
         workers = []
         for mutation in mutations:
             w = ExperimentWorker(
@@ -362,6 +378,7 @@ class KarpathyRunner:
                 worktree_base=self.worktree_base,
                 budget=self.budget,
                 trainer_args=self.trainer_args,
+                force_stage=round_stage,
             )
             if w.setup_worktree():
                 workers.append(w)
@@ -372,14 +389,14 @@ class KarpathyRunner:
             print("  [!] All worktree setups failed.")
             return 'error'
 
-        # 5. Start training in all worktrees
-        print(f"\n  [4/5] Starting {len(workers)} trainer(s)...")
+        # 6. Start training in all worktrees
+        print(f"\n  [5/5] Starting {len(workers)} trainer(s)...")
         for w in workers:
             w.start_training()
-            time.sleep(2)  # Stagger launches to avoid port conflicts
+            time.sleep(2)
 
-        # 6. Monitor progress
-        print(f"\n  [5/5] Training {self.budget} episodes per agent...")
+        # 7. Monitor progress
+        print(f"\n  Training {self.budget} episodes per agent...")
         try:
             self._monitor_progress(workers)
         except KeyboardInterrupt:
@@ -390,7 +407,7 @@ class KarpathyRunner:
                 w.cleanup()
             raise
 
-        # 7. Evaluate all experiments
+        # 8. Evaluate all experiments
         print("\n  Evaluating experiments...")
         results = []
         for w in workers:
@@ -409,7 +426,7 @@ class KarpathyRunner:
             status_icon = {'keep': '+', 'discard': 'x', 'inconclusive': '?'}[comparison['decision']]
             print(f"    [{status_icon}] {w.experiment_id}: {comparison['details']}")
 
-        # 8. Pick best
+        # 9. Pick best
         best = self._pick_best(results, baseline)
 
         if best:

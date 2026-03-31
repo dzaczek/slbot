@@ -29,24 +29,45 @@ class ExperimentMetrics:
     median_steps: float = 0.0
     p90_steps: float = 0.0
 
-    def score(self, weights: Optional[Dict[str, float]] = None) -> float:
+    def score(self, weights: Optional[Dict[str, float]] = None, baseline: Optional['ExperimentMetrics'] = None) -> float:
         """
         Compute a single scalar score for this experiment.
         Higher = better.
+
+        If baseline is provided, use 'lite normalization':
+        Score = Sum over metrics [ (value / baseline_value) * weight ]
+        This ensures each metric contributes proportionally to its importance weight
+        regardless of its raw scale.
         """
         if weights is None:
             weights = {
                 'avg_steps': 1.0,
                 'avg_peak_length': 0.5,
                 'avg_food': 0.3,
-                'snake_death_rate': -0.5,  # penalize high snake death rate
+                'snake_death_rate': -0.5,  # lower is better
+                'wall_death_rate': -0.2,   # lower is better
+                'avg_reward': 0.2,
             }
 
-        score = 0.0
-        for key, w in weights.items():
-            val = getattr(self, key, 0.0)
-            score += val * w
-        return score
+        if baseline:
+            score = 0.0
+            for key, w in weights.items():
+                val = getattr(self, key, 0.0)
+                b_val = getattr(baseline, key, 0.0)
+                if abs(b_val) > 1e-6:
+                    # Contribution is relative to baseline
+                    score += (val / b_val) * w
+                else:
+                    # Fallback for zero baseline: use raw if possible, or 1.0
+                    score += (val if abs(val) < 2.0 else 1.0) * w
+            return score
+        else:
+            # Raw score (original behavior for legacy compatibility)
+            score = 0.0
+            for key, w in weights.items():
+                val = getattr(self, key, 0.0)
+                score += val * w
+            return score
 
     def to_dict(self) -> Dict:
         return {
@@ -66,18 +87,25 @@ class ExperimentMetrics:
         }
 
 
-def read_csv_tail(csv_path: str, n_episodes: int) -> List[Dict]:
-    """Read the last N rows from training_stats.csv."""
+def read_csv_tail(csv_path: str, n_episodes: int, stage_filter: Optional[int] = None) -> List[Dict]:
+    """Read the last N rows from training_stats.csv, optionally filtering by Stage."""
     if not os.path.exists(csv_path):
         return []
 
     rows = []
     with open(csv_path, 'r') as f:
         reader = csv.DictReader(f)
-        # Buffer last N rows (memory-efficient for large files)
+        # Buffer last N matching rows
         from collections import deque
         buffer = deque(maxlen=n_episodes)
         for row in reader:
+            if stage_filter is not None:
+                try:
+                    row_stage = int(row.get('Stage', 0))
+                    if row_stage != stage_filter:
+                        continue
+                except (ValueError, TypeError):
+                    continue
             buffer.append(row)
         rows = list(buffer)
 
@@ -160,7 +188,7 @@ def compare_experiments(baseline: ExperimentMetrics,
                         experiment: ExperimentMetrics,
                         min_improvement: float = 0.005) -> Dict:
     """
-    Compare experiment against baseline.
+    Compare experiment against baseline using lite normalization.
 
     Returns dict with:
         decision: 'keep' | 'discard' | 'inconclusive'
@@ -169,24 +197,30 @@ def compare_experiments(baseline: ExperimentMetrics,
         experiment_score: float
         details: str
     """
-    b_score = baseline.score()
-    e_score = experiment.score()
+    # Use baseline to normalize scores
+    b_score = baseline.score(baseline=baseline)
+    e_score = experiment.score(baseline=baseline)
 
-    if b_score == 0:
-        improvement = 1.0 if e_score > 0 else 0.0
+    if abs(b_score) < 1e-6:
+        improvement = (e_score - b_score)
     else:
         improvement = (e_score - b_score) / abs(b_score)
 
     # Statistical significance check via Mann-Whitney-like heuristic
     # (simplified: require both score improvement AND avg_steps improvement)
-    steps_improved = experiment.avg_steps > baseline.avg_steps * (1 + min_improvement * 0.5)
+    # Note: avg_steps improvement threshold is now relative
+    steps_improved = experiment.avg_steps > baseline.avg_steps * (1 + min_improvement * 0.2)
     score_improved = improvement > min_improvement
 
     # Check for regression in critical metrics
-    death_rate_regression = (experiment.snake_death_rate > baseline.snake_death_rate * 1.15
+    death_rate_regression = (experiment.snake_death_rate > baseline.snake_death_rate * 1.10
                              and baseline.snake_death_rate > 0.1)
 
-    if score_improved and steps_improved and not death_rate_regression:
+    # Wall death regression check
+    wall_death_regression = (experiment.wall_death_rate > baseline.wall_death_rate * 1.15
+                             and baseline.wall_death_rate > 0.05)
+
+    if score_improved and (steps_improved or improvement > min_improvement * 3) and not death_rate_regression and not wall_death_regression:
         decision = 'keep'
     elif improvement < -min_improvement:
         decision = 'discard'
@@ -194,14 +228,16 @@ def compare_experiments(baseline: ExperimentMetrics,
         decision = 'inconclusive'
 
     details_parts = [
-        f"score: {b_score:.1f} -> {e_score:.1f} ({improvement:+.1%})",
-        f"avg_steps: {baseline.avg_steps:.0f} -> {experiment.avg_steps:.0f}",
-        f"avg_food: {baseline.avg_food:.0f} -> {experiment.avg_food:.0f}",
+        f"score: {b_score:.2f} -> {e_score:.2f} ({improvement:+.2%})",
+        f"steps: {baseline.avg_steps:.0f} -> {experiment.avg_steps:.0f}",
+        f"food: {baseline.avg_food:.1f} -> {experiment.avg_food:.1f}",
         f"snake_death: {baseline.snake_death_rate:.1%} -> {experiment.snake_death_rate:.1%}",
         f"peak_len: {baseline.avg_peak_length:.0f} -> {experiment.avg_peak_length:.0f}",
     ]
     if death_rate_regression:
-        details_parts.append("WARNING: snake death rate regression")
+        details_parts.append("WARN: snake death")
+    if wall_death_regression:
+        details_parts.append("WARN: wall death")
 
     return {
         'decision': decision,
