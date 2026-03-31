@@ -22,20 +22,23 @@ class SumTree:
     def _propagate(self, idx, change):
         parent = (idx - 1) // 2
         self.tree[parent] += change
-        if parent != 0:
-            self._propagate(parent, change)
+        while parent != 0:
+            parent = (parent - 1) // 2
+            self.tree[parent] += change
 
     def _retrieve(self, idx, s):
         left = 2 * idx + 1
-        right = left + 1
 
-        if left >= len(self.tree):
-            return idx
+        while left < len(self.tree):
+            right = left + 1
+            if s <= self.tree[left]:
+                idx = left
+            else:
+                s -= self.tree[left]
+                idx = right
+            left = 2 * idx + 1
 
-        if s <= self.tree[left]:
-            return self._retrieve(left, s)
-        else:
-            return self._retrieve(right, s - self.tree[left])
+        return idx
 
     def total(self):
         return self.tree[0]
