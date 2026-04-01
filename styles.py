@@ -91,7 +91,7 @@ STYLES = {
             },
             5: {
                 "name": "MASTERY_SURVIVAL",
-                "gamma": 0.9769906208436017,
+                "gamma": 0.995,
                 "food_reward": 4.8231257917664845,
                 "food_shaping": 0.14661645024377784,
                 "survival": 0.24932083956546394,
@@ -99,7 +99,7 @@ STYLES = {
                 "death_wall": -45,
                 "death_snake": -50,
                 "length_bonus": 0.05,
-                "wall_proximity_penalty": 0.35,
+                "wall_proximity_penalty": 0.288976020257623,
                 "enemy_alert_dist": 2051,
                 "enemy_proximity_penalty": 1.2463959370106568,
                 "enemy_approach_penalty": 0.4,
@@ -108,13 +108,13 @@ STYLES = {
                 "starvation_penalty": 0.014849148109343756,
                 "starvation_grace_steps": 100,
                 "contest_food_reward": 1.605287095836325,
-                "enemy_zone_control_reward": 0.05,
+                "enemy_zone_control_reward": 0.05301281610973437,
                 "kill_opportunity_reward": 15.0,
                 "max_steps": 3000,
                 "promote_metric": "compound",
                 "promote_conditions": {
-                    "avg_steps": 1500,
-                    "avg_peak_length": 80
+                    "avg_steps": 1200,
+                    "avg_peak_length": 100
                 },
                 "promote_window": 500
             },
