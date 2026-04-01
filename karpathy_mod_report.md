@@ -1,26 +1,26 @@
 # Karpathy Mod Experiment Report
-*Generated: 2026-04-01 17:35:09*
+*Generated: 2026-04-01 18:35:53*
 
 ## Summary
 
 | Metric | Value |
 |--------|-------|
-| Total experiments | 110 |
-| Keep rate | 5.5% |
-| Kept | 6 |
-| Discarded | 104 |
+| Total experiments | 113 |
+| Keep rate | 7.1% |
+| Kept | 8 |
+| Discarded | 105 |
 | Inconclusive | 0 |
 | Best improvement | +1.93% |
 | Worst regression | -8.72% |
-| Avg improvement | -0.27% |
+| Avg improvement | -0.34% |
 | Trend | **IMPROVING** |
 
 ## Strategy Effectiveness
 
 | Strategy | Count | Kept | Keep Rate | Avg Improvement | Best |
 |----------|------:|-----:|----------:|----------------:|-----:|
-| explore | 38 | 3 | 7.9% | -0.58% | +1.93% |
-| radical | 34 | 2 | 5.9% | -0.04% | +0.11% |
+| explore | 40 | 5 | 12.5% | -0.55% | +1.93% |
+| radical | 35 | 2 | 5.7% | -0.29% | +0.11% |
 | tweak | 38 | 1 | 2.6% | -0.16% | +0.06% |
 
 ## Stage Performance
@@ -29,9 +29,9 @@
 |------:|------|------:|-----:|----------:|----------------:|
 | S1 | FOOD_VECTOR | 20 | 1 | 5.0% | +0.08% |
 | S2 | WALL_AVOID | 11 | 0 | 0.0% | -0.95% |
-| S3 | ENEMY_AVOID | 17 | 0 | 0.0% | -1.04% |
+| S3 | ENEMY_AVOID | 18 | 0 | 0.0% | -1.46% |
 | S4 | MASS_MANAGEMENT | 23 | 1 | 4.3% | -0.04% |
-| S5 | MASTERY_SURVIVAL | 25 | 4 | 16.0% | -0.02% |
+| S5 | MASTERY_SURVIVAL | 27 | 6 | 22.2% | -0.02% |
 | S6 | APEX_PREDATOR | 14 | 0 | 0.0% | -0.09% |
 
 ## Top 5 Best Kept Experiments
@@ -49,10 +49,10 @@
 | Round | Improvement | Strategy | Stage | Description |
 |------:|------------:|----------|------:|-------------|
 | R7317 | -8.72% | explore | S3 | [explore] S3/ENEMY_AVOID: starvation_penalty: 0.0080 -> 0.0114; food_reward: 5.0 |
+| R7322 | -8.71% | radical | S3 | [radical] S3/ENEMY_AVOID: starvation_grace_steps: 60 -> 74; death_wall: -40 -> - |
 | R7304 | -8.57% | explore | S3 | [explore] S3/ENEMY_AVOID: gamma: 0.9500 -> 0.9291; enemy_proximity_penalty: 1.50 |
 | R7308 | -5.96% | explore | S2 | [explore] S2/WALL_AVOID: food_shaping: 0.1500 -> 0.0965; survival_escalation: 0. |
 | R7318 | -4.41% | tweak | S2 | [tweak] S2/WALL_AVOID: gamma: 0.9300 -> 0.9399 |
-| R7270 | -0.63% | tweak | S6 | [tweak] S6/APEX_PREDATOR: enemy_zone_control_reward: 0.0600 -> 0.0645 |
 
 ## Charts
 
