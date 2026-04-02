@@ -530,31 +530,55 @@ The Karpathy mod systematically explores this space. It runs 24/7, tries things 
 
 ### Architecture overview
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  karpathy_mod_runner.py  — Main orchestrator                     │
-│                                                                  │
-│  while True:                                                     │
-│    1. Read baseline metrics from training_stats.csv              │
-│    2. Pick target curriculum stage (random or --stage N)         │
-│    3. Generate N mutations (karpathy_mod_mutator.py)             │
-│    4. For each mutation (parallel git worktrees):                │
-│       ├─ git worktree add → isolated copy of repo               │
-│       ├─ Apply mutation to worktree/styles.py                   │
-│       ├─ Copy checkpoint.pth + training_stats.csv               │
-│       ├─ python trainer.py --resume --stage X                   │
-│       └─ Monitor: stall detection (5min), timeout (budget×30s)  │
-│    5. Evaluate all experiments (karpathy_mod_evaluator.py)       │
-│       ├─ Compute ExperimentMetrics per mutation                  │
-│       ├─ Lite normalization scoring vs baseline                  │
-│       └─ Decision: keep / discard / inconclusive                │
-│    6. If winner found:                                           │
-│       ├─ Apply winning styles.py to main repo                   │
-│       ├─ Merge new CSV rows into training_stats.csv             │
-│       └─ git commit "karpathy: [description]"                   │
-│    7. Cleanup worktrees & branches                               │
-│    8. Save state → repeat                                        │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    START([while True]) --> BASELINE["1. Read baseline metrics<br/><i>training_stats.csv → avg_steps,<br/>food, peak_length, death rates</i>"]
+    BASELINE --> STAGE["2. Pick target stage<br/><i>random or --stage N</i>"]
+    STAGE --> MUTATE["3. Generate N mutations<br/><i>karpathy_mod_mutator.py</i><br/>tweak | explore | radical"]
+
+    MUTATE --> WORKTREE["4. For each mutation — setup worktree"]
+
+    subgraph PARALLEL ["Parallel Git Worktrees"]
+        direction TB
+        WT1["Worktree A<br/><i>git worktree add</i><br/>mutated styles.py<br/>checkpoint.pth copy"]
+        WT2["Worktree B<br/><i>independent mutation</i>"]
+        WTN["Worktree N<br/><i>...</i>"]
+
+        WT1 --> T1["trainer.py --resume --stage X"]
+        WT2 --> T2["trainer.py --resume --stage X"]
+        WTN --> TN["trainer.py --resume --stage X"]
+
+        T1 --> MON1["Monitor<br/><i>stall 5min · timeout budget×30s</i>"]
+        T2 --> MON2["Monitor"]
+        TN --> MONN["Monitor"]
+    end
+
+    WORKTREE --> WT1 & WT2 & WTN
+
+    MON1 & MON2 & MONN --> EVAL["5. Evaluate all experiments<br/><i>karpathy_mod_evaluator.py</i><br/>ExperimentMetrics · lite normalization"]
+
+    EVAL --> DECIDE{"6. Winner found?"}
+
+    DECIDE -->|"Yes — best score > baseline"| APPLY["Apply winning mutation<br/>• Overwrite main styles.py<br/>• Merge CSV rows<br/>• git commit"]
+    DECIDE -->|"No improvement"| DISCARD["Discard all mutations<br/>• Log to results.tsv"]
+
+    APPLY --> CLEANUP["7. Cleanup worktrees & branches"]
+    DISCARD --> CLEANUP
+
+    CLEANUP --> SAVE["8. Save state<br/><i>karpathy_mod_state.json</i>"]
+    SAVE --> START
+
+    style START fill:#2d1b69,stroke:#7c3aed,color:#eee
+    style PARALLEL fill:#1a1a2e,stroke:#e94560,color:#eee
+    style BASELINE fill:#16213e,stroke:#0f3460,color:#eee
+    style STAGE fill:#16213e,stroke:#0f3460,color:#eee
+    style MUTATE fill:#3c1642,stroke:#c77dff,color:#eee
+    style EVAL fill:#0f3460,stroke:#00b4d8,color:#eee
+    style DECIDE fill:#1b4332,stroke:#52b788,color:#eee
+    style APPLY fill:#1b4332,stroke:#52b788,color:#eee
+    style DISCARD fill:#461220,stroke:#e94560,color:#eee
+    style CLEANUP fill:#1a1a2e,stroke:#666,color:#eee
+    style SAVE fill:#1a1a2e,stroke:#666,color:#eee
 ```
 
 ### The loop step by step
