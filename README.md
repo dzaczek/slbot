@@ -520,7 +520,11 @@ python ai_supervisor.py --test --provider claude
 
 ## Karpathy Mod — Autonomous Self-Improvement Loop
 
-Named after Andrej Karpathy's philosophy of letting systems improve themselves, this module runs a fully autonomous evolutionary optimization loop. It mutates reward parameters in `styles.py`, trains each variant in an isolated git worktree, evaluates the results statistically, and keeps only mutations that demonstrably improve performance. The entire process repeats indefinitely — no human in the loop.
+Inspired by Andrej Karpathy's [autoresearch](https://github.com/karpathy/autoresearch) — a project where an AI agent autonomously edits a training script, runs a time-boxed experiment, checks if the result improved, keeps or discards the change, and repeats overnight. In Karpathy's case it ran 700 experiments over 2 days and found 20 optimizations for transformer pretraining. We apply the same philosophy to reward parameter tuning for reinforcement learning.
+
+This module runs a fully autonomous evolutionary optimization loop. It mutates reward parameters in `styles.py`, trains each variant in an isolated git worktree, evaluates the results statistically, and keeps only mutations that demonstrably improve performance. The entire process repeats indefinitely — no human in the loop.
+
+> **Reference:** Karpathy, A. (2026). *autoresearch — AI agents running research on single-GPU nanochat training automatically.* [github.com/karpathy/autoresearch](https://github.com/karpathy/autoresearch). See also: [A Recipe for Training Neural Networks](http://karpathy.github.io/2019/04/25/recipe/) (2019) — the earlier blog post outlining the manual version of this loop.
 
 ### Why it exists
 
