@@ -1,25 +1,25 @@
 # Karpathy Mod Experiment Report
-*Generated: 2026-04-02 18:54:09*
+*Generated: 2026-04-02 19:54:53*
 
 ## Summary
 
 | Metric | Value |
 |--------|-------|
-| Total experiments | 114 |
-| Keep rate | 7.9% |
-| Kept | 9 |
+| Total experiments | 115 |
+| Keep rate | 8.7% |
+| Kept | 10 |
 | Discarded | 105 |
 | Inconclusive | 0 |
 | Best improvement | +2.08% |
 | Worst regression | -8.72% |
-| Avg improvement | -0.32% |
+| Avg improvement | -0.30% |
 | Trend | **IMPROVING** |
 
 ## Strategy Effectiveness
 
 | Strategy | Count | Kept | Keep Rate | Avg Improvement | Best |
 |----------|------:|-----:|----------:|----------------:|-----:|
-| explore | 41 | 6 | 14.6% | -0.48% | +2.08% |
+| explore | 42 | 7 | 16.7% | -0.43% | +2.08% |
 | radical | 35 | 2 | 5.7% | -0.29% | +0.11% |
 | tweak | 38 | 1 | 2.6% | -0.16% | +0.06% |
 
@@ -27,7 +27,7 @@
 
 | Stage | Name | Count | Kept | Keep Rate | Avg Improvement |
 |------:|------|------:|-----:|----------:|----------------:|
-| S1 | FOOD_VECTOR | 21 | 2 | 9.5% | +0.17% |
+| S1 | FOOD_VECTOR | 22 | 3 | 13.6% | +0.24% |
 | S2 | WALL_AVOID | 11 | 0 | 0.0% | -0.95% |
 | S3 | ENEMY_AVOID | 18 | 0 | 0.0% | -1.46% |
 | S4 | MASS_MANAGEMENT | 23 | 1 | 4.3% | -0.04% |
@@ -40,9 +40,9 @@
 |------:|------------:|----------|------:|-------------|
 | R7323 | +2.08% | explore | S1 | [explore] S1/FOOD_VECTOR: food_reward: 3.5666 -> 3.8172; death_snake: -15 -> -17 |
 | R7310 | +1.93% | explore | S1 | [explore] S1/FOOD_VECTOR: death_wall: -15 -> -13.415340727031698; food_shaping:  |
+| R7324 | +1.67% | explore | S1 | [explore] S1/FOOD_VECTOR: max_steps: 600 -> 707; death_snake: -17.2502 -> -18.21 |
 | R7302 | +0.12% | explore | S5 | [explore] S5/MASTERY_SURVIVAL: enemy_alert_dist: 2000 -> 2051; mass_loss_penalty |
 | R7306 | +0.11% | explore | S5 | [explore] S5/MASTERY_SURVIVAL: food_reward: 8.0000 -> 6.8031; survival: 0.3323 - |
-| R7309 | +0.11% | radical | S5 | [radical] S5/MASTERY_SURVIVAL: gamma: 0.9700 -> 0.9770; food_shaping: 0.2500 ->  |
 
 ## Top 5 Worst Discarded Experiments
 
