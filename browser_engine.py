@@ -5,6 +5,8 @@ Manages Chrome/Chromium instances and game communication.
 
 import time
 import math
+import os
+import subprocess
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
@@ -69,6 +71,13 @@ class SlitherBrowser:
         self.driver.set_page_load_timeout(30)
         self._fast_getstate_injected = False
         self._canvas_element = None  # Cached canvas WebElement for ActionChains
+
+        # Health monitoring for zombie detection
+        self._chromedriver_pid = self.driver.service.process.pid if self.driver.service else None
+        self._last_health_check = time.time()
+        self._health_check_interval = 300  # 5 minutes
+        self._steps_since_health_check = 0
+
         log(f"[BROWSER] Connecting to {self.base_url}...")
         self.driver.get(self.base_url)
         time.sleep(3)
@@ -86,6 +95,100 @@ class SlitherBrowser:
         except Exception as e:
             log(f"[CDP] Failed to start early monitoring: {e}")
             self._cdp = None
+
+    def health_check(self) -> bool:
+        """
+        Check if Chrome driver is alive. Returns True if healthy, False if dead.
+        """
+        try:
+            # Quick check: is chromedriver process still alive?
+            if self._chromedriver_pid and not _is_process_alive(self._chromedriver_pid):
+                log(f"[HEALTH] Chromedriver PID {self._chromedriver_pid} is DEAD")
+                return False
+
+            # Check if driver is responsive (lightweight ping)
+            _ = self.driver.current_url
+            return True
+        except Exception as e:
+            log(f"[HEALTH] Driver check failed: {e}")
+            return False
+
+    def cleanup_zombie_processes(self):
+        """
+        Detect and kill orphaned Chrome/chromedriver processes.
+        Called periodically to prevent resource leaks.
+        """
+        try:
+            # Find all Chrome processes without living parents
+            result = subprocess.run(
+                ["ps", "aux"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            lines = result.stdout.split('\n')
+
+            # Look for orphaned Chrome processes (no parent trainer or chrome driver)
+            zombie_pids = []
+            for line in lines:
+                if 'Chrome' not in line or 'grep' in line:
+                    continue
+
+                parts = line.split()
+                if len(parts) < 8:
+                    continue
+
+                try:
+                    pid = int(parts[1])
+                    ppid = int(parts[2])
+                    cmd = ' '.join(parts[10:])
+
+                    # Check if parent (ppid) is still alive
+                    if not _is_process_alive(ppid) and 'Chrome' in cmd:
+                        zombie_pids.append(pid)
+                except (ValueError, IndexError):
+                    continue
+
+            # Kill zombies (skip our own driver)
+            for pid in zombie_pids:
+                if pid != self._chromedriver_pid:
+                    try:
+                        os.kill(pid, 9)  # SIGKILL
+                        log(f"[CLEANUP] Killed zombie Chrome PID {pid}")
+                    except (OSError, ProcessLookupError):
+                        pass
+
+            if zombie_pids:
+                log(f"[CLEANUP] Removed {len(zombie_pids)} zombie Chrome processes")
+
+        except Exception as e:
+            log(f"[CLEANUP] Zombie detection failed (non-critical): {e}")
+
+    def _periodic_health_check(self):
+        """
+        Called periodically (every N steps) to check driver health.
+        If unhealthy, attempt cleanup.
+        """
+        self._steps_since_health_check += 1
+
+        # Check every 100 steps OR every 5 minutes of wall time
+        if self._steps_since_health_check >= 100:
+            self._steps_since_health_check = 0
+
+            if not self.health_check():
+                log("[HEALTH] WARNING: Driver is unresponsive!")
+                self.cleanup_zombie_processes()
+                return False
+
+            self._last_health_check = time.time()
+            return True
+
+        # Also check by wall time (every 5 min)
+        if time.time() - self._last_health_check > self._health_check_interval:
+            self.cleanup_zombie_processes()
+            self._last_health_check = time.time()
+
+        return True
 
     def _handle_login(self):
         """
@@ -999,7 +1102,11 @@ class SlitherBrowser:
     def send_action_get_data(self, angle, boost):
         """
         Combined: send action AND read game state in one call.
+        Includes periodic health checks to detect zombie Chrome sessions.
         """
+        # Periodic health check (every 100 steps or 5 minutes)
+        self._periodic_health_check()
+
         # CDP interceptor path: instant
         if self._cdp and self._cdp.active:
             return self._cdp.send_action_get_data(angle, boost)
@@ -1481,3 +1588,13 @@ class SlitherBrowser:
             self.driver.execute_script(js_code)
         except:
             pass
+
+
+# Helper function for process health checks
+def _is_process_alive(pid: int) -> bool:
+    """Check if a process with given PID is still alive."""
+    try:
+        os.kill(pid, 0)  # Signal 0: no-op, just checks if process exists
+        return True
+    except (OSError, ProcessLookupError):
+        return False
