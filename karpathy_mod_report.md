@@ -1,25 +1,25 @@
 # Karpathy Mod Experiment Report
-*Generated: 2026-04-02 06:45:05*
+*Generated: 2026-04-02 07:45:50*
 
 ## Summary
 
 | Metric | Value |
 |--------|-------|
-| Total experiments | 113 |
-| Keep rate | 7.1% |
-| Kept | 8 |
+| Total experiments | 114 |
+| Keep rate | 7.9% |
+| Kept | 9 |
 | Discarded | 105 |
 | Inconclusive | 0 |
-| Best improvement | +1.93% |
+| Best improvement | +2.08% |
 | Worst regression | -8.72% |
-| Avg improvement | -0.34% |
+| Avg improvement | -0.32% |
 | Trend | **IMPROVING** |
 
 ## Strategy Effectiveness
 
 | Strategy | Count | Kept | Keep Rate | Avg Improvement | Best |
 |----------|------:|-----:|----------:|----------------:|-----:|
-| explore | 40 | 5 | 12.5% | -0.55% | +1.93% |
+| explore | 41 | 6 | 14.6% | -0.48% | +2.08% |
 | radical | 35 | 2 | 5.7% | -0.29% | +0.11% |
 | tweak | 38 | 1 | 2.6% | -0.16% | +0.06% |
 
@@ -27,7 +27,7 @@
 
 | Stage | Name | Count | Kept | Keep Rate | Avg Improvement |
 |------:|------|------:|-----:|----------:|----------------:|
-| S1 | FOOD_VECTOR | 20 | 1 | 5.0% | +0.08% |
+| S1 | FOOD_VECTOR | 21 | 2 | 9.5% | +0.17% |
 | S2 | WALL_AVOID | 11 | 0 | 0.0% | -0.95% |
 | S3 | ENEMY_AVOID | 18 | 0 | 0.0% | -1.46% |
 | S4 | MASS_MANAGEMENT | 23 | 1 | 4.3% | -0.04% |
@@ -38,11 +38,11 @@
 
 | Round | Improvement | Strategy | Stage | Description |
 |------:|------------:|----------|------:|-------------|
+| R7323 | +2.08% | explore | S1 | [explore] S1/FOOD_VECTOR: food_reward: 3.5666 -> 3.8172; death_snake: -15 -> -17 |
 | R7310 | +1.93% | explore | S1 | [explore] S1/FOOD_VECTOR: death_wall: -15 -> -13.415340727031698; food_shaping:  |
 | R7302 | +0.12% | explore | S5 | [explore] S5/MASTERY_SURVIVAL: enemy_alert_dist: 2000 -> 2051; mass_loss_penalty |
 | R7306 | +0.11% | explore | S5 | [explore] S5/MASTERY_SURVIVAL: food_reward: 8.0000 -> 6.8031; survival: 0.3323 - |
 | R7309 | +0.11% | radical | S5 | [radical] S5/MASTERY_SURVIVAL: gamma: 0.9700 -> 0.9770; food_shaping: 0.2500 ->  |
-| R7316 | +0.09% | radical | S4 | [radical] S4/MASS_MANAGEMENT: gamma: 0.9700 -> 0.9840; food_shaping: 0.3000 -> 0 |
 
 ## Top 5 Worst Discarded Experiments
 
