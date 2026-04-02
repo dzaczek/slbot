@@ -518,6 +518,209 @@ python ai_supervisor.py --test --provider claude
 - `config_ai.json` — latest LLM recommendations (atomically written)
 - `logs/ai_supervisor.log` — full consultation log (stats, prompts, responses, applied changes)
 
+## Karpathy Mod — Autonomous Self-Improvement Loop
+
+Named after Andrej Karpathy's philosophy of letting systems improve themselves, this module runs a fully autonomous evolutionary optimization loop. It mutates reward parameters in `styles.py`, trains each variant in an isolated git worktree, evaluates the results statistically, and keeps only mutations that demonstrably improve performance. The entire process repeats indefinitely — no human in the loop.
+
+### Why it exists
+
+Manual reward tuning is slow and biased. You tweak `food_reward` from 3.0 to 5.0, train for 2 hours, look at charts, decide it helped, move on. But did you test 4.0? Did you test 5.0 combined with lower `survival`? The search space is huge (20+ continuous parameters × 6 stages) and human intuition doesn't scale.
+
+The Karpathy mod systematically explores this space. It runs 24/7, tries things you wouldn't think of, and only commits changes backed by data.
+
+### Architecture overview
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  karpathy_mod_runner.py  — Main orchestrator                     │
+│                                                                  │
+│  while True:                                                     │
+│    1. Read baseline metrics from training_stats.csv              │
+│    2. Pick target curriculum stage (random or --stage N)         │
+│    3. Generate N mutations (karpathy_mod_mutator.py)             │
+│    4. For each mutation (parallel git worktrees):                │
+│       ├─ git worktree add → isolated copy of repo               │
+│       ├─ Apply mutation to worktree/styles.py                   │
+│       ├─ Copy checkpoint.pth + training_stats.csv               │
+│       ├─ python trainer.py --resume --stage X                   │
+│       └─ Monitor: stall detection (5min), timeout (budget×30s)  │
+│    5. Evaluate all experiments (karpathy_mod_evaluator.py)       │
+│       ├─ Compute ExperimentMetrics per mutation                  │
+│       ├─ Lite normalization scoring vs baseline                  │
+│       └─ Decision: keep / discard / inconclusive                │
+│    6. If winner found:                                           │
+│       ├─ Apply winning styles.py to main repo                   │
+│       ├─ Merge new CSV rows into training_stats.csv             │
+│       └─ git commit "karpathy: [description]"                   │
+│    7. Cleanup worktrees & branches                               │
+│    8. Save state → repeat                                        │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### The loop step by step
+
+**Step 1 — Baseline.** Read the last N episodes (= budget) from `training_stats.csv`, filtered by target stage. Compute aggregate metrics: avg_steps, avg_food, peak_length, death rates, Q-values. This is the bar that mutations must beat.
+
+**Step 2 — Stage selection.** Either forced via `--stage N` or chosen randomly from available curriculum stages. Each round targets one stage — mutations don't cross stage boundaries.
+
+**Step 3 — Mutation generation.** The `Mutator` class in `karpathy_mod_mutator.py` generates independent mutations. Each mutation modifies 1-5 numerical reward parameters within bounded ranges. Strategies are diversified across the batch so parallel experiments don't all try the same thing.
+
+**Step 4 — Isolated training.** Each mutation gets its own git worktree (a lightweight copy of the repo with its own `styles.py`). The trainer runs as a subprocess with `--resume`, starting from the current checkpoint. Workers are monitored for:
+- **Stall detection**: no new episodes for 5 minutes → kill worker
+- **Round timeout**: budget × 30 seconds → kill all workers
+- **Process crash**: detected via `poll()`, marked as done
+
+**Step 5 — Evaluation.** After training completes, `karpathy_mod_evaluator.py` reads each worker's CSV and computes `ExperimentMetrics`. Scores use **lite normalization**: each metric is divided by its baseline value before weighting, so a 10% improvement in avg_steps counts the same regardless of whether baseline is 100 or 1000 steps.
+
+**Step 6 — Decision.** A mutation is **kept** only if:
+1. Composite score improved by > 0.5%
+2. avg_steps also improved (or score improvement is > 1.5%)
+3. snake_death_rate didn't increase by > 10%
+4. wall_death_rate didn't increase by > 15%
+
+If multiple mutations pass, only the best one wins. This is competitive evolution, not ensemble.
+
+**Step 7 — Apply or discard.** If a winner is found: its `styles.py` overwrites the main one, its new CSV rows are merged into the main `training_stats.csv`, and the change is git committed with the mutation description. If no winner: nothing changes, the round is logged as discarded.
+
+### Mutation strategies
+
+| Strategy | Params | Intensity | Probability | Description |
+|----------|--------|-----------|-------------|-------------|
+| **tweak** | 1 | Low (0.5×) | 50% | Fine-grained adjustment to a single parameter. The workhorse. |
+| **explore** | 3 | Medium (1.0×) | 33% | Moderate changes to multiple parameters. Searches for synergies. |
+| **radical** | 5 | High (1.5×) | 17% | Large changes to many parameters. Breaks out of local optima. |
+| **targeted** | Group | Medium (1.0×) | On demand | Mutates all parameters in a functional group (survival/enemy/food/risk). |
+| **crossover** | Blend | Medium | On demand | Blends parameters from another stage (ratio 0.2-0.5). Transfers knowledge between stages. |
+
+Each parameter has defined bounds and a max step percentage (how much it can change per mutation):
+
+```
+food_reward:              [1.0,  25.0]  step ±30%
+death_wall:               [-100, -5]    step ±25%
+enemy_proximity_penalty:  [0.0,  5.0]   step ±40%
+gamma:                    [0.80, 0.995] step ±3%
+max_steps:                [100, 10000]  step ±20%
+```
+
+### Scoring formula
+
+```
+score = avg_steps      × 1.0     (survival is king)
+      + avg_peak_length × 0.5     (growth matters)
+      + avg_food        × 0.3     (eating is good)
+      + avg_reward      × 0.2     (general performance)
+      - snake_death_rate × 0.5    (dying to snakes is bad)
+      - wall_death_rate  × 0.2    (dying to walls is bad)
+```
+
+With lite normalization, each term becomes `(experiment_value / baseline_value) × weight`, making the score scale-independent.
+
+### Parallel experiments
+
+With `--parallel N`, the runner spawns N independent mutations, each in its own git worktree with its own trainer process and CSV file. After training, all N are evaluated against the **same** baseline, and only the best one (if it beats baseline) is kept.
+
+This is not ensemble learning — the mutations compete. A typical round with `--parallel 4` generates one tweak, one explore, one radical, and one targeted mutation, maximizing diversity.
+
+### Git worktree isolation
+
+Each experiment runs in `.karpathy_worktrees/exp_<id>/`:
+- Full copy of repo (via `git worktree add`)
+- Its own `styles.py` with the mutation applied
+- Its own `training_stats.csv` (copied from main at start)
+- Its own `checkpoint.pth` (copied from main)
+- Its own trainer process (own PID, own process group)
+
+On completion, the worktree is cleaned up with `git worktree remove`. If the experiment wins, its CSV rows are appended to the main CSV and its styles.py overwrites the main one. The branch is deleted either way.
+
+### Safety and persistence
+
+- **State persistence**: `karpathy_mod_state.json` saves round counter, keep/discard totals. Survives restarts.
+- **Graceful shutdown**: Ctrl+C → stops all trainer processes → saves state → cleans up worktrees.
+- **Git history**: every kept mutation is a git commit. You can always `git revert` a bad change.
+- **Failed experiments**: automatically discarded. No trace left in the codebase.
+- **Frozen code**: only `styles.py` is ever modified. `trainer.py`, `agent.py`, `model.py`, `slither_env.py`, `config.py` are never touched.
+- **Stall/timeout protection**: stalled workers killed after 5 min idle, rounds killed after budget×30s.
+
+### Results log
+
+Every experiment (kept or discarded) is logged to `karpathy_mod_results.tsv`:
+
+| Column | Description |
+|--------|-------------|
+| timestamp | When the experiment finished |
+| round | Round number |
+| experiment_id | Unique 8-char hex ID |
+| strategy | Mutation strategy used |
+| stage | Which curriculum stage was mutated |
+| decision | keep / discard |
+| improvement_pct | % change in composite score vs baseline |
+| baseline_score / experiment_score | Raw scores |
+| avg_steps, avg_food, peak_length | Key performance metrics |
+| snake_death_rate | Enemy collision rate |
+| description | Human-readable mutation description |
+
+### Analyzer
+
+`karpathy_mod_analyzer.py` reads the results TSV and generates:
+- **8 charts** (saved to `charts/`): score timeline, strategy effectiveness, stage analysis, metric evolution, parameter impact, improvement distribution, strategy×stage heatmap, interactive Plotly explorer
+- **Terminal report**: summary, strategy leaderboard, top 5 best/worst experiments, trend assessment, recommendations
+- **Markdown report**: `karpathy_mod_report.md`
+
+```bash
+python karpathy_mod_analyzer.py                    # full analysis
+python karpathy_mod_analyzer.py --last 20          # only last 20 rounds
+python karpathy_mod_analyzer.py --no-charts        # text report only
+```
+
+### Usage
+
+```bash
+# Standard run — 1500 episodes per experiment, sequential
+python karpathy_mod_runner.py --budget 1500
+
+# 4 parallel mutations, target stage 3
+python karpathy_mod_runner.py --budget 500 --parallel 4 --stage 3
+
+# Quick exploration with time limit
+python karpathy_mod_runner.py --budget 300 --parallel 4 --max-time 4
+
+# Stop after 10 rounds
+python karpathy_mod_runner.py --budget 500 --max-rounds 10
+
+# Preview mutations without running
+python karpathy_mod_runner.py --dry-run --parallel 4
+
+# Clean up leftover worktrees from a crashed run
+python karpathy_mod_runner.py --cleanup
+```
+
+### CLI Reference
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--budget N` | 1500 | Episodes per experiment |
+| `--parallel N` | 1 | Number of parallel mutations |
+| `--stage N` | 0 (auto) | Target curriculum stage |
+| `--warmup N` | 50 | Episodes to skip at start of evaluation (transition period) |
+| `--max-rounds N` | 0 (unlimited) | Stop after N rounds |
+| `--max-time H` | 0 (unlimited) | Stop after H hours |
+| `--dry-run` | — | Show mutations without executing |
+| `--cleanup` | — | Remove leftover worktrees and exit |
+| `--url URL` | http://slither.io | Game server URL |
+| `--backend` | selenium | Browser backend |
+
+### File inventory
+
+| File | Purpose |
+|------|---------|
+| `karpathy_mod_runner.py` | Main orchestrator — mutation loop, worktree lifecycle, monitoring |
+| `karpathy_mod_mutator.py` | Mutation engine — strategies, parameter bounds, serialization |
+| `karpathy_mod_evaluator.py` | Metrics computation, lite normalization, keep/discard decisions |
+| `karpathy_mod_analyzer.py` | Results visualization — 8 charts, terminal report, markdown report |
+| `karpathy_mod_program.md` | Research program specification |
+| `karpathy_mod_results.tsv` | Experiment log (auto-generated) |
+| `karpathy_mod_state.json` | Persistent state across restarts |
+
 ## Analysis
 
 The analyzer generates **19 charts + 2 animated GIFs** and a markdown report:
@@ -643,6 +846,11 @@ python trainer.py --reset
 | `training_progress_analyzer.py` | Post-training analysis — 19 charts + 2 GIFs + markdown report |
 | `charts/` | Generated analysis charts (PNGs + animated GIFs) |
 | `ai_supervisor.py` | LLM-based hyperparameter tuner (Claude/OpenAI/Gemini/Ollama) |
+| `karpathy_mod_runner.py` | Autonomous self-improvement loop — mutation, training, evaluation |
+| `karpathy_mod_mutator.py` | Mutation engine — strategies, parameter bounds, crossover |
+| `karpathy_mod_evaluator.py` | Statistical evaluation — metrics, lite normalization, decisions |
+| `karpathy_mod_analyzer.py` | Experiment analysis — charts, reports, recommendations |
+| `karpathy_mod_program.md` | Research program specification and rules |
 | `training_stats.csv` | Raw episode-level metrics |
 | `config_ai.json` | AI Supervisor output — latest recommended parameters |
 | `.env.example` | Template for API keys |
