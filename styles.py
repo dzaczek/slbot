@@ -58,7 +58,7 @@ STYLES = {
                 "boost_penalty": 0.14749219484757445,
                 "starvation_penalty": 0.005563157911856432,
                 "starvation_grace_steps": 61,
-                "max_steps": 1669,
+                "max_steps": 1642,
                 "promote_metric": "avg_steps",
                 "promote_threshold": 350,
                 "promote_window": 500
