@@ -92,7 +92,7 @@ STYLES = {
             5: {
                 "name": "MASTERY_SURVIVAL",
                 "gamma": 0.9641177884845898,
-                "food_reward": 5.400390132588768,
+                "food_reward": 4.600110781769387,
                 "food_shaping": 0.09269246289894084,
                 "survival": 0.13662993066192516,
                 "survival_escalation": 0.0012221637332453775,
