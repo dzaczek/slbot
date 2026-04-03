@@ -1,48 +1,48 @@
 # Karpathy Mod Experiment Report
-*Generated: 2026-04-02 21:56:27*
+*Generated: 2026-04-03 13:00:40*
 
 ## Summary
 
 | Metric | Value |
 |--------|-------|
-| Total experiments | 115 |
-| Keep rate | 8.7% |
-| Kept | 10 |
+| Total experiments | 123 |
+| Keep rate | 14.6% |
+| Kept | 18 |
 | Discarded | 105 |
 | Inconclusive | 0 |
-| Best improvement | +2.08% |
+| Best improvement | +4.41% |
 | Worst regression | -8.72% |
-| Avg improvement | -0.30% |
+| Avg improvement | -0.21% |
 | Trend | **IMPROVING** |
 
 ## Strategy Effectiveness
 
 | Strategy | Count | Kept | Keep Rate | Avg Improvement | Best |
 |----------|------:|-----:|----------:|----------------:|-----:|
-| explore | 42 | 7 | 16.7% | -0.43% | +2.08% |
-| radical | 35 | 2 | 5.7% | -0.29% | +0.11% |
-| tweak | 38 | 1 | 2.6% | -0.16% | +0.06% |
+| explore | 48 | 13 | 27.1% | -0.31% | +2.08% |
+| radical | 36 | 3 | 8.3% | -0.27% | +0.33% |
+| tweak | 39 | 2 | 5.1% | -0.04% | +4.41% |
 
 ## Stage Performance
 
 | Stage | Name | Count | Kept | Keep Rate | Avg Improvement |
 |------:|------|------:|-----:|----------:|----------------:|
-| S1 | FOOD_VECTOR | 22 | 3 | 13.6% | +0.24% |
-| S2 | WALL_AVOID | 11 | 0 | 0.0% | -0.95% |
-| S3 | ENEMY_AVOID | 18 | 0 | 0.0% | -1.46% |
-| S4 | MASS_MANAGEMENT | 23 | 1 | 4.3% | -0.04% |
-| S5 | MASTERY_SURVIVAL | 27 | 6 | 22.2% | -0.02% |
+| S1 | FOOD_VECTOR | 23 | 4 | 17.4% | +0.26% |
+| S2 | WALL_AVOID | 12 | 1 | 8.3% | -0.77% |
+| S3 | ENEMY_AVOID | 20 | 2 | 10.0% | -1.05% |
+| S4 | MASS_MANAGEMENT | 26 | 4 | 15.4% | -0.00% |
+| S5 | MASTERY_SURVIVAL | 28 | 7 | 25.0% | -0.01% |
 | S6 | APEX_PREDATOR | 14 | 0 | 0.0% | -0.09% |
 
 ## Top 5 Best Kept Experiments
 
 | Round | Improvement | Strategy | Stage | Description |
 |------:|------------:|----------|------:|-------------|
+| R7334 | +4.41% | tweak | S3 | [tweak] S3/ENEMY_AVOID: enemy_approach_penalty: 0.5000 -> 0.5727 |
 | R7323 | +2.08% | explore | S1 | [explore] S1/FOOD_VECTOR: food_reward: 3.5666 -> 3.8172; death_snake: -15 -> -17 |
 | R7310 | +1.93% | explore | S1 | [explore] S1/FOOD_VECTOR: death_wall: -15 -> -13.415340727031698; food_shaping:  |
 | R7324 | +1.67% | explore | S1 | [explore] S1/FOOD_VECTOR: max_steps: 600 -> 707; death_snake: -17.2502 -> -18.21 |
-| R7302 | +0.12% | explore | S5 | [explore] S5/MASTERY_SURVIVAL: enemy_alert_dist: 2000 -> 2051; mass_loss_penalty |
-| R7306 | +0.11% | explore | S5 | [explore] S5/MASTERY_SURVIVAL: food_reward: 8.0000 -> 6.8031; survival: 0.3323 - |
+| R7331 | +1.15% | explore | S2 | [explore] S2/WALL_AVOID: starvation_penalty: 0.0050 -> 0.0074; death_wall: -40 - |
 
 ## Top 5 Worst Discarded Experiments
 
