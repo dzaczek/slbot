@@ -51,7 +51,7 @@ STYLES = {
                 "food_shaping": 0.0985389088145585,
                 "survival": 0.2997688982799574,
                 "death_wall": -12.031636783433125,
-                "death_snake": -71.0700171079272,
+                "death_snake": -63.03412956163926,
                 "enemy_alert_dist": 2367,
                 "enemy_proximity_penalty": 0.9430327673571719,
                 "enemy_approach_penalty": 0.5168210048707321,
