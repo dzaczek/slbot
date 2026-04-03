@@ -47,9 +47,9 @@ STYLES = {
             3: {
                 "name": "ENEMY_AVOID",
                 "gamma": 0.9038914892875372,
-                "food_reward": 4.564678511913618,
+                "food_reward": 3.7534694785699796,
                 "food_shaping": 0.0899568440140703,
-                "survival": 0.3089518206563796,
+                "survival": 0.38468964048346127,
                 "death_wall": -5.695795470794925,
                 "death_snake": -44.215265401691326,
                 "enemy_alert_dist": 2367,
@@ -58,7 +58,7 @@ STYLES = {
                 "boost_penalty": 0.07557440472126242,
                 "starvation_penalty": 0.0011414678909526773,
                 "starvation_grace_steps": 42,
-                "max_steps": 832,
+                "max_steps": 842,
                 "promote_metric": "avg_steps",
                 "promote_threshold": 350,
                 "promote_window": 500
