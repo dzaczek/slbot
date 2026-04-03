@@ -106,7 +106,7 @@ STYLES = {
                 "boost_penalty": 4.0,
                 "mass_loss_penalty": 2.808368369842686,
                 "starvation_penalty": 0.015864734511593752,
-                "starvation_grace_steps": 112,
+                "starvation_grace_steps": 98,
                 "contest_food_reward": 1.4541077626865913,
                 "enemy_zone_control_reward": 0.08397733750405592,
                 "kill_opportunity_reward": 14.033302860502154,
