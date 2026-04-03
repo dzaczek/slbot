@@ -77,7 +77,7 @@ STYLES = {
                 "enemy_alert_dist": 2679,
                 "enemy_proximity_penalty": 1.3429003886009345,
                 "enemy_approach_penalty": 0.1335883940213632,
-                "boost_penalty": 4.821378747025808,
+                "boost_penalty": 4.623695406411899,
                 "mass_loss_penalty": 4.377025344741382,
                 "starvation_penalty": 0.08948240015697684,
                 "starvation_grace_steps": 21,
