@@ -54,7 +54,7 @@ STYLES = {
                 "death_snake": -49.632870430701956,
                 "enemy_alert_dist": 1777,
                 "enemy_proximity_penalty": 0.9430327673571719,
-                "enemy_approach_penalty": 0.9844763967356776,
+                "enemy_approach_penalty": 0.8701223408214269,
                 "boost_penalty": 0.14749219484757445,
                 "starvation_penalty": 0.005563157911856432,
                 "starvation_grace_steps": 61,
