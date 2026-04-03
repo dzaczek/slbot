@@ -48,7 +48,7 @@ STYLES = {
                 "name": "ENEMY_AVOID",
                 "gamma": 0.9038914892875372,
                 "food_reward": 4.537006169330944,
-                "food_shaping": 0.10208509816350225,
+                "food_shaping": 0.0899568440140703,
                 "survival": 0.2659337238665552,
                 "death_wall": -12.031636783433125,
                 "death_snake": -76.99046682777795,
