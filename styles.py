@@ -102,7 +102,7 @@ STYLES = {
                 "wall_proximity_penalty": 0.38132229474966967,
                 "enemy_alert_dist": 1471,
                 "enemy_proximity_penalty": 1.4242872203165329,
-                "enemy_approach_penalty": 0.10430185150108015,
+                "enemy_approach_penalty": 0.10344173758026577,
                 "boost_penalty": 6.047500084734265,
                 "mass_loss_penalty": 1.8904595251282406,
                 "starvation_penalty": 0.011613285062345293,
