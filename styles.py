@@ -91,7 +91,7 @@ STYLES = {
             },
             5: {
                 "name": "MASTERY_SURVIVAL",
-                "gamma": 0.995,
+                "gamma": 0.977149389635851,
                 "food_reward": 4.8231257917664845,
                 "food_shaping": 0.14661645024377784,
                 "survival": 0.21593242258062362,
@@ -107,10 +107,10 @@ STYLES = {
                 "mass_loss_penalty": 4.3130220228929215,
                 "starvation_penalty": 0.014849148109343756,
                 "starvation_grace_steps": 100,
-                "contest_food_reward": 1.967516259737998,
+                "contest_food_reward": 1.1034164899616385,
                 "enemy_zone_control_reward": 0.05301281610973437,
                 "kill_opportunity_reward": 15.0,
-                "max_steps": 3000,
+                "max_steps": 3148,
                 "promote_metric": "compound",
                 "promote_conditions": {
                     "avg_steps": 1200,
