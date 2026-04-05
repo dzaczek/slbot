@@ -27,7 +27,7 @@ STYLES = {
             },
             2: {
                 "name": "WALL_AVOID",
-                "gamma": 0.8,
+                "gamma": 0.809275001036875,
                 "food_reward": 2.366231438797426,
                 "food_shaping": 0.07226035952224229,
                 "survival": 0.26310692913884864,
