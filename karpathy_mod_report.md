@@ -1,14 +1,14 @@
 # Karpathy Mod Experiment Report
-*Generated: 2026-04-06 01:08:55*
+*Generated: 2026-04-06 02:09:41*
 
 ## Summary
 
 | Metric | Value |
 |--------|-------|
-| Total experiments | 319 |
-| Keep rate | 66.5% |
+| Total experiments | 320 |
+| Keep rate | 66.2% |
 | Kept | 212 |
-| Discarded | 107 |
+| Discarded | 108 |
 | Inconclusive | 0 |
 | Best improvement | +4.41% |
 | Worst regression | -8.72% |
@@ -21,7 +21,7 @@
 |----------|------:|-----:|----------:|----------------:|-----:|
 | radical | 107 | 73 | 68.2% | +0.72% | +4.28% |
 | explore | 110 | 75 | 68.2% | +0.56% | +4.28% |
-| tweak | 102 | 64 | 62.7% | +0.90% | +4.41% |
+| tweak | 103 | 64 | 62.1% | +0.90% | +4.41% |
 
 ## Stage Performance
 
@@ -30,7 +30,7 @@
 | S1 | FOOD_VECTOR | 77 | 58 | 75.3% | +0.50% |
 | S2 | WALL_AVOID | 56 | 45 | 80.4% | +0.67% |
 | S3 | ENEMY_AVOID | 59 | 41 | 69.5% | +2.47% |
-| S4 | MASS_MANAGEMENT | 51 | 29 | 56.9% | +0.14% |
+| S4 | MASS_MANAGEMENT | 52 | 29 | 55.8% | +0.14% |
 | S5 | MASTERY_SURVIVAL | 62 | 39 | 62.9% | +0.06% |
 | S6 | APEX_PREDATOR | 14 | 0 | 0.0% | -0.09% |
 
