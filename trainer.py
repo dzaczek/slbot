@@ -34,11 +34,11 @@ _shutdown_requested = False
 # Add gen2 to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from slither_env import SlitherEnv
 from config import Config
 from agent import DDQNAgent
 from styles import STYLES
-from worker_session import WorkerSession
+from worker_process import READY_MSG, worker
+from worker_session import spawning_obs, spawning_step_result
 
 # Setup logging
 os.makedirs("logs", exist_ok=True)
@@ -113,7 +113,6 @@ class TrainingDashboard:
         self._ep_timestamps = deque(maxlen=60)
         # Agent board: list of dicts per agent
         self.agents_board = []
-        self._last_board_refresh = 0.0
 
     def start(self):
         if not RICH_AVAILABLE:
@@ -168,7 +167,8 @@ class TrainingDashboard:
     def log_event(self, msg):
         ts = time.strftime("%H:%M:%S")
         self.events.append(f"{ts} {msg}")
-        self._refresh()
+        # Live auto-refresh paints this; never rebuild the layout on the
+        # training thread (agent step latency is the priority).
 
     def update(self, episode, stage, stage_name, epsilon, lr, loss, q_mean, q_max,
                td_error, grad_norm, reward, steps, food, cause, action_pcts, num_agents,
@@ -221,17 +221,12 @@ class TrainingDashboard:
             span = self._ep_timestamps[-1] - self._ep_timestamps[0]
             if span > 0:
                 self.episodes_per_min = (len(self._ep_timestamps) - 1) / span * 60
-        self._refresh()
 
     def update_agent_board(self, agents_data):
         """Update live agent board. agents_data: list of dicts per agent.
         Each dict: {name, reward, food, steps, ep_time, total_eps, last_cause}
         """
         self.agents_board = agents_data
-        now = time.time()
-        if now - self._last_board_refresh >= 0.5:
-            self._last_board_refresh = now
-            self._refresh()
 
     def _refresh(self):
         if self.live:
@@ -240,10 +235,21 @@ class TrainingDashboard:
             except Exception as e:
                 logger.debug(f"[TUI] _refresh error: {e}")
 
+    def _as_list(self, data):
+        if not data:
+            return []
+        try:
+            return list(data)
+        except RuntimeError:
+            try:
+                return list(data)
+            except RuntimeError:
+                return []
+
     def _sparkline(self, data, width=40):
         if not data:
             return ""
-        values = list(data)[-width:]
+        values = self._as_list(data)[-width:]
         if len(values) < 2:
             return self.SPARKLINE_CHARS[4] * len(values)
         lo, hi = min(values), max(values)
@@ -266,6 +272,28 @@ class TrainingDashboard:
 
     def _build_layout(self):
         global _shutdown_requested
+        # Snapshot collections so a Live refresh never iterates a deque the
+        # training thread is appending to.
+        reward_history = self._as_list(self.reward_history)
+        steps_history = self._as_list(self.steps_history)
+        food_history = self._as_list(self.food_history)
+        death_causes = self._as_list(self.death_causes)
+        action_history = self._as_list(self.action_history)
+        loss_history = self._as_list(self.loss_history)
+        epsilon_history = self._as_list(self.epsilon_history)
+        q_mean_history = self._as_list(self.q_mean_history)
+        td_error_history = self._as_list(self.td_error_history)
+        food_ratio_history = self._as_list(self.food_ratio_history)
+        length_history = self._as_list(self.length_history)
+        long_steps = self._as_list(self.long_steps)
+        long_reward = self._as_list(self.long_reward)
+        long_food = self._as_list(self.long_food)
+        long_length_sma = self._as_list(self.long_length_sma)
+        long_survival_sma = self._as_list(self.long_survival_sma)
+        long_reward_sma = self._as_list(self.long_reward_sma)
+        events = self._as_list(self.events)
+        agents_board = list(self.agents_board) if self.agents_board else []
+
         layout = Layout()
         layout.split_column(
             Layout(name="header", size=3),
@@ -327,14 +355,14 @@ class TrainingDashboard:
         perf_table.add_column("value")
         best_str = f"{self.best_avg_reward:.2f}" if self.best_avg_reward > -1e9 else "—"
         perf_table.add_row("Best Avg Rw", best_str)
-        if self.length_history:
-            max_len = max(self.length_history)
+        if length_history:
+            max_len = max(length_history)
             perf_table.add_row("Session Max", f"[bold gold1]{max_len:.1f}[/]")
-        if self.reward_history:
-            last10 = list(self.reward_history)[-10:]
+        if reward_history:
+            last10 = reward_history[-10:]
             perf_table.add_row("Last 10 Avg", f"{sum(last10)/len(last10):.2f}")
-        if self.food_ratio_history:
-            avg_fr = sum(self.food_ratio_history) / len(self.food_ratio_history)
+        if food_ratio_history:
+            avg_fr = sum(food_ratio_history) / len(food_ratio_history)
             perf_table.add_row("Food/Step", f"{avg_fr:.4f}")
         left_layout["perf"].update(Panel(perf_table, title="[bold]Performance", border_style="green"))
         layout["left"].update(left_layout)
@@ -350,16 +378,16 @@ class TrainingDashboard:
         avg_table = Table(show_header=False, box=None, padding=(0, 1))
         avg_table.add_column("key", style="bold", width=12)
         avg_table.add_column("value")
-        if self.reward_history:
-            avg_r = sum(self.reward_history) / len(self.reward_history)
-            avg_s = sum(self.steps_history) / len(self.steps_history)
-            avg_f = sum(self.food_history) / len(self.food_history)
-            avg_pk = sum(self.length_history) / len(self.length_history) if self.length_history else 0
+        if reward_history:
+            avg_r = sum(reward_history) / len(reward_history)
+            avg_s = sum(steps_history) / len(steps_history)
+            avg_f = sum(food_history) / len(food_history)
+            avg_pk = sum(length_history) / len(length_history) if length_history else 0
             avg_table.add_row("Avg Reward", f"{avg_r:.2f}")
             avg_table.add_row("Avg Steps", f"{avg_s:.1f}")
             avg_table.add_row("Avg Food", f"{avg_f:.2f}")
             avg_table.add_row("Avg PkLen", f"[bold cyan]{avg_pk:.1f}[/]")
-            avg_table.add_row("Window", f"{len(self.reward_history)}/100")
+            avg_table.add_row("Window", f"{len(reward_history)}/100")
         else:
             avg_table.add_row("", "Waiting for data...")
         mid_layout["averages"].update(Panel(avg_table, title="[bold]Averages (100ep)", border_style="green"))
@@ -368,10 +396,10 @@ class TrainingDashboard:
         death_table = Table(show_header=False, box=None, padding=(0, 1))
         death_table.add_column("cause", style="bold", width=12)
         death_table.add_column("bar")
-        if self.death_causes:
-            total = len(self.death_causes)
+        if death_causes:
+            total = len(death_causes)
             causes_count = {}
-            for c in self.death_causes:
+            for c in death_causes:
                 causes_count[c] = causes_count.get(c, 0) + 1
             for cause_name in ["Wall", "SnakeCollision", "MaxSteps", "InvalidFrame", "BrowserError"]:
                 cnt = causes_count.get(cause_name, 0)
@@ -384,16 +412,16 @@ class TrainingDashboard:
         # Model trends (epsilon, loss, Q-mean, TD error)
         mt = Text()
         mt.append("Epsilon: ", style="bold")
-        mt.append(self._sparkline(self.epsilon_history, 30), style="yellow")
+        mt.append(self._sparkline(epsilon_history, 30), style="yellow")
         mt.append("\n")
         mt.append("Loss:    ", style="bold")
-        mt.append(self._sparkline(self.loss_history, 30), style="red")
+        mt.append(self._sparkline(loss_history, 30), style="red")
         mt.append("\n")
         mt.append("Q-Mean:  ", style="bold")
-        mt.append(self._sparkline(self.q_mean_history, 30), style="cyan")
+        mt.append(self._sparkline(q_mean_history, 30), style="cyan")
         mt.append("\n")
         mt.append("TD Err:  ", style="bold")
-        mt.append(self._sparkline(self.td_error_history, 30), style="magenta")
+        mt.append(self._sparkline(td_error_history, 30), style="magenta")
         mid_layout["model_trends"].update(Panel(mt, title="[bold]Model Trends", border_style="blue"))
         layout["middle"].update(mid_layout)
 
@@ -406,29 +434,29 @@ class TrainingDashboard:
 
         trend_text = Text()
         trend_text.append("Reward:    ", style="bold")
-        trend_text.append(self._sparkline(self.reward_history), style="green")
-        if self.reward_history:
-            trend_text.append(f"  {list(self.reward_history)[-1]:.1f}", style="dim")
+        trend_text.append(self._sparkline(reward_history), style="green")
+        if reward_history:
+            trend_text.append(f"  {reward_history[-1]:.1f}", style="dim")
         trend_text.append("\n\n")
         trend_text.append("Steps:     ", style="bold")
-        trend_text.append(self._sparkline(self.steps_history), style="cyan")
-        if self.steps_history:
-            trend_text.append(f"  {list(self.steps_history)[-1]:.0f}", style="dim")
+        trend_text.append(self._sparkline(steps_history), style="cyan")
+        if steps_history:
+            trend_text.append(f"  {steps_history[-1]:.0f}", style="dim")
         trend_text.append("\n\n")
         trend_text.append("Food:      ", style="bold")
-        trend_text.append(self._sparkline(self.food_history), style="yellow")
-        if self.food_history:
-            trend_text.append(f"  {list(self.food_history)[-1]:.0f}", style="dim")
+        trend_text.append(self._sparkline(food_history), style="yellow")
+        if food_history:
+            trend_text.append(f"  {food_history[-1]:.0f}", style="dim")
         trend_text.append("\n\n")
         trend_text.append("Food/Step: ", style="bold")
-        trend_text.append(self._sparkline(self.food_ratio_history), style="magenta")
-        if self.food_ratio_history:
-            trend_text.append(f"  {list(self.food_ratio_history)[-1]:.4f}", style="dim")
+        trend_text.append(self._sparkline(food_ratio_history), style="magenta")
+        if food_ratio_history:
+            trend_text.append(f"  {food_ratio_history[-1]:.4f}", style="dim")
         trend_text.append("\n\n")
         trend_text.append("Size Trend: ", style="bold")
-        trend_text.append(self._sparkline(self.length_history), style="bold gold1")
-        if self.length_history:
-            trend_text.append(f"  {list(self.length_history)[-1]:.1f}", style="bold cyan")
+        trend_text.append(self._sparkline(length_history), style="bold gold1")
+        if length_history:
+            trend_text.append(f"  {length_history[-1]:.1f}", style="bold cyan")
         right_layout["trends"].update(Panel(trend_text, title="[bold]Episode Trends (100ep)", border_style="magenta"))
 
         # Action distribution
@@ -436,12 +464,12 @@ class TrainingDashboard:
         act_table.add_column("action", style="bold", width=10)
         act_table.add_column("bar")
         action_names = ["Straight", "Gentle", "Medium", "Sharp", "UTurn", "Boost"]
-        if self.action_history:
+        if action_history:
             avg_acts = [0.0] * 6
-            for ap in self.action_history:
+            for ap in action_history:
                 for j in range(6):
                     avg_acts[j] += ap[j]
-            n = len(self.action_history)
+            n = len(action_history)
             avg_acts = [a / n * 100 for a in avg_acts]
             for name, pct in zip(action_names, avg_acts):
                 act_table.add_row(name, f"{pct:5.1f}% {self._bar(pct, 12)}")
@@ -458,33 +486,33 @@ class TrainingDashboard:
         # Survival sparkline (long-term SMA20, up to 500 episodes)
         surv_text = Text()
         surv_text.append("Survival SMA20:  ", style="bold")
-        surv_text.append(self._sparkline(self.long_survival_sma, 60), style="green")
-        if self.long_survival_sma:
-            surv_text.append(f"  {list(self.long_survival_sma)[-1]:.0f}", style="dim green")
+        surv_text.append(self._sparkline(long_survival_sma, 60), style="green")
+        if long_survival_sma:
+            surv_text.append(f"  {long_survival_sma[-1]:.0f}", style="dim green")
         surv_text.append("\n\n")
         surv_text.append("PeakLen SMA20:   ", style="bold")
-        surv_text.append(self._sparkline(self.long_length_sma, 60), style="magenta")
-        if self.long_length_sma:
-            surv_text.append(f"  {list(self.long_length_sma)[-1]:.0f}", style="dim magenta")
+        surv_text.append(self._sparkline(long_length_sma, 60), style="magenta")
+        if long_length_sma:
+            surv_text.append(f"  {long_length_sma[-1]:.0f}", style="dim magenta")
         surv_text.append("\n\n")
         surv_text.append("Reward SMA20:    ", style="bold")
-        surv_text.append(self._sparkline(self.long_reward_sma, 60), style="cyan")
-        if self.long_reward_sma:
-            surv_text.append(f"  {list(self.long_reward_sma)[-1]:.1f}", style="dim cyan")
+        surv_text.append(self._sparkline(long_reward_sma, 60), style="cyan")
+        if long_reward_sma:
+            surv_text.append(f"  {long_reward_sma[-1]:.1f}", style="dim cyan")
         surv_text.append("\n\n")
         surv_text.append("Food (raw):      ", style="bold")
-        surv_text.append(self._sparkline(self.long_food, 60), style="yellow")
-        if self.long_food:
-            surv_text.append(f"  {list(self.long_food)[-1]:.0f}", style="dim yellow")
+        surv_text.append(self._sparkline(long_food, 60), style="yellow")
+        if long_food:
+            surv_text.append(f"  {long_food[-1]:.0f}", style="dim yellow")
         progress_layout["survival_chart"].update(
-            Panel(surv_text, title=f"[bold]Learning Progress ({len(self.long_steps)}/500 ep)", border_style="green"))
+            Panel(surv_text, title=f"[bold]Learning Progress ({len(long_steps)}/500 ep)", border_style="green"))
 
         # Survival stats: min/avg/max + trend arrows
         stat_text = Text()
-        if self.steps_history:
-            s_list = list(self.steps_history)
-            r_list = list(self.reward_history)
-            f_list = list(self.food_history)
+        if steps_history:
+            s_list = steps_history
+            r_list = reward_history
+            f_list = food_history
             s_min, s_avg, s_max = min(s_list), sum(s_list)/len(s_list), max(s_list)
             r_min, r_avg, r_max = min(r_list), sum(r_list)/len(r_list), max(r_list)
             f_min, f_avg, f_max = min(f_list), sum(f_list)/len(f_list), max(f_list)
@@ -493,8 +521,8 @@ class TrainingDashboard:
             def _trend(data):
                 if len(data) < 40:
                     return "—", "dim"
-                recent = list(data)[-20:]
-                prev = list(data)[-40:-20]
+                recent = data[-20:]
+                prev = data[-40:-20]
                 r_avg = sum(recent) / len(recent)
                 p_avg = sum(prev) / len(prev)
                 diff = (r_avg - p_avg) / max(abs(p_avg), 0.01) * 100
@@ -509,9 +537,9 @@ class TrainingDashboard:
                 else:
                     return f"→ {diff:+.0f}%", "yellow"
 
-            s_trend, s_style = _trend(self.long_steps)
-            r_trend, r_style = _trend(self.long_reward)
-            f_trend, f_style = _trend(self.long_food)
+            s_trend, s_style = _trend(long_steps)
+            r_trend, r_style = _trend(long_reward)
+            f_trend, f_style = _trend(long_food)
 
             stat_text.append("         Min   Avg   Max  Trend\n", style="bold dim")
             stat_text.append(f"Steps  {s_min:5.0f} {s_avg:5.0f} {s_max:5.0f}  ")
@@ -522,12 +550,12 @@ class TrainingDashboard:
             stat_text.append(f"{f_trend}\n", style=f_style)
 
             # All-time bests
-            if len(self.long_steps) > 0:
+            if len(long_steps) > 0:
                 stat_text.append("\n")
                 stat_text.append(f"All-time max steps:  ", style="dim")
-                stat_text.append(f"{max(self.long_steps):.0f}\n", style="bold green")
+                stat_text.append(f"{max(long_steps):.0f}\n", style="bold green")
                 stat_text.append(f"All-time max reward: ", style="dim")
-                stat_text.append(f"{max(self.long_reward):.1f}", style="bold green")
+                stat_text.append(f"{max(long_reward):.1f}", style="bold green")
         else:
             stat_text.append("Waiting for data...", style="dim")
 
@@ -564,8 +592,8 @@ class TrainingDashboard:
         agent_table.add_column("Last Death", width=11)
         agent_table.add_column("Server", style="dim", width=18)
 
-        if self.agents_board:
-            for a in self.agents_board:
+        if agents_board:
+            for a in agents_board:
                 ep_secs = int(a.get('ep_time', 0))
                 if ep_secs >= 60:
                     time_str = f"{ep_secs // 60}m{ep_secs % 60:02d}s"
@@ -599,8 +627,8 @@ class TrainingDashboard:
 
         # Events
         event_lines = Text()
-        if self.events:
-            for ev in self.events:
+        if events:
+            for ev in events:
                 event_lines.append(ev + "\n")
         else:
             event_lines.append("Waiting for events...\n", style="dim")
@@ -1164,14 +1192,21 @@ class VecFrameStack:
         self.venv.close()
 
     def add_agent(self):
-        """Add a new agent dynamically. Returns stacked initial observation."""
+        """Add a new agent dynamically. Returns stacked initial observation.
+
+        Scale-up is non-blocking: the new worker may still be booting, in which
+        case the observation is a spawning placeholder.
+        """
         obs = self.venv.add_agent()
         mat = obs['matrix']
         new_deque = deque(maxlen=self.k)
         self.frames.append(new_deque)
         self.num_agents += 1
         self._fill_frames(self.num_agents - 1, mat)
-        return self._stack_obs(self.num_agents - 1, obs['sectors'])
+        stacked = self._stack_obs(self.num_agents - 1, obs['sectors'])
+        if obs.get('spawning'):
+            stacked['spawning'] = True
+        return stacked
 
     def remove_agent(self):
         """Remove the last agent. Returns False if only 1 agent left."""
@@ -1184,54 +1219,8 @@ class VecFrameStack:
     def set_stage(self, stage_config):
         self.venv.set_stage(stage_config)
 
-def worker(remote, parent_remote, worker_id, headless, nickname_prefix, matrix_size, frame_skip, view_plus=False, base_url="http://slither.io", backend="selenium", ws_server_url="", suppress_stdout=False):
-    parent_remote.close()
-
-    # Suppress stdout/stderr in workers to avoid corrupting Rich TUI
-    if suppress_stdout:
-        devnull = open(os.devnull, 'w')
-        sys.stdout = devnull
-        sys.stderr = devnull
-
-    agent_names = [
-        "Picard", "Riker", "Data", "Worf", "Troi", "LaForge",
-        "Crusher", "Q", "Seven", "Raffi", "Rios", "Jurati"
-    ]
-    chosen_name = agent_names[worker_id % len(agent_names)]
-
-    try:
-        env = SlitherEnv(
-            headless=headless,
-            nickname=chosen_name,
-            matrix_size=matrix_size,
-            view_plus=view_plus,
-            base_url=base_url,
-            frame_skip=frame_skip,
-            backend=backend,
-            ws_server_url=ws_server_url,
-        )
-        session = WorkerSession(env, matrix_size)
-
-        while True:
-            cmd, data = remote.recv()
-            if cmd == 'close':
-                session.close()
-                break
-            remote.send(session.handle(cmd, data))
-    except Exception as e:
-        import traceback
-        crash_msg = f"Worker {worker_id} crashed: {e}\n{traceback.format_exc()}"
-        try:
-            with open("logs/worker_crashes.log", "a") as _wf:
-                _wf.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {crash_msg}\n")
-        except Exception:
-            pass
-        print(crash_msg)
-    finally:
-        remote.close()
-
 class SubprocVecEnv:
-    def __init__(self, num_agents, matrix_size, frame_skip, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io", backend="selenium", ws_server_url="", suppress_stdout=False):
+    def __init__(self, num_agents, matrix_size, frame_skip, view_first=False, view_plus=False, nickname="dzaczekAI", base_url="http://slither.io", backend="selenium", ws_server_url="", suppress_stdout=False, worker_fn=None):
         self.num_agents = num_agents
         # Store constructor args for spawning new workers dynamically
         self._matrix_size = matrix_size
@@ -1242,19 +1231,26 @@ class SubprocVecEnv:
         self._ws_server_url = ws_server_url
         self._suppress_stdout = suppress_stdout
         self._current_stage_config = None
+        self._worker_fn = worker_fn or worker
+        self._view_first = view_first
+        self._view_plus = view_plus
 
         pipes = [mp.Pipe() for _ in range(num_agents)]
         self.remotes = [p[0] for p in pipes]
         work_remotes = [p[1] for p in pipes]
         self.ps = []
+        self._boot_ready = [False] * num_agents
+        self._pending_stage = [None] * num_agents
+        self._respawning = [False] * num_agents
 
         for i in range(num_agents):
             is_headless = not (view_first and i == 0)
             # Enable view_plus only for the first agent when view mode is active
             agent_view_plus = view_plus and (i == 0) and not is_headless
             p = mp.Process(
-                target=worker,
-                args=(work_remotes[i], self.remotes[i], i, is_headless, nickname, matrix_size, frame_skip, agent_view_plus, base_url, backend, ws_server_url, suppress_stdout),
+                target=self._worker_fn,
+                args=self._worker_args(work_remotes[i], self.remotes[i], i,
+                                       is_headless, agent_view_plus, autoreset=False),
             )
             p.daemon = True
             p.start()
@@ -1263,16 +1259,69 @@ class SubprocVecEnv:
         for remote in work_remotes:
             remote.close()
 
+        # Wait only for the command loop handshake (not Chrome). Startup reset
+        # still blocks on env.reset(); scale-up later must not.
+        watchers = []
+        for i, remote in enumerate(self.remotes):
+            t = threading.Thread(target=self._watch_ready, args=(i, remote), daemon=True)
+            t.start()
+            watchers.append(t)
+        for t in watchers:
+            t.join(timeout=60)
+
+    def _worker_args(self, work_remote, remote, index, headless, view_plus, autoreset):
+        return (
+            work_remote, remote, index, headless, self._nickname,
+            self._matrix_size, self._frame_skip, view_plus, self._base_url,
+            self._backend, self._ws_server_url, self._suppress_stdout,
+            self._current_stage_config, autoreset,
+        )
+
     def _make_dummy_obs(self):
         """Return a zero observation for when respawn fails."""
-        return {
-            'matrix': np.zeros((3, self._matrix_size, self._matrix_size), dtype=np.float32),
-            'sectors': np.zeros(99, dtype=np.float32),
-        }
+        return spawning_obs(self._matrix_size)
+
+    def _browser_error_result(self):
+        obs = self._make_dummy_obs()
+        return (obs, 0.0, True, {
+            'terminal_observation': obs,
+            'cause': 'BrowserError',
+            'food_eaten': 0,
+            'pos': (0, 0),
+            'wall_dist': -1,
+            'enemy_dist': -1,
+        })
+
+    def _watch_ready(self, index, remote):
+        """Consume the worker's READY_MSG. Must be the only recv on this pipe until then."""
+        try:
+            msg = remote.recv()
+            if msg != READY_MSG:
+                logger.warning(f"[SubprocVecEnv] Worker {index} handshake {msg!r}, expected {READY_MSG!r}")
+            if index < len(self.remotes) and self.remotes[index] is remote:
+                self._boot_ready[index] = True
+                if index < len(self._respawning):
+                    self._respawning[index] = False
+        except (EOFError, BrokenPipeError, ConnectionResetError, OSError) as e:
+            logger.error(f"[SubprocVecEnv] Worker {index} died before ready: {e}")
+
+    def _schedule_respawn(self, index):
+        if index >= self.num_agents:
+            return
+        if self._respawning[index]:
+            return
+        self._respawning[index] = True
+        self._boot_ready[index] = False
+        threading.Thread(
+            target=self._respawn_worker, args=(index,),
+            daemon=True, name=f"respawn-{index}",
+        ).start()
 
     def _respawn_worker(self, index, max_retries=3):
-        """Respawn a crashed worker process with retries."""
+        """Respawn a crashed worker off the training thread."""
         for attempt in range(max_retries):
+            if index >= self.num_agents:
+                return
             logger.warning(f"[SubprocVecEnv] Respawning worker {index} (attempt {attempt+1}/{max_retries})...")
             try:
                 self.ps[index].terminate()
@@ -1286,47 +1335,89 @@ class SubprocVecEnv:
 
             remote, work_remote = mp.Pipe()
             p = mp.Process(
-                target=worker,
-                args=(work_remote, remote, index, True, self._nickname,
-                      self._matrix_size, self._frame_skip, False, self._base_url,
-                      self._backend, self._ws_server_url, self._suppress_stdout),
+                target=self._worker_fn,
+                args=self._worker_args(work_remote, remote, index, True, False, autoreset=True),
             )
             p.daemon = True
             p.start()
             work_remote.close()
+            if index >= self.num_agents:
+                try:
+                    p.terminate()
+                except Exception:
+                    pass
+                return
             self.remotes[index] = remote
             self.ps[index] = p
+            self._boot_ready[index] = False
 
             try:
-                if self._current_stage_config is not None:
-                    remote.send(('set_stage', self._current_stage_config))
-                    remote.recv()
-
-                remote.send(('reset', None))
-                obs = remote.recv()
-                logger.info(f"[SubprocVecEnv] Worker {index} respawned successfully.")
-                return obs
+                msg = remote.recv()
+                if msg != READY_MSG:
+                    logger.warning(f"[SubprocVecEnv] Worker {index} handshake {msg!r}, expected {READY_MSG!r}")
+                if index < len(self.remotes) and self.remotes[index] is remote:
+                    self._boot_ready[index] = True
+                    self._respawning[index] = False
+                    if self._current_stage_config is not None:
+                        self._pending_stage[index] = self._current_stage_config
+                    logger.info(f"[SubprocVecEnv] Worker {index} respawned (command loop ready).")
+                return
             except (EOFError, BrokenPipeError, ConnectionResetError) as e:
                 logger.warning(f"[SubprocVecEnv] Respawn attempt {attempt+1} failed: {e}")
                 time.sleep(2)
 
-        logger.error(f"[SubprocVecEnv] Worker {index} failed after {max_retries} retries. Using dummy obs.")
-        return self._make_dummy_obs()
+        logger.error(f"[SubprocVecEnv] Worker {index} failed after {max_retries} retries.")
+        if index < len(self._respawning):
+            self._respawning[index] = False
+
+    def _flush_pending_stage(self):
+        """Apply queued curriculum updates to workers that were still booting."""
+        pending_idx = []
+        for i, remote in enumerate(self.remotes):
+            if not self._boot_ready[i] or self._pending_stage[i] is None:
+                continue
+            try:
+                remote.send(('set_stage', self._pending_stage[i]))
+                pending_idx.append(i)
+            except (EOFError, BrokenPipeError, ConnectionResetError):
+                self._pending_stage[i] = None
+                self._schedule_respawn(i)
+        for i in pending_idx:
+            try:
+                self.remotes[i].recv()
+                self._pending_stage[i] = None
+            except (EOFError, BrokenPipeError, ConnectionResetError):
+                self._pending_stage[i] = None
+                self._schedule_respawn(i)
 
     def reset(self):
-        for remote in self.remotes:
+        for i, remote in enumerate(self.remotes):
+            if not self._boot_ready[i]:
+                continue
             remote.send(('reset', None))
-        return [remote.recv() for remote in self.remotes]
+        results = []
+        for i, remote in enumerate(self.remotes):
+            if not self._boot_ready[i]:
+                results.append(self._make_dummy_obs())
+                continue
+            results.append(remote.recv())
+        return results
 
     def reset_one(self, index):
+        if not self._boot_ready[index]:
+            return self._make_dummy_obs()
         try:
             self.remotes[index].send(('reset_one', None))
             return self.remotes[index].recv()
         except (EOFError, BrokenPipeError, ConnectionResetError):
-            return self._respawn_worker(index)
+            self._schedule_respawn(index)
+            return self._make_dummy_obs()
 
     def step(self, actions):
-        for remote, action in zip(self.remotes, actions):
+        self._flush_pending_stage()
+        for i, (remote, action) in enumerate(zip(self.remotes, actions)):
+            if not self._boot_ready[i]:
+                continue
             try:
                 remote.send(('step', action))
             except (EOFError, BrokenPipeError, ConnectionResetError):
@@ -1334,21 +1425,15 @@ class SubprocVecEnv:
 
         results = []
         for i, remote in enumerate(self.remotes):
+            if not self._boot_ready[i]:
+                results.append(spawning_step_result(self._matrix_size))
+                continue
             try:
                 results.append(remote.recv())
             except (EOFError, BrokenPipeError, ConnectionResetError):
                 logger.warning(f"[SubprocVecEnv] Worker {i} crashed (EOFError). Respawning...")
-                obs = self._respawn_worker(i)
-                # Return a "death" result for this agent
-                zero_obs = obs
-                results.append((zero_obs, 0.0, True, {
-                    'terminal_observation': obs,
-                    'cause': 'BrowserError',
-                    'food_eaten': 0,
-                    'pos': (0, 0),
-                    'wall_dist': -1,
-                    'enemy_dist': -1,
-                }))
+                self._schedule_respawn(i)
+                results.append(self._browser_error_result())
         states, rewards, dones, infos = zip(*results)
         return states, rewards, dones, infos
 
@@ -1367,62 +1452,72 @@ class SubprocVecEnv:
     def set_stage(self, stage_config):
         """Send curriculum stage config to all workers."""
         self._current_stage_config = stage_config
-        for remote in self.remotes:
+        for i, remote in enumerate(self.remotes):
+            if not self._boot_ready[i]:
+                self._pending_stage[i] = stage_config
+                continue
             remote.send(('set_stage', stage_config))
-        for remote in self.remotes:
+        for i, remote in enumerate(self.remotes):
+            if not self._boot_ready[i]:
+                continue
             remote.recv()  # Wait for ack
 
     def add_agent(self):
-        """Spawn a new worker process dynamically. Returns initial observation."""
+        """Spawn a new worker without waiting for Chrome or reset.
+
+        Returns a spawning placeholder immediately so live agents keep stepping.
+        """
         i = self.num_agents
         remote, work_remote = mp.Pipe()
         p = mp.Process(
-            target=worker,
-            args=(work_remote, remote, i, True, self._nickname,
-                  self._matrix_size, self._frame_skip, False, self._base_url,
-                  self._backend, self._ws_server_url, self._suppress_stdout),
+            target=self._worker_fn,
+            args=self._worker_args(work_remote, remote, i, True, False, autoreset=True),
         )
         p.daemon = True
         p.start()
         work_remote.close()
         self.remotes.append(remote)
         self.ps.append(p)
+        self._boot_ready.append(False)
+        self._pending_stage.append(None)
+        self._respawning.append(False)
         self.num_agents += 1
-
-        # Apply current stage config to new worker
-        try:
-            if self._current_stage_config is not None:
-                remote.send(('set_stage', self._current_stage_config))
-                remote.recv()
-
-            # Reset and get initial observation
-            remote.send(('reset', None))
-            return remote.recv()
-        except (EOFError, BrokenPipeError) as e:
-            # Worker crashed during init — clean up and re-raise with info
-            logger.error(f"Worker {i} died during add_agent: {e} — check logs/worker_crashes.log")
-            try:
-                p.terminate()
-            except Exception:
-                pass
-            self.remotes.pop()
-            self.ps.pop()
-            self.num_agents -= 1
-            raise RuntimeError(f"Failed to add agent #{i}: worker crashed during init") from e
+        threading.Thread(
+            target=self._watch_ready, args=(i, remote),
+            daemon=True, name=f"watch-ready-{i}",
+        ).start()
+        return self._make_dummy_obs()
 
     def remove_agent(self):
-        """Shut down the last worker process. Returns False if only 1 agent left."""
+        """Shut down the last worker without blocking the training thread."""
         if self.num_agents <= 1:
             return False
         idx = self.num_agents - 1
-        try:
-            self.remotes[idx].send(('close', None))
-            self.ps[idx].join(timeout=5)
-        except Exception:
-            self.ps[idx].terminate()
-        self.remotes.pop()
-        self.ps.pop()
+        remote = self.remotes.pop()
+        p = self.ps.pop()
+        ready = self._boot_ready.pop()
+        self._pending_stage.pop()
+        self._respawning.pop()
         self.num_agents -= 1
+
+        def _reap():
+            try:
+                if ready:
+                    remote.send(('close', None))
+                p.join(timeout=5)
+                if p.is_alive():
+                    p.terminate()
+            except Exception:
+                try:
+                    p.terminate()
+                except Exception:
+                    pass
+            try:
+                remote.close()
+            except Exception:
+                pass
+
+        threading.Thread(target=_reap, daemon=True, name=f"reap-worker-{idx}").start()
         return True
 
 
@@ -2030,7 +2125,7 @@ def train(args):
                         'steps': episode_steps[i],
                         'ep_time': now - agent_ep_start[i],
                         'total_eps': agent_total_eps[i],
-                        'last_cause': agent_last_cause[i],
+                        'last_cause': 'spawning' if agent_spawning[i] else agent_last_cause[i],
                         'server': agent_server[i],
                     })
                 dashboard.update_agent_board(board)
@@ -2059,15 +2154,16 @@ def train(args):
                         agent_ep_start.append(time.time())
                         agent_total_eps.append(0)
                         agent_last_cause.append("—")
-                        agent_spawning.append(False)
+                        agent_spawning.append(True)
                         states.append(new_state)
                         logger.info(f"[AUTO-SCALE] Added agent #{env.num_agents} "
                                     f"(CPU:{metrics['cpu_percent']:.0f}% "
                                     f"RAM:{metrics['ram_free_mb']:.0f}MB "
                                     f"Step:{metrics['avg_step_ms']:.0f}ms)")
                         if dashboard:
+                            dashboard.num_agents = env.num_agents
                             dashboard.log_event(f"Scale UP -> {env.num_agents} agents")
-                    except RuntimeError as e:
+                    except Exception as e:
                         logger.warning(f"[AUTO-SCALE] Failed to add agent: {e}")
                         if dashboard:
                             dashboard.log_event(f"Scale UP FAILED: {e}")
@@ -2090,6 +2186,7 @@ def train(args):
                                 f"RAM:{metrics['ram_free_mb']:.0f}MB "
                                 f"Step:{metrics['avg_step_ms']:.0f}ms)")
                     if dashboard:
+                        dashboard.num_agents = env.num_agents
                         dashboard.log_event(f"Scale DOWN -> {env.num_agents} agents")
 
             # Train

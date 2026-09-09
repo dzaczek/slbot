@@ -146,22 +146,25 @@ class TestWorkerSession(unittest.TestCase):
         self.assertTrue(info.get('spawning'))
         self.assertEqual(self.env.step_count, steps_before)
 
-    def test_set_stage_waits_for_reset_lock(self):
+    def test_set_stage_does_not_block_during_reset(self):
         self.session.reset_async()
         self.assertTrue(self.env.reset_started.wait(timeout=1))
-        done = threading.Event()
 
-        def apply_stage():
-            self.session.handle('set_stage', {'food_reward': 9})
-            done.set()
+        t0 = time.perf_counter()
+        ack = self.session.handle('set_stage', {'food_reward': 9})
+        self.assertLess(time.perf_counter() - t0, 0.05)
+        self.assertEqual(ack, 'ok')
+        self.assertFalse(hasattr(self.env, 'stage'))
 
-        t = threading.Thread(target=apply_stage)
-        t.start()
-        time.sleep(0.05)
-        self.assertFalse(done.is_set())
         self.env.reset_release.set()
-        self.assertTrue(done.wait(timeout=2))
-        t.join(timeout=1)
+        spawned = False
+        for _ in range(50):
+            _, _, _, info = self.session.step(0)
+            if info.get('spawned'):
+                spawned = True
+                break
+            time.sleep(0.01)
+        self.assertTrue(spawned)
         self.assertEqual(self.env.stage, {'food_reward': 9})
 
     def test_reset_sync_waits_for_observation(self):
