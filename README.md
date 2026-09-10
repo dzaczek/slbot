@@ -415,6 +415,9 @@ Multiple Chrome instances run in parallel via `SubprocVecEnv` (multiprocessing).
 
 Auto-scaling monitors CPU, RAM, and step latency to add or remove agents dynamically. Each agent uses ~500MB RAM.
 
+#### CPU Single-Agent Training
+When training on a CPU with a single agent, the default optimization configuration may block the game loop and severely reduce the training step rate. To improve throughput, you can run the trainer with `--train-freq 4`. Setting `train_freq = 4` runs one optimization step for every four environment steps, reducing CPU load while continuing to add every collected transition to the replay buffer.
+
 ### Experience Replay
 
 We use **Prioritized Experience Replay (PER)** with a SumTree data structure. Transitions with high TD-error (where the network's prediction was most wrong) get sampled more frequently. This means the network spends more time learning from surprising or difficult situations.

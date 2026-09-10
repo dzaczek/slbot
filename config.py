@@ -31,6 +31,7 @@ class OptimizationConfig:
     eps_start: float = 1.0
     eps_end: float = 0.08          # Less randomness at convergence
     eps_decay: int = 8000          # Calibrated for steps_done += 1 per batch
+    train_freq: int = 1            # Frequency of optimization steps (1 for GPU, 4+ recommended for CPU)
     target_update_freq: int = 10000 # Increased for stability with 10 agents
     max_episodes: int = 5000000
     checkpoint_every: int = 50
@@ -53,6 +54,10 @@ class OptimizationConfig:
     super_pattern_enemy_penalty_cap: float = 0.5   # was 0.3 — don't reduce enemy_pen too aggressively
     super_pattern_straight_penalty_cap: float = 0.1
     super_pattern_food_reward_cap: float = 15.0
+
+    def __post_init__(self):
+        if self.train_freq < 1:
+            raise ValueError(f"train_freq must be >= 1, got {self.train_freq}")
 
 @dataclass
 class ReplayBufferConfig:
