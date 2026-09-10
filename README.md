@@ -416,7 +416,7 @@ Multiple Chrome instances run in parallel via `SubprocVecEnv` (multiprocessing).
 Auto-scaling monitors CPU, RAM, and step latency to add or remove agents dynamically. Each agent uses ~500MB RAM.
 
 #### CPU Single-Agent Training
-When training on a CPU with a single agent, the default optimization configuration may block the game loop and severely reduce the training step rate. To improve throughput, set `train_freq = 4` in `config.py` (which skips optimization on most steps and batches the experience). Remember to proportionally adjust `target_update_freq = 2500` (from the default of 10000) to maintain convergence rates.
+When training on a CPU with a single agent, the default optimization configuration may block the game loop and severely reduce the training step rate. To improve throughput, you can run the trainer with `--train-freq 4`. Setting `train_freq = 4` runs one optimization step for every four environment steps, reducing CPU load while continuing to add every collected transition to the replay buffer.
 
 ### Experience Replay
 

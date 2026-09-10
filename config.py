@@ -55,6 +55,10 @@ class OptimizationConfig:
     super_pattern_straight_penalty_cap: float = 0.1
     super_pattern_food_reward_cap: float = 15.0
 
+    def __post_init__(self):
+        if self.train_freq < 1:
+            raise ValueError(f"train_freq must be >= 1, got {self.train_freq}")
+
 @dataclass
 class ReplayBufferConfig:
     capacity: int = 100000

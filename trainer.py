@@ -1446,6 +1446,9 @@ def train(args):
     if args.vision_size:
         cfg.env.resolution = (args.vision_size, args.vision_size)
 
+    if args.train_freq > 0:
+        cfg.opt.train_freq = args.train_freq
+
     # Backend selection
     cfg.browser_backend = args.backend
     cfg.ws_server_url = args.ws_server_url
@@ -2133,6 +2136,7 @@ if __name__ == "__main__":
     parser.add_argument("--ai-lookback", type=int, default=500, help="AI Supervisor: analyze last N episodes (default: 500)")
     parser.add_argument("--ai-model", type=str, default=None, help="AI Supervisor: override LLM model name")
     parser.add_argument("--ai-key", type=str, default=None, help="AI Supervisor: API key (default: from env var)")
+    parser.add_argument("--train-freq", type=int, default=0, help="Override OptimizationConfig train_freq (e.g. 4 for CPU)")
     args = parser.parse_args()
 
     if args.reset:
