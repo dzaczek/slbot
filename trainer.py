@@ -2074,7 +2074,10 @@ def train(args):
                         dashboard.log_event(f"Scale DOWN -> {env.num_agents} agents")
 
             # Train
-            metrics = agent.optimize_model()
+            metrics = None
+            if total_steps % cfg.opt.train_freq == 0:
+                metrics = agent.optimize_model()
+
             if metrics is not None:
                 last_metrics = metrics
                 train._last_loss = metrics['loss']

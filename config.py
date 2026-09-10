@@ -31,6 +31,7 @@ class OptimizationConfig:
     eps_start: float = 1.0
     eps_end: float = 0.08          # Less randomness at convergence
     eps_decay: int = 8000          # Calibrated for steps_done += 1 per batch
+    train_freq: int = 1            # Frequency of optimization steps (1 for GPU, 4+ recommended for CPU)
     target_update_freq: int = 10000 # Increased for stability with 10 agents
     max_episodes: int = 5000000
     checkpoint_every: int = 50
